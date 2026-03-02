@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 text-center">
+        <div class="card shadow p-5 mt-5">
+
+            <h2 class="fw-bold">Contact Us</h2>
+
+            <p class="lead mt-3">
+                For membership details, profile verification, or any assistance,
+                please reach out to our team.
+            </p>
+
+            <h4 class="fw-semibold mt-4">
+                📞 +91 XXXXX XXXXX
+            </h4>
+
+            <p class="text-muted mt-3">
+                Available: Monday – Saturday | 10:00 AM – 6:00 PM
+            </p>
+
+            <a href="{% url 'home' %}" 
+               class="btn btn-dark rounded-pill mt-4 px-4">
+                Back to Home
+            </a>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
