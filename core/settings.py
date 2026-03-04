@@ -28,7 +28,6 @@ DEBUG = False
 ALLOWED_HOSTS = ['192.168.29.48', '127.0.0.1', "ziradei-matrimony.onrender.com"]
 CSRF_TRUSTED_ORIGINS = [
     "https://ziradei-matrimony.onrender.com",
-    "https://*.onrender.com",
 ]
 
 
