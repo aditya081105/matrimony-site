@@ -55,25 +55,42 @@ class CustomUser(AbstractUser):
         return f"{self.username} - {self.full_name}"
 
 class Profile(models.Model):
-    # This links the Profile to a specific User. 
-    # If the User is deleted, the Profile is deleted (on_delete=models.CASCADE)
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='profile')
-    
-    # Bio Data Fields
+
+    user = models.OneToOneField(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='profile'
+    )
+
     bio = models.TextField(max_length=500, blank=True)
     education = models.CharField(max_length=100, blank=True)
     father_name = models.CharField(max_length=100, blank=True)
     mother_name = models.CharField(max_length=100, blank=True)
     address = models.CharField(max_length=255, blank=True)
+
     city_hometown = models.ForeignKey(
         City,
         on_delete=models.SET_NULL,
         null=True,
         blank=True
     )
-    
-    # Photos (We will handle the actual 'storage' part later)
-    profile_photo = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
+
+    profile_photo = models.ImageField(
+        upload_to="profile_pics/",
+        blank=True,
+        null=True
+    )
+
+    def save(self, *args, **kwargs):
+
+        super().save(*args, **kwargs)
+
+        if self.profile_photo:
+            img = Image.open(self.profile_photo.path)
+
+            if img.height > 500 or img.width > 500:
+                img.thumbnail((500, 500))
+                img.save(self.profile_photo.path)
 
     @property
     def is_complete(self):
@@ -81,7 +98,7 @@ class Profile(models.Model):
             self.user.date_of_birth,
             self.user.height_cm,
             self.city_hometown,
-            self.user.profile.profile_photo,
+            self.profile_photo
         ])
 
     def __str__(self):
