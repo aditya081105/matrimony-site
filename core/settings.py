@@ -115,7 +115,7 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 import cloudinary
 
 cloudinary.config(
-    cloud_name = "dyc3d1av8",
+    cloud_name = "Root",
     api_key = "172513787982812",
     api_secret = "qRmew-vsnWVHjptRZI6sJZNHzq4"
 )
