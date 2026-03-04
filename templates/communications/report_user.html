@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h4>Report {{ target.full_name }}</h4>
+
+<form method="POST">
+    {% csrf_token %}
+    <textarea name="reason" class="form-control mb-3"
+              placeholder="Reason (optional)"></textarea>
+    <button class="btn btn-danger">Submit Report</button>
+</form>
+
+{% endblock %}

@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+<h2 class="text-center mb-4 fw-bold">Received Requests</h2>
+
+<div class="row">
+
+{% for req in requests %}
+
+<div class="col-lg-4 col-md-6 mb-4">
+
+<div class="card shadow-sm border-0 rounded-4 p-4 text-center position-relative">
+
+<!-- 3 DOT MENU -->
+<div class="dropdown position-absolute top-0 end-0 m-2">
+<button class="btn btn-sm btn-light rounded-circle"
+data-bs-toggle="dropdown">
+⋮
+</button>
+
+<ul class="dropdown-menu dropdown-menu-end">
+
+<li>
+<a class="dropdown-item text-danger"
+href="{% url 'block_user' req.sender.id %}">
+Block
+</a>
+</li>
+
+<li>
+<a class="dropdown-item"
+href="{% url 'report_user' req.sender.id %}">
+Report
+</a>
+</li>
+
+</ul>
+</div>
+
+<!-- PROFILE IMAGE -->
+<a href="{% url 'view_profile' req.sender.id %}">
+
+{% if req.sender.profile.profile_photo %}
+<img src="{{ req.sender.profile.profile_photo.url }}"
+class="rounded-circle mb-3"
+style="width:100px;height:100px;object-fit:cover;">
+{% else %}
+<img src="{% static 'images/default.jpg' %}"
+class="rounded-circle mb-3"
+style="width:100px;height:100px;object-fit:cover;">
+{% endif %}
+
+</a>
+
+<h6 class="fw-semibold mb-1">
+{{ req.sender.full_name }}
+</h6>
+
+<p class="text-muted small mb-3">
+{{ req.sender.occupation|default:"Occupation not specified" }}
+</p>
+
+{% if req.status == "pending" %}
+
+<div class="d-grid gap-2">
+
+<a href="{% url 'update_request' req.id 'accept' %}"
+class="btn btn-success btn-sm rounded-pill">
+Accept
+</a>
+
+<a href="{% url 'update_request' req.id 'reject' %}"
+class="btn btn-outline-danger btn-sm rounded-pill">
+Reject
+</a>
+
+</div>
+
+{% elif req.status == "accepted" %}
+
+<span class="badge bg-success py-2">
+Accepted
+</span>
+
+{% else %}
+
+<span class="badge bg-danger py-2">
+Rejected
+</span>
+
+{% endif %}
+
+</div>
+
+</div>
+
+{% empty %}
+
+<div class="text-center py-5">
+<h5 class="text-muted">No requests received</h5>
+</div>
+
+{% endfor %}
+
+</div>
+
+{% endblock %}

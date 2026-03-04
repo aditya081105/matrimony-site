@@ -1,43 +1,173 @@
 {% extends "base.html" %}
 {% load static %}
-
 {% block content %}
 
-<div class="text-center position-relative mb-5">
+<!-- HERO SECTION -->
+<section class="position-relative mb-5">
 
-    <!-- Image -->
-    <img src="{% static 'images/marr.jpg' %}" 
-         class="img-fluid w-100 rounded shadow"
-         style="max-height:500px; object-fit:cover;">
+    <div class="position-relative rounded-4 overflow-hidden shadow">
 
-    <!-- Centered Text -->
-    <div class="position-absolute top-50 start-50 translate-middle text-center w-100">
-        <h2 class="fw-bold" style="color:#444;">
-            Where Families Meet and Futures Begin.
-        </h2>
+        <img src="{% static 'images/marr.jpg' %}"
+             class="w-100"
+             style="height:65vh; object-fit:cover; filter:brightness(70%);">
+
+        <div class="position-absolute top-50 start-50 translate-middle text-center text-white px-3 w-100"
+             style="max-width:900px;">
+
+            <h1 class="fw-bold mb-3 display-6 display-md-5">
+                Where Families Connect With Trust
+            </h1>
+
+            <p class="mb-4 fs-6 fs-md-5">
+                A secure and respectful matrimonial platform built for our hometown community.
+            </p>
+
+            {% if user.is_authenticated %}
+                <a href="{% url 'profile_list' %}"
+                   class="btn btn-light btn-lg rounded-pill px-4 px-md-5 me-2 shadow-sm">
+                    Explore Matches
+                </a>
+            {% else %}
+                <a href="{% url 'register' %}"
+                   class="btn btn-light btn-lg rounded-pill px-4 px-md-5 me-2 shadow-sm">
+                    Create Profile
+                </a>
+
+                <a href="{% url 'login' %}"
+                   class="btn btn-outline-light btn-lg rounded-pill px-4 px-md-5 shadow-sm">
+                    Login
+                </a>
+            {% endif %}
+
+        </div>
     </div>
 
-</div>
+</section>
 
-{% if user.is_authenticated %}
 
-<div class="text-center mb-5">
-    <h4 class="fw-semibold mb-3">Ready to explore matches?</h4>
+{% if user.is_authenticated and is_incomplete %}
+<section class="mb-5">
+    <div class="alert alert-danger shadow-sm rounded-4 text-center py-4">
 
-    <a href="{% url 'profile_list' %}" 
-       class="btn btn-dark rounded-pill px-5 py-2">
-        View Matchmaking Profiles
-    </a>
-</div>
+        <h5 class="fw-semibold mb-2">
+            Complete Your Profile
+        </h5>
 
-{% else %}
+        <p class="mb-3">
+            Your profile is not fully visible in matchmaking results.
+        </p>
 
-<div class="text-center mb-5">
-    <p class="text-muted">
-        Login to explore verified matchmaking profiles.
-    </p>
-</div>
+        <a href="{% url 'edit_profile' %}"
+           class="btn btn-dark rounded-pill px-4">
+            Complete Now
+        </a>
 
+    </div>
+</section>
 {% endif %}
+
+
+<!-- TRUST SECTION -->
+<section class="py-5">
+    <div class="row text-center g-4">
+
+        <div class="col-md-4">
+            <div class="p-4 shadow-sm rounded-4 h-100">
+                <h5 class="fw-semibold mb-3">Admin Approved Profiles</h5>
+                <p class="text-muted">
+                    Every profile is reviewed before becoming visible to ensure authenticity and trust.
+                </p>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="p-4 shadow-sm rounded-4 h-100">
+                <h5 class="fw-semibold mb-3">Privacy First</h5>
+                <p class="text-muted">
+                    Contact details remain locked until both families mutually agree.
+                </p>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="p-4 shadow-sm rounded-4 h-100">
+                <h5 class="fw-semibold mb-3">Community Focused</h5>
+                <p class="text-muted">
+                    Built specifically for our hometown families with shared values.
+                </p>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+
+<!-- HOW IT WORKS -->
+<section class="py-5 bg-light rounded-4 px-3">
+    <div class="text-center mb-5">
+        <h3 class="fw-bold">How It Works</h3>
+    </div>
+
+    <div class="row text-center g-4">
+
+        <div class="col-md-4">
+            <div class="p-3">
+                <h5 class="fw-semibold mb-3">1. Create Profile</h5>
+                <p class="text-muted">
+                    Add your details and submit for admin approval.
+                </p>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="p-3">
+                <h5 class="fw-semibold mb-3">2. Send Interest</h5>
+                <p class="text-muted">
+                    Browse profiles and send requests to connect.
+                </p>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="p-3">
+                <h5 class="fw-semibold mb-3">3. Connect Respectfully</h5>
+                <p class="text-muted">
+                    Contact details unlock only after acceptance.
+                </p>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+
+<!-- SAFETY SECTION -->
+<section class="py-5 text-center">
+    <h4 class="fw-semibold mb-3">Safe & Respectful Environment</h4>
+    <p class="text-muted mx-auto" style="max-width:700px;">
+        Blocking, reporting, and admin moderation tools are in place to maintain a dignified and secure matchmaking experience.
+    </p>
+</section>
+
+
+<!-- FINAL CTA -->
+<section class="py-5 text-center text-white rounded-4"
+         style="background: linear-gradient(90deg,#ed0c0c,#f02637);">
+
+    <h3 class="fw-bold mb-3">Begin the Journey Today</h3>
+
+    {% if user.is_authenticated %}
+        <a href="{% url 'profile_list' %}"
+           class="btn btn-dark btn-lg rounded-pill px-5 shadow-sm">
+            View Profiles
+        </a>
+    {% else %}
+        <a href="{% url 'register' %}"
+           class="btn btn-dark btn-lg rounded-pill px-5 shadow-sm">
+            Create Your Profile
+        </a>
+    {% endif %}
+
+</section>
 
 {% endblock %}

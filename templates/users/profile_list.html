@@ -1,92 +1,346 @@
 {% extends 'base.html' %}
+{% load static %}
+
 {% block content %}
 
-<h2 class="mb-4 text-center fw-bold">Hometown Matches</h2>
+<div class="d-md-none mb-3 text-end">
+    <button class="btn btn-dark rounded-pill"
+            data-bs-toggle="collapse"
+            data-bs-target="#filterPanel">
+        Filters
+    </button>
+</div>
 
-<div class="profile-scroll-wrapper">
+<div class="collapse d-md-block" id="filterPanel">
 
-    {% for profile in page_obj %}
-    <div class="profile-card card shadow-sm">
+<form method="GET" class="card shadow-sm border-0 rounded-4 p-4 mb-4">
 
-        <div class="card-body text-center">
+    <div class="d-flex justify-content-between align-items-center mb-3">
 
-            <!-- PHOTO -->
-            {% if profile.profile.profile_photo %}
-                <img src="{{ profile.profile.profile_photo.url }}"
-                     class="img-fluid rounded-circle mb-3"
-                     style="width:120px;height:120px;object-fit:cover;">
-            {% endif %}
+        <h6 class="text-muted mb-0">
+            {{ page_obj.paginator.count }} Profiles Found
+        </h6>
 
-            <!-- BASIC INFO -->
-            <h5 class="fw-semibold">{{ profile.full_name }}</h5>
-            <p><strong>Caste:</strong> {{ profile.caste_community|default:"Not specified" }}</p>
-            <p><strong>Occupation:</strong> {{ profile.occupation|default:"Not specified" }}</p>
+    </div>
 
-            <hr>
+    <div class="row g-3">
 
-            <!-- CONTACT VISIBILITY RULE -->
-            {% if profile.id in accepted_user_ids %}
-                <p class="text-success">
-                    <strong>Phone:</strong> {{ profile.phone_number }}
-                </p>
-                <p class="text-success">
-                    <strong>Father:</strong> {{ profile.profile.father_name|default:"Not specified" }}
-                </p>
-                <p class="text-success">
-                    <strong>Hometown:</strong> {{ profile.profile.city_hometown|default:"Not specified" }}
-                </p>
-            {% else %}
-                <p class="text-muted">Contact Locked</p>
-                <p class="text-muted">Father's Name Locked</p>
-                <p class="text-muted">Hometown Locked</p>
-            {% endif %}
+        <!-- Gender -->
+        <div class="col-md-2">
+            <label class="form-label small text-muted">Gender</label>
+            <select name="gender" class="form-select">
+                <option value="">Any</option>
+                <option value="M" {% if request.GET.gender == "M" %}selected{% endif %}>Male</option>
+                <option value="F" {% if request.GET.gender == "F" %}selected{% endif %}>Female</option>
+            </select>
+        </div>
 
-            <!-- REQUEST BUTTON -->
-            {% if profile.id not in accepted_user_ids and profile.id != user.id %}
-                <a href="{% url 'send_request' profile.id %}"
-                   class="btn btn-dark w-100 mt-2">
-                   Request Contact
+        <!-- Min Age -->
+        <div class="col-md-2">
+            <label class="form-label small text-muted">Min Age</label>
+            <input type="number"
+                   name="min_age"
+                   class="form-control"
+                   value="{{ request.GET.min_age }}">
+        </div>
+
+        <!-- Max Age -->
+        <div class="col-md-2">
+            <label class="form-label small text-muted">Max Age</label>
+            <input type="number"
+                   name="max_age"
+                   class="form-control"
+                   value="{{ request.GET.max_age }}">
+        </div>
+
+        <!-- Min Height -->
+        <div class="col-md-2">
+            <label class="form-label small text-muted">Min Height</label>
+            <input type="number"
+                   name="min_height"
+                   class="form-control"
+                   value="{{ request.GET.min_height }}">
+        </div>
+
+        <!-- Max Height -->
+        <div class="col-md-2">
+            <label class="form-label small text-muted">Max Height</label>
+            <input type="number"
+                   name="max_height"
+                   class="form-control"
+                   value="{{ request.GET.max_height }}">
+        </div>
+
+        <!-- City -->
+        <div class="col-md-2">
+            <label class="form-label small text-muted">City</label>
+            <select name="city" class="form-select">
+                <option value="">Any</option>
+                {% for city in cities %}
+                    <option value="{{ city.id }}"
+                        {% if request.GET.city == city.id|stringformat:"s" %}
+                            selected
+                        {% endif %}>
+                        {{ city.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Caste -->
+        <div class="col-md-3">
+            <label class="form-label small text-muted">Caste</label>
+            <select name="caste" class="form-select">
+                <option value="">Any</option>
+                {% for caste in castes %}
+                    <option value="{{ caste.id }}"
+                        {% if request.GET.caste == caste.id|stringformat:"s" %}
+                            selected
+                        {% endif %}>
+                        {{ caste.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Buttons -->
+        <div class="col-md-3 d-flex align-items-end gap-2">
+
+            <button type="submit"
+                    class="btn btn-dark w-100 rounded-pill">
+                Apply
+            </button>
+
+            <a href="{% url 'profile_list' %}"
+               class="btn btn-outline-secondary w-100 rounded-pill">
+                Reset
+            </a>
+
+        </div>
+
+    </div>
+
+</form>
+</div>
+
+{% if request.GET %}
+<div class="mb-4">
+
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+
+        <span class="text-muted small">Active Filters:</span>
+
+        {% if request.GET.gender %}
+            <span class="badge bg-dark rounded-pill px-3 py-2">
+                Gender: {{ request.GET.gender }}
+            </span>
+        {% endif %}
+
+        {% if request.GET.min_age %}
+            <span class="badge bg-secondary rounded-pill px-3 py-2">
+                Min Age: {{ request.GET.min_age }}
+            </span>
+        {% endif %}
+
+        {% if request.GET.max_age %}
+            <span class="badge bg-secondary rounded-pill px-3 py-2">
+                Max Age: {{ request.GET.max_age }}
+            </span>
+        {% endif %}
+
+        {% if request.GET.min_height %}
+            <span class="badge bg-secondary rounded-pill px-3 py-2">
+                Min Height: {{ request.GET.min_height }} cm
+            </span>
+        {% endif %}
+
+        {% if request.GET.max_height %}
+            <span class="badge bg-secondary rounded-pill px-3 py-2">
+                Max Height: {{ request.GET.max_height }} cm
+            </span>
+        {% endif %}
+
+        {% if request.GET.city %}
+            <span class="badge bg-secondary rounded-pill px-3 py-2">
+                City Selected
+            </span>
+        {% endif %}
+
+        {% if request.GET.caste %}
+            <span class="badge bg-secondary rounded-pill px-3 py-2">
+                Caste Selected
+            </span>
+        {% endif %}
+
+        <a href="{% url 'profile_list' %}"
+           class="badge bg-danger rounded-pill px-3 py-2 text-decoration-none">
+            Clear All
+        </a>
+
+    </div>
+
+</div>
+{% endif %}
+
+<div class="row">
+
+{% for profile in page_obj %}
+<div class="col-lg-4 col-md-6 mb-4">
+
+    <div class="card h-100 shadow-sm border-0 rounded-4 position-relative matchmaking-card">
+
+        <!-- 3 Dot Menu -->
+        <div class="dropdown position-absolute top-0 end-0 m-3">
+            <button class="btn btn-sm btn-light rounded-circle"
+                    data-bs-toggle="dropdown">
+                ⋮
+            </button>
+
+            <ul class="dropdown-menu dropdown-menu-end">
+
+                {% if profile.id in saved_ids %}
+
+                <li>
+                    <a class="dropdown-item"
+                    href="{% url 'toggle_save' profile.id %}">
+                        Remove Saved
+                    </a>
+                </li>
+
+                {% else %}
+
+                <li>
+                    <a class="dropdown-item"
+                    href="{% url 'toggle_save' profile.id %}">
+                        Save Profile
+                    </a>
+                </li>
+                {% endif %}
+
+                <li>
+                    <a class="dropdown-item text-danger"
+                       href="{% url 'block_user' profile.id %}">
+                        Block
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item"
+                       href="{% url 'report_user' profile.id %}">
+                        Report
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card-body p-4">
+
+            <!-- Top Row -->
+            <div class="d-flex align-items-center">
+
+                <a href="{% url 'view_profile' profile.id %}">
+                    {% if profile.profile.profile_photo %}
+                        <img src="{{ profile.profile.profile_photo.url }}"
+                            class="rounded-circle me-3"
+                            style="width:70px;height:70px;object-fit:cover;">
+                    {% else %}
+                        <img src="{% static 'images/default.jpg' %}"
+                            class="rounded-circle me-3"
+                            style="width:70px;height:70px;object-fit:cover;">
+                    {% endif %}
                 </a>
+
+                <div class="flex-grow-1">
+
+                    <h6 class="fw-semibold mb-1">
+                        {{ profile.full_name }}
+                    </h6>
+
+                    <div class="small text-muted">
+                        {{ profile.occupation|default:"Occupation not specified" }}
+                    </div>
+
+                    <div class="small text-muted">
+
+                        {% if profile.date_of_birth %}
+                        {{ profile.date_of_birth|timesince|slice:":2" }} yrs
+                        {% endif %}
+
+                        {% if profile.height_cm %}
+                        • {{ profile.height_cm }} cm
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Secondary Info -->
+            <div class="mt-3 small text-muted">
+
+                {{ profile.profile.city_hometown|default:"City not specified" }}
+
+                <br>
+
+                {{ profile.caste_community|default:"Community not specified" }}
+
+            </div>
+
+            <hr class="my-3">
+
+            <!-- Action Buttons -->
+            <a href="{% url 'view_profile' profile.id %}"
+            class="btn btn-outline-dark btn-sm w-100 mb-2 rounded-pill">
+                View Profile
+            </a>
+
+            {% if profile.id in accepted_user_ids %}
+
+                <span class="badge bg-success w-100 py-2 rounded-pill">
+                    Contact Unlocked
+                </span>
+
+            {% elif profile.id in pending_user_ids %}
+
+                <button class="btn btn-secondary btn-sm w-100 rounded-pill mb-2" disabled>
+                    Request Pending
+                </button>
+
+                <a href="{% url 'cancel_request' profile.id %}"
+                class="btn btn-outline-danger btn-sm w-100 rounded-pill">
+                    Cancel Request
+                </a>
+
+            {% else %}
+
+                <a href="{% url 'send_request' profile.id %}"
+                class="btn btn-dark btn-sm w-100 rounded-pill">
+                    Request Contact
+                </a>
+
             {% endif %}
 
         </div>
     </div>
-
-    {% empty %}
-        <p>No profiles found.</p>
-    {% endfor %}
-
 </div>
 
-<style>
-.profile-scroll-wrapper {
-    display: flex;
-    gap: 20px;
-    overflow-x: auto;
-    padding-bottom: 10px;
-}
+<!-- existing card -->
+{% empty %}
+    <div class="text-center py-5">
+        <h5 class="text-muted">No profiles found.</h5>
+        <p class="text-muted">Try adjusting your filters.</p>
+    </div>
+{% endfor %}
 
-.profile-card {
-    min-width: 280px;
-    flex-shrink: 0;
-}
-
-@media (min-width: 992px) {
-    .profile-scroll-wrapper {
-        overflow-x: visible;
-        flex-wrap: wrap;
-    }
-    .profile-card {
-        width: 30%;
-    }
-}
-</style>
+</div>
 
 <div class="text-center mt-4">
 
     {% if page_obj.has_previous %}
-        <a href="?page=1" class="btn btn-outline-dark btn-sm">First</a>
-        <a href="?page={{ page_obj.previous_page_number }}" class="btn btn-outline-dark btn-sm">Previous</a>
+        <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode|safe }}{% endif %}"
+           class="btn btn-outline-dark btn-sm">
+            Previous
+        </a>
     {% endif %}
 
     <span class="mx-2">
@@ -94,8 +348,10 @@
     </span>
 
     {% if page_obj.has_next %}
-        <a href="?page={{ page_obj.next_page_number }}" class="btn btn-outline-dark btn-sm">Next</a>
-        <a href="?page={{ page_obj.paginator.num_pages }}" class="btn btn-outline-dark btn-sm">Last</a>
+        <a href="?page={{ page_obj.next_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode|safe }}{% endif %}"
+           class="btn btn-outline-dark btn-sm">
+            Next
+        </a>
     {% endif %}
 
 </div>
