@@ -1,0 +1,239 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+
+<div class="row justify-content-center">
+<div class="col-lg-8">
+
+<div class="card shadow-sm border-0 rounded-4 p-4 position-relative">
+
+    <!-- 3 Dot Menu -->
+    <div class="dropdown position-absolute top-0 end-0 m-3">
+        <button class="btn btn-sm btn-light rounded-circle"
+                data-bs-toggle="dropdown">
+            ⋮
+        </button>
+
+        <ul class="dropdown-menu dropdown-menu-end">
+
+            {% if is_allowed %}
+                <li>
+                    <a class="dropdown-item text-danger"
+                        href="{% url 'unmatch' profile_user.id %}">
+                        Remove Match
+                    </a>
+                </li> 
+            {% endif %}
+
+            <li><hr class="dropdown-divider"></li>
+
+            {% if profile_user.id in saved_ids %}
+
+                <li>
+                    <a class="dropdown-item"
+                    href="{% url 'toggle_save' profile_user.id %}">
+                    Remove Saved
+                    </a>
+                </li>
+
+            {% else %}
+
+                <li>
+                    <a class="dropdown-item"
+                    href="{% url 'toggle_save' profile_user.id %}">
+                    Save Profile
+                    </a>
+                </li>
+
+            {% endif %}
+
+            <li>
+                <a class="dropdown-item text-danger"
+                   href="{% url 'block_user' profile_user.id %}">
+                   Block
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item"
+                   href="{% url 'report_user' profile_user.id %}">
+                   Report
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Profile Header -->
+    <div class="text-center mb-4">
+
+        {% if profile_user.profile.profile_photo %}
+        <img src="{{ profile_user.profile.profile_photo.url }}"
+             class="rounded-circle mb-3 shadow-sm"
+             style="width:160px;height:160px;object-fit:cover;">
+        {% else %}
+        <img src="{% static 'images/default.jpg' %}"
+             class="rounded-circle mb-3 shadow-sm"
+             style="width:160px;height:160px;object-fit:cover;">
+        {% endif %}
+
+        <h3 class="fw-bold mb-1">{{ profile_user.full_name }}</h3>
+
+        <p class="text-muted">
+            {{ profile_user.occupation|default:"Occupation not specified" }}
+        </p>
+
+    </div>
+
+    {% if not is_allowed %}
+
+        <div class="text-center mt-4">
+
+            {% if pending_request %}
+
+                <button class="btn btn-secondary rounded-pill px-4 mb-2" disabled>
+                    Request Pending
+                </button>
+
+                <br>
+
+                <a href="{% url 'cancel_request' profile_user.id %}"
+                class="btn btn-outline-danger rounded-pill px-4">
+                Cancel Request
+                </a>
+
+            {% else %}
+
+                <a href="{% url 'send_request' profile_user.id %}"
+                class="btn btn-dark rounded-pill px-4">
+                Request Contact
+                </a>
+
+            {% endif %}
+
+        </div>
+
+        {% endif %}
+
+    {% if is_allowed %}
+
+    <div class="text-center mt-4">
+
+    <a href="{% url 'unmatch' profile_user.id %}"
+    class="btn btn-outline-danger rounded-pill px-4">
+    Remove Match
+    </a>
+
+    </div>
+
+    {% endif %}
+
+    <hr>
+
+    <!-- BASIC INFORMATION -->
+    <h6 class="fw-semibold mb-3">Basic Information</h6>
+
+    <div class="row small mb-4">
+
+        <div class="col-md-6 mb-2">
+            <strong>Gender:</strong> {{ profile_user.get_gender_display }}
+        </div>
+
+        <div class="col-md-6 mb-2">
+            <strong>Date of Birth:</strong>
+            {{ profile_user.date_of_birth|default:"Not specified" }}
+        </div>
+
+        <div class="col-md-6 mb-2">
+            <strong>Height:</strong>
+            {% if profile_user.height_cm %}
+                {{ profile_user.height_cm }} cm
+            {% else %}
+                Not specified
+            {% endif %}
+        </div>
+
+        <div class="col-md-6 mb-2">
+            <strong>Caste / Community:</strong>
+            {{ profile_user.caste_community|default:"Not specified" }}
+        </div>
+
+        <div class="col-md-6 mb-2">
+            <strong>Education:</strong>
+            {{ profile_user.profile.education|default:"Not specified" }}
+        </div>
+
+        <div class="col-md-6 mb-2">
+            <strong>Gotra:</strong>
+            {{ profile_user.gotra|default:"Not specified" }}
+        </div>
+
+    </div>
+
+    <hr>
+
+    <!-- FAMILY DETAILS -->
+    <h6 class="fw-semibold mb-3">Family Details</h6>
+
+    <div class="row small mb-4">
+
+        <div class="col-md-6 mb-2">
+            <strong>Father's Name:</strong>
+            {{ profile_user.profile.father_name|default:"Not specified" }}
+        </div>
+
+        <div class="col-md-6 mb-2">
+            <strong>Mother's Name:</strong>
+            {{ profile_user.profile.mother_name|default:"Not specified" }}
+        </div>
+
+        <div class="col-md-6 mb-2">
+            <strong>Hometown:</strong>
+            {{ profile_user.profile.city_hometown|default:"Not specified" }}
+        </div>
+
+    </div>
+
+    <hr>
+
+    <!-- CONTACT DETAILS -->
+    <h6 class="fw-semibold mb-3">Contact Details</h6>
+
+    {% if is_allowed %}
+    <div class="row small mb-4">
+
+        <div class="col-md-6 mb-2">
+            <strong>Phone:</strong> {{ profile_user.phone_number }}
+        </div>
+
+        <div class="col-md-6 mb-2">
+            <strong>Annual Income:</strong>
+            {{ profile_user.annual_income|default:"Not specified" }}
+        </div>
+
+        <div class="col-md-12 mb-2">
+            <strong>Address:</strong>
+            {{ profile_user.profile.address|default:"Not specified" }}
+        </div>
+
+    </div>
+
+    {% else %}
+    <div class="alert alert-warning text-center">
+        Contact details are locked. Send or accept request to view.
+    </div>
+    {% endif %}
+
+    <hr>
+
+    <!-- ABOUT -->
+    <h6 class="fw-semibold mb-2">About</h6>
+
+    <p class="small text-muted">
+        {{ profile_user.profile.bio|default:"No bio added yet." }}
+    </p>
+
+</div>
+
+</div>
+</div>
+
+{% endblock %}

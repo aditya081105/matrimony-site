@@ -1,51 +1,84 @@
 {% extends 'base.html' %}
-
+{% load static %}
 {% block content %}
 
 <div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card shadow">
+<div class="col-lg-8">
 
-            <div class="card-header bg-dark text-white text-center">
-                <h4>My Profile</h4>
-            </div>
+<div class="card shadow-sm border-0 rounded-4 p-4">
 
-            <div class="card-body">
-                {% if profile.profile_photo %}
-                    <div class="text-center mb-3">
-                        <img src="{{ profile.profile_photo.url }}"
-                            class="img-fluid rounded-circle"
-                            style="width:150px;height:150px;object-fit:cover;">
-                    </div>
-                {% endif %}
-                <p><strong>Full Name:</strong> {{ request.user.full_name }}</p>
-                <p><strong>Caste:</strong> {{ request.user.caste_community }}</p>
-                <p><strong>Occupation:</strong> {{ request.user.occupation }}</p>
-                <hr>
-                <p><strong>Father:</strong> {{ profile.father_name }}</p>
-                <p><strong>Mother:</strong> {{ profile.mother_name }}</p>
-                <p><strong>Hometown:</strong> {{ profile.city_hometown }}</p>
-                <p><strong>Bio:</strong> {{ profile.bio }}</p>
+<!-- PROFILE HEADER -->
+ 
+<div class="text-center mb-4">
 
-                <div class="d-flex justify-content-between mt-4">
-                    <a href="{% url 'edit_profile' %}" 
-                       class="btn btn-dark rounded-pill px-4">
-                        Edit Profile
-                    </a>
+{% if profile.profile_photo %}
+<img src="{{ profile.profile_photo.url }}"
+class="rounded-circle shadow-sm mb-3"
+style="width:160px;height:160px;object-fit:cover;">
+{% else %}
+<img src="{% static 'images/default.jpg' %}"
+class="rounded-circle shadow-sm mb-3"
+style="width:160px;height:160px;object-fit:cover;">
+{% endif %}
 
-                    <form method="POST" action="{% url 'logout' %}">
-                        {% csrf_token %}
-                        <button type="submit"
-                                class="btn btn-outline-danger rounded-pill px-4">
-                            Logout
-                        </button>
-                    </form>
-                </div>
+<h3 class="fw-bold">{{ request.user.full_name }}</h3>
+<p class="text-muted">{{ request.user.occupation|default:"Occupation not specified" }}</p>
 
-            </div>
+</div>
 
-        </div>
-    </div>
+<hr>
+
+<h6 class="fw-semibold mb-3">Basic Information</h6>
+
+<div class="row small mb-4">
+
+<div class="col-md-6 mb-2">
+<strong>Caste / Community:</strong> {{ request.user.caste_community }}
+</div>
+
+<div class="col-md-6 mb-2">
+<strong>Hometown:</strong> {{ profile.city_hometown }}
+</div>
+
+<div class="col-md-6 mb-2">
+<strong>Father:</strong> {{ profile.father_name|default:"Not specified" }}
+</div>
+
+<div class="col-md-6 mb-2">
+<strong>Mother:</strong> {{ profile.mother_name|default:"Not specified" }}
+</div>
+
+</div>
+
+<hr>
+
+<h6 class="fw-semibold mb-2">About</h6>
+
+<p class="small text-muted">
+{{ profile.bio|default:"No bio added yet." }}
+</p>
+
+<hr>
+
+<div class="d-flex justify-content-center gap-3 mt-4">
+
+<a href="{% url 'edit_profile' %}"
+class="btn btn-dark rounded-pill px-4">
+Edit Profile
+</a>
+
+<form method="POST" action="{% url 'logout' %}">
+{% csrf_token %}
+<button class="btn btn-outline-danger rounded-pill px-4">
+Logout
+</button>
+</form>
+
+</div>
+
+</div>
+
+</div>
 </div>
 
 {% endblock %}

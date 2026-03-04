@@ -1,23 +1,63 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-5">
-        <div class="card shadow mt-5">
-            <div class="card-header bg-success text-white text-center">
-                <h4>Login to Bureau</h4>
-            </div>
-            <div class="card-body">
-                <form method="POST">
-                    {% csrf_token %}
-                    {{ form.as_p }}
-                    <button type="submit" class="btn btn-success w-100">Login</button>
-                </form>
-                <div class="mt-3 text-center">
-                    <small>Need an account? <a href="{% url 'register' %}">Sign Up Now</a></small>
-                </div>
-            </div>
+
+<div class="d-flex justify-content-center align-items-center" style="min-height:70vh;">
+
+    <div class="card shadow-sm border-0 rounded-4 p-4" style="width:100%; max-width:380px;">
+
+        <div class="text-center mb-4">
+            <h3 class="fw-bold">Welcome Back</h3>
+            <p class="text-muted small mb-0">
+                Login to Ziradei Matrimony
+            </p>
         </div>
+
+        {% if form.errors %}
+        <div class="alert alert-danger text-center small">
+        Invalid username or password
+        </div>
+        {% endif %}
+
+        <form method="POST">
+            {% csrf_token %}
+
+            <!-- Username -->
+            <div class="mb-3">
+                <input type="text"
+                       name="username"
+                       class="form-control rounded-pill"
+                       placeholder="Username" autofocus
+                       required>
+            </div>
+
+            <!-- Password -->
+            <div class="mb-3">
+                <input type="password"
+                       name="password"
+                       class="form-control rounded-pill"
+                       placeholder="Password"
+                       required>
+            </div>
+
+            <button type="submit"
+                    class="btn btn-dark w-100 rounded-pill">
+                Login
+            </button>
+
+        </form>
+
+        <div class="text-center mt-3">
+            <small>
+                Don't have a profile?
+                <a href="{% url 'register' %}" class="fw-semibold">
+                    Register
+                </a>
+            </small>
+        </div>
+
     </div>
+
 </div>
+
 {% endblock %}

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3 class="mb-4 fw-bold">Admin Analytics Dashboard</h3>
+
+<div class="row g-4 mb-4">
+
+    <div class="col-md-4">
+        <div class="card shadow p-3 text-center">
+            <h5>Total Users</h5>
+            <h3>{{ total_users }}</h3>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow p-3 text-center">
+            <h5>Approved Users</h5>
+            <h3>{{ approved_users }}</h3>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow p-3 text-center">
+            <h5>Suspended Users</h5>
+            <h3>{{ suspended_users }}</h3>
+        </div>
+    </div>
+
+</div>
+
+<div class="row g-4 mb-4">
+
+    <div class="col-md-4">
+        <div class="card shadow p-3 text-center">
+            <h5>Total Requests</h5>
+            <h3>{{ total_requests }}</h3>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow p-3 text-center">
+            <h5>Pending Requests</h5>
+            <h3>{{ pending_requests }}</h3>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow p-3 text-center">
+            <h5>Total Reports</h5>
+            <h3>{{ total_reports }}</h3>
+        </div>
+    </div>
+
+</div>
+
+<div class="card shadow p-4">
+    <h5 class="fw-bold mb-3">Top Reported Users</h5>
+
+    {% if top_reported %}
+        <ul class="list-group">
+            {% for user in top_reported %}
+                <li class="list-group-item d-flex justify-content-between">
+                    {{ user.reported_user__username }}
+                    <span class="badge bg-danger">
+                        {{ user.report_count }} reports
+                    </span>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="text-muted">No reports yet.</p>
+    {% endif %}
+</div>
+
+{% endblock %}

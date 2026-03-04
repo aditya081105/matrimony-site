@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+<h3 class="text-center mb-4 fw-bold">Blocked Users</h3>
+
+<div class="row">
+
+{% for entry in blocked_users %}
+
+<div class="col-lg-4 col-md-6 mb-4">
+
+<div class="card shadow-sm border-0 rounded-4 p-4 text-center position-relative">
+
+<!-- 3 DOT MENU -->
+<div class="dropdown position-absolute top-0 end-0 m-2">
+<button class="btn btn-sm btn-light rounded-circle"
+data-bs-toggle="dropdown">
+⋮
+</button>
+
+<ul class="dropdown-menu dropdown-menu-end">
+
+<li>
+<a class="dropdown-item"
+href="{% url 'view_profile' entry.blocked.id %}">
+View Profile
+</a>
+</li>
+
+<li>
+<a class="dropdown-item text-danger"
+href="{% url 'unblock_user' entry.blocked.id %}">
+Unblock
+</a>
+</li>
+
+</ul>
+</div>
+
+<a href="{% url 'view_profile' entry.blocked.id %}">
+
+{% if entry.blocked.profile.profile_photo %}
+<img src="{{ entry.blocked.profile.profile_photo.url }}"
+class="rounded-circle mb-3"
+style="width:100px;height:100px;object-fit:cover;">
+{% else %}
+<img src="{% static 'images/default.jpg' %}"
+class="rounded-circle mb-3"
+style="width:100px;height:100px;object-fit:cover;">
+{% endif %}
+
+</a>
+
+<h6 class="fw-semibold mb-1">
+{{ entry.blocked.full_name }}
+</h6>
+
+<p class="text-muted small mb-3">
+{{ entry.blocked.occupation|default:"Occupation not specified" }}
+</p>
+
+<a href="{% url 'unblock_user' entry.blocked.id %}"
+class="btn btn-outline-danger btn-sm rounded-pill px-4">
+Unblock
+</a>
+
+</div>
+
+</div>
+
+{% empty %}
+
+<div class="text-center py-5">
+<h5 class="text-muted">No blocked users</h5>
+</div>
+
+{% endfor %}
+
+</div>
+
+{% endblock %}
