@@ -26,6 +26,9 @@ SECRET_KEY = 'django-insecure-6hbji9s%pc0st56#ar*q+c)0v2$^*zc9jdw72r@etwx1kn##mj
 DEBUG = False
 
 ALLOWED_HOSTS = ['192.168.29.48', '127.0.0.1', "ziradei-matrimony.onrender.com"]
+CSRF_TRUSTED_ORIGINS = [
+    "https://ziradei-matrimony.onrender.com",
+]
 
 
 MIDDLEWARE = [
@@ -113,6 +116,8 @@ MEDIA_ROOT = BASE_DIR / "media"
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 
 AUTH_USER_MODEL = 'users.CustomUser'
 
