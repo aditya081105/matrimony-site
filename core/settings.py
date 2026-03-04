@@ -112,6 +112,7 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
+DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
@@ -141,6 +142,8 @@ INSTALLED_APPS = [
     # Third Party Apps for "Smooth" look
     'crispy_forms',
     'crispy_bootstrap5',
+    'cloudinary',
+    'cloudinary_storage',
 ]
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
@@ -159,3 +162,11 @@ LOGGING = {
     "handlers": {"console": {"class": "logging.StreamHandler"}},
     "root": {"handlers": ["console"], "level": "ERROR"},
 }
+
+import cloudinary
+
+cloudinary.config(
+    cloud_name = "dyc3d1av8",
+    api_key = "172513787982812",
+    api_secret = "qRmew-vsnWVHjptRZI6sJZNHzq4"
+)
