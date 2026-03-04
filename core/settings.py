@@ -112,6 +112,13 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
+import cloudinary
+
+cloudinary.config(
+    cloud_name = "dyc3d1av8",
+    api_key = "172513787982812",
+    api_secret = "qRmew-vsnWVHjptRZI6sJZNHzq4"
+)
 DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
@@ -162,11 +169,3 @@ LOGGING = {
     "handlers": {"console": {"class": "logging.StreamHandler"}},
     "root": {"handlers": ["console"], "level": "ERROR"},
 }
-
-import cloudinary
-
-cloudinary.config(
-    cloud_name = "dyc3d1av8",
-    api_key = "172513787982812",
-    api_secret = "qRmew-vsnWVHjptRZI6sJZNHzq4"
-)
