@@ -10,6 +10,9 @@ sqlparse==0.5.5
 tzdata==2024.2
 dj-database-url
 psycopg2-binary
+django-crispy-forms
+crispy-bootstrap5
+
 
 
 
