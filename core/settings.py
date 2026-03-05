@@ -113,13 +113,13 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-import cloudinary
 
-cloudinary.config(
-    cloud_name = "dyc3d1av8",
-    api_key = "865594251311711",
-    api_secret = "ei1MetmqcOjQ-wRMqQFYi9r6kuY"
-)
+CLOUDINARY_STORAGE = {
+    "CLOUD_NAME": "dyc3d1av8",
+    "API_KEY": "865594251311711",
+    "API_SECRET": "ei1MetmqcOjQ-wRMqQFYi9r6kuY",
+}
+
 DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
