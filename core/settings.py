@@ -79,6 +79,7 @@ DATABASES = {
         conn_max_age=600
     )
 }
+DATABASE_URL = os.getenv("DATABASE_URL")
     
 
 
