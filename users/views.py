@@ -13,6 +13,8 @@ from communications.models import Block, ContactRequest, ActivityLog, Report, Sa
 from django.contrib.admin.views.decorators import staff_member_required
 from .models import CustomUser, Caste, City
 from .forms import UserRegisterForm, ProfileForm, UserUpdateForm
+from django.core.mail import send_mail
+from django.urls import reverse
 
 
 def register(request):
@@ -20,6 +22,19 @@ def register(request):
         form = UserRegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
+            user.is_active = False
+            user.save()
+
+            verify_link = request.build_absolute_uri(
+                reverse("verify_email", args=[user.id])
+            )
+
+            send_mail(
+                "Verify your account",
+                f"Click to verify: {verify_link}",
+                None,
+                [user.email],
+            )
 
             # Do NOT auto-login
             messages.success(
@@ -97,6 +112,8 @@ def profile_list(request):
         min_dob = date(today.year - int(max_age), today.month, today.day)
         profiles = profiles.filter(date_of_birth__gte=min_dob)
 
+    if not request.user.is_email_verified:
+        return render(request, "users/verify_email_required.html")
     # Accepted (either direction)
     accepted_requests = ContactRequest.objects.filter(
         status='accepted'
@@ -301,3 +318,27 @@ def admin_dashboard(request):
     }
 
     return render(request, 'admin_dashboard.html', context)
+
+def contact_view(request):
+    if request.method == "POST":
+        name = request.POST.get("name")
+        email = request.POST.get("email")
+        message = request.POST.get("message")
+
+        send_mail(
+            subject=f"Contact Form - {name}",
+            message=f"From: {email}\n\n{message}",
+            from_email=None,
+            recipient_list=["yourgmail@gmail.com"],
+        )
+
+        return render(request, "users/contact.html", {"success": True})
+
+    return render(request, "users/contact.html")
+
+def verify_email(request, user_id):
+    user = CustomUser.objects.get(id=user_id)
+    user.is_email_verified = True
+    user.is_active = True
+    user.save()
+    return redirect("login")

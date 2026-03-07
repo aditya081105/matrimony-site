@@ -48,6 +48,7 @@ class CustomUser(AbstractUser):
     is_approved = models.BooleanField(default=False, db_index=True)
     is_profile_complete = models.BooleanField(default=False, db_index=True)
     is_suspended = models.BooleanField(default=False, db_index=True)
+    is_email_verified = models.BooleanField(default=False)
     # Language Preference (English/Hindi)
     language_pref = models.CharField(max_length=10, default='en')
 
@@ -93,32 +94,6 @@ class Profile(models.Model):
     def __str__(self):
         return f"Profile of {self.user.full_name}"
     
-import os
-from PIL import Image
-from io import BytesIO
-from django.core.files.base import ContentFile
-
-def save(self, *args, **kwargs):
-
-    # If new image uploaded
-    if self.profile_photo and hasattr(self.profile_photo, 'file'):
-
-        img = Image.open(self.profile_photo)
-
-        max_size = (500, 500)
-        img.thumbnail(max_size)
-
-        img_io = BytesIO()
-        img.save(img_io, format='JPEG', quality=70)
-
-        filename = os.path.basename(self.profile_photo.name)
-
-        self.profile_photo = ContentFile(
-            img_io.getvalue(),
-            name=filename
-        )
-
-    super().save(*args, **kwargs)
     
 @receiver(post_save, sender=CustomUser)
 def create_user_profile(sender, instance, created, **kwargs):
