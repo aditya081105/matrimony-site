@@ -10,6 +10,7 @@ from django.core.files.base import ContentFile
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+
 class Caste(models.Model):
     name = models.CharField(max_length=100, unique=True)
 
@@ -80,7 +81,6 @@ class Profile(models.Model):
         blank=True,
         null=True
     )
-
 
     def __str__(self):
         return f"Profile of {self.user.full_name}"
