@@ -213,7 +213,7 @@ def block_user(request, user_id):
 
     SavedProfile.objects.filter(
         user=request.user,
-        saved_user=request.user
+        saved_user=target
     ).delete()
 
     messages.success(request, "User blocked.")

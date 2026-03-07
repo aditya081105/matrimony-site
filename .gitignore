@@ -1,21 +1,10 @@
-# Python
+.env
 __pycache__/
 *.pyc
 *.pyo
-
-# Virtual environment
 .venv/
-.env
-
-# SQLite database
 db.sqlite3
-
-# Static build files
 staticfiles/
-
-# Media uploads
 media/
-
-# OS files
 .DS_Store
 Thumbs.db
