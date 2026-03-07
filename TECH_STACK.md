@@ -1,442 +1,362 @@
-ACT LIKE A TOOL NO PRAISES, KEEP THINGS SHORT AND ON POINT
+ACT LIKE A TOOL NO PRAISES, KEEP THINGS SHORT AND ON POINT ALWAYS
 
 🔷 PROJECT SUMMARY
+
 Project Type
 
-Local matrimonial web platform for hometown families.
-Not commercial SaaS. Trust-focused. Admin-controlled approval model.
+Local matrimonial web platform for hometown community.
 
-🔷 TECH STACK
+Not SaaS.
+Not subscription-first.
+Admin-moderated matchmaking platform.
+
+Focus:
+
+Trust
+Simple UX
+Admin approval
+Family-friendly usage
+
+Primary goal:
+
+Browse profiles
+Send contact requests
+Accept/Reject matches
+🔷 CURRENT HOSTING STATUS
+
+Hosted on:
+
+Render (Free Web Service)
+
+Live site:
+
+https://ziradei-matrimony.onrender.com
+
+Deployment stack:
+
+Gunicorn
+Whitenoise
+Render Web Service
+🔷 UPDATED TECH STACK
+
 Backend
 
 Python 3.12
-
 Django 6.x
+Gunicorn
 
-SQLite (development DB)
+Database
+
+PostgreSQL (Render managed database)
+
+Media Storage
+
+Cloudinary
+
+Static Files
+
+Whitenoise
+staticfiles/
 
 Frontend
 
 Django Templates
+Bootstrap 5
+Custom minor styling
 
-Bootstrap (static local file, not CDN)
+Image processing
 
-Custom CSS tweaks
-
-Storage
-
-Local media storage (media/profile_pics/)
-
-Image resizing via Pillow
-
-Hosting
-
-Currently local development only
-
-Tested via LAN on mobile
-
+Pillow
 🔷 CORE ARCHITECTURE
+
 CustomUser (extends AbstractUser)
 
-Fields added:
+Fields:
 
 full_name
-
 gender
-
 phone_number
-
 date_of_birth
-
 occupation
-
 height_cm
-
-caste_community (ForeignKey → Caste)
-
+annual_income
+gotra
+caste_community (FK)
 is_approved
-
-is_deleted (soft delete)
+is_deleted
+is_suspended
 
 Profile (OneToOne with CustomUser)
 
 Fields:
 
 bio
-
 education
-
 father_name
-
 mother_name
-
-city_hometown (ForeignKey → City)
-
+city_hometown (FK)
 profile_photo
 
-is_complete property
+Profile completeness logic used for homepage prompt.
 
 Supporting Models
 
 City
-
 Caste
-
 ContactRequest
-
+SavedProfile
 Block
-
 Report
+RequestAttempt
+ActivityLog
+🔷 APP STRUCTURE
 
-RequestAttempt (anti-spam daily tracking)
+Project root:
 
-🔷 FUNCTIONAL FEATURES COMPLETED
-Authentication
+MarriageSite/
 
-Register
+Core apps:
 
-Login
-
-Logout
-
-Delete Account
-
-Admin approval required
-
-Soft delete implemented
-
-Profile Management
-
-Edit profile
-
-Profile completion check
-
-Image upload with size validation
-
-Gender update support
-
-Date of birth validation (18+)
-
-10 digit phone validation
-
-Matchmaking System
-
-Paginated profile list
-
-Advanced filtering:
-
-Gender
-
-Age range
-
-Height range
-
-City (FK dropdown)
-
-Caste (FK dropdown)
-
-Profile detail page
-
-Locked contact information
-
-Unlock on acceptance
-
-Interest / Request System
-
-Send request
-
-Cancel request
-
-Accept / Reject
-
-Auto-accept if reverse pending
-
-Daily request limit
-
-Per-user spam tracking
-
-Requests cleared after action
-
-Notification badge count
-
-Safety Layer
-
-Block user
-
-Report user
-
-Blocked users page
-
-Cannot view blocked users
-
-Cannot send request to blocked user
-
-Admin sees reports
-
-UI Improvements
-
-Mobile responsive navbar
-
-Profile image clickable
-
-Dropdown menus styled
-
-3-dot action menus
-
-Custom 404 logic for login required
-
-Empty filter state message
-
-🔷 MID-TIER SYSTEM STATUS
-
-Completed:
-
-Anti-spam logic
-
-Block system
-
-Approval visibility gating
-
-Filtering via FK IDs
-
-Admin dashboard basic logic
-
-Daily limits tied to RequestAttempt
-
-🔷 KNOWN LIMITATIONS
-
-SQLite only
-
-No caching
-
-No Celery/background tasks
-
-No production security hardening
-
-No email/SMS verification
-
-UI still minimal
-
-No animation layer
-
-No compatibility scoring
-
-No profile completion indicator
-
-No saved profiles
-
-No match percentage
-
-No activity status
-
-No photo privacy control
-
-No audit log dashboard
-
-No advanced admin analytics
-
-🔷 CURRENT SYSTEM RAM USAGE
-
-1.3GB RAM is normal for:
-
-Python
-
-Django dev server
-
-SQLite
-
-Browser
-
-Pillow
-
-Bootstrap
-
-Nothing abnormal.
-
-Production server would use far less.
-
-🔷 CURRENT PHASE
-
-You are entering:
-
-UI / EXPERIENCE POLISH PHASE
-
-Backend foundation is solid.
-Now perceived quality must increase.
-
-🔷 NEXT PHASE PLAN (UI Route)
-
-We will focus on:
-
-Card redesign
-
-Matchmaking layout redesign
-
-Filter UX improvement
-
-Profile page redesign
-
-Empty state design
-
-Subtle animations
-
-Spacing consistency
-
-Modern typography
-
-Premium visual polish
-
-Profile completion indicator
-
-Match score badge
-
-No new heavy backend logic yet.
-
-🔷 ADVANCED FEATURES (OPTIONAL LATER)
-
-Compatibility %
-
-Saved profiles
-
-Suggested matches section
-
-Last seen indicator
-
-Verification badge
-
-Admin analytics dashboard
-
-Activity logging
-
-SMS integration
-
-Production deployment
-
-PostgreSQL migration
-
-Redis caching
-
-Rate limiting middleware
-
-CDN for media
-
-🔷 SECURITY STATUS
-
-Basic level secure.
-Not production hardened.
-
-Needs later:
-
-CSRF check review
-
-Media path isolation
-
-Secure headers
-
-Environment variable separation
-
-Proper error pages
-
-Debug=False config
-
-🔷 PROJECT IDENTITY
-
-Not a commercial matrimony site.
-Local community trust platform.
-
-Design goal:
-Simple.
-Clean.
-Trustworthy.
-Modern but not flashy.
-
-🔷 WHERE WE GO NEXT
-
-In new chat:
-
-We start with:
-
-"UI Upgrade Phase 1 – Matchmaking Redesign"
-
-We’ll:
-
-Redesign cards
-
-Add visual depth
-
-Add match badge
-
-Improve spacing
-
-Improve mobile filter layout
-
-Add premium feel
-also the folder/file structure is smth like this not very accurate but i hope gives the idea tell me what files u nedd i will upload them-------------
+core
+users
+communications
+search
+payments
+🔷 FOLDER STRUCTURE
 MarriageSite/
 │
 ├── manage.py
-├── db.sqlite3
+├── requirements.txt
 │
-├── core/                     ← Project settings app
-│   ├── __init__.py
+├── core/
 │   ├── settings.py
 │   ├── urls.py
-│   ├── asgi.py
-│   └── wsgi.py
+│   ├── wsgi.py
 │
-├── users/                    ← User & profile logic
-│   ├── __init__.py
-│   ├── admin.py
-│   ├── apps.py
+├── users/
 │   ├── models.py
+│   ├── views.py
 │   ├── forms.py
-│   ├── views.py
 │   ├── urls.py
-│   ├── tests.py
-│   └── migrations/
-│
-├── communications/           ← Requests, block, report logic
-│   ├── __init__.py
 │   ├── admin.py
-│   ├── apps.py
+│
+├── communications/
 │   ├── models.py
 │   ├── views.py
 │   ├── urls.py
-│   ├── tests.py
-│   └── migrations/
 │
-├── templates/                ← GLOBAL templates folder
-│   │
+├── templates/
 │   ├── base.html
-│   ├── 404.html              (if added)
-│   ├── 403.html              (if added)
-│   │
 │   ├── users/
-│   │   ├── home.html
-│   │   ├── register.html
-│   │   ├── login.html
-│   │   ├── edit_profile.html
-│   │   ├── my_profile.html
-│   │   ├── profile_list.html
-│   │   ├── view_profile.html
-│   │   ├── my_matches.html
-│   │   ├── blocked_users.html
-│   │   ├── delete_account.html
-│   │   ├── terms.html
-│   │   ├── privacy.html
-│   │   ├── about.html
-│   │   └── contact.html
-│   │
-│   └── communications/
-│       └── received_requests.html
+│   ├── communications/
 │
 ├── static/
-│   ├── bootstrap.min.css
-│   ├── images/
-│   │   ├── default.jpg
-│   │   └── marr.jpg
-│   └── (custom css if added later)
+│   └── images/
+│       ├── marr.jpg
+│       └── default.jpg
 │
-└── media/
-    └── profile_pics/
-Continue UI upgrade phase from here.
+├── staticfiles/
+│
+└── media/   (no longer used for uploads)
+🔷 FUNCTIONAL FEATURES COMPLETED
+
+Authentication
+
+Register
+Login
+Logout
+Delete account
+Admin approval
+
+Profile System
+
+Edit profile
+Profile photo upload
+Profile completeness check
+Age validation
+Phone validation
+
+Photos now stored via:
+
+Cloudinary CDN
+
+Matchmaking
+
+Paginated profile listing
+Filters:
+  gender
+  age range
+  height range
+  caste
+  city
+
+Users only shown if:
+
+approved
+active
+profile basics complete
+
+Contact Request System
+
+Send request
+Cancel request
+Accept request
+Reject request
+Auto-accept reverse request
+
+Notification badge included.
+
+Saved Profiles
+
+Save profile
+Remove saved profile
+Saved profiles page
+
+Blocking System
+
+Block user
+Unblock user
+Blocked users page
+Blocked users hidden from results
+
+Reporting
+
+Report user
+Admin review reports
+
+Admin Controls
+
+Approve users
+View reports
+View requests
+Moderate accounts
+
+Admin panel:
+
+/secure-admin-panel/
+🔷 SECURITY IMPLEMENTED
+CSRF protection
+Secure cookies
+Admin approval gating
+Blocked user restrictions
+Soft delete users
+
+Production settings:
+
+DEBUG=False
+SECURE_BROWSER_XSS_FILTER
+SECURE_CONTENT_TYPE_NOSNIFF
+SESSION_COOKIE_SECURE
+CSRF_COOKIE_SECURE
+SECURE_PROXY_SSL_HEADER
+🔷 UI IMPROVEMENTS COMPLETED
+
+Homepage
+
+Hero image
+Sticky shrinking header
+Centered call-to-action
+Explore Matches button
+
+Matchmaking
+
+Card layout
+Profile picture clickable
+Filter improvements
+Active filter badges
+Mobile layout improvements
+
+Profile Pages
+
+Match cards
+Saved profile indicators
+Action menus
+
+Other pages updated
+
+login
+register
+received_requests
+blocked_users
+my_matches
+saved_profiles
+🔷 CURRENT INFRASTRUCTURE
+
+Production stack now:
+
+Render Web Service
+PostgreSQL Database
+Cloudinary Media Storage
+Whitenoise Static Files
+Gunicorn
+
+Architecture:
+
+User
+  ↓
+Render Web Service
+  ↓
+Django App
+  ↓
+PostgreSQL Database
+  ↓
+Cloudinary (profile images)
+🔷 PROBLEMS ALREADY SOLVED
+static files not loading
+CSRF errors
+admin panel CSS missing
+image uploads failing
+Render disk resets
+SQLite persistence issue
+
+Resolved by:
+
+Whitenoise
+CSRF trusted origins
+PostgreSQL database
+Cloudinary storage
+🔷 CURRENT LIMITATIONS
+
+Still missing:
+
+email verification
+SMS verification
+match compatibility score
+activity status
+profile completion percentage
+advanced admin analytics
+🔷 OPTIONAL FUTURE FEATURES
+
+Potential upgrades:
+
+Compatibility %
+Suggested matches
+Saved search
+Verification badge
+Admin analytics
+User activity log dashboard
+SMS notifications
+Payment / subscription
+🔷 PROJECT STATUS
+
+Current phase:
+
+Post-Deployment Improvements
+
+Core system:
+
+Complete
+Stable
+Live
+
+Now focus areas:
+
+UX polish
+trust signals
+scalability
+user growth
+
+tell me what files u nedd i will upload them tell them all first in a single sentence and for now just read these and reply "." bc i can only send 5 files per chat so wait and reply with that "." until i say im "done"--
+
+
+

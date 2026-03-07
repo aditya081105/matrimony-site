@@ -81,17 +81,6 @@ class Profile(models.Model):
         null=True
     )
 
-    def save(self, *args, **kwargs):
-
-        super().save(*args, **kwargs)
-
-        if self.profile_photo:
-            img = Image.open(self.profile_photo.path)
-
-            if img.height > 500 or img.width > 500:
-                img.thumbnail((500, 500))
-                img.save(self.profile_photo.path)
-
     @property
     def is_complete(self):
         return all([
