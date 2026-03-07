@@ -60,7 +60,6 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'django.template.context_processors.media',
                 'users.context_processors.pending_request_count',
             ],
         },
@@ -76,11 +75,10 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 DATABASES = {
     "default": dj_database_url.config(
-        default=os.getenv("DATABASE_URL"),
+        default="sqlite:///" + str(BASE_DIR / "db.sqlite3"),
         conn_max_age=600
     )
 }
-
 DATABASE_URL = os.getenv("DATABASE_URL")
     
 
@@ -121,25 +119,18 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 
 CLOUDINARY_STORAGE = {
     'CLOUD_NAME': os.getenv("CLOUDINARY_CLOUD_NAME"),
     'API_KEY': os.getenv("CLOUDINARY_API_KEY"),
     'API_SECRET': os.getenv("CLOUDINARY_API_SECRET"),
-    'SECURE': True
 }
 
-STORAGES = {
-    "default": {
-        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
-    },
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
-}
-
-
+DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -153,14 +144,12 @@ AUTH_USER_MODEL = 'users.CustomUser'
 
 
 INSTALLED_APPS = [
-    'cloudinary_storage',
-    'django.contrib.staticfiles',
-    'cloudinary',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'django.contrib.staticfiles',
     # Your Apps
     'users',
     'search',
@@ -169,6 +158,8 @@ INSTALLED_APPS = [
     # Third Party Apps for "Smooth" look
     'crispy_forms',
     'crispy_bootstrap5',
+    'cloudinary',
+    'cloudinary_storage',
 ]
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
@@ -189,13 +180,3 @@ LOGGING = {
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-import cloudinary
-cloudinary.config(
-    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
-    api_key=os.getenv("CLOUDINARY_API_KEY"),
-    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
-    secure=True
-)
-
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
