@@ -75,10 +75,11 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 DATABASES = {
     "default": dj_database_url.config(
-        default="sqlite:///" + str(BASE_DIR / "db.sqlite3"),
+        default=os.getenv("DATABASE_URL"),
         conn_max_age=600
     )
 }
+
 DATABASE_URL = os.getenv("DATABASE_URL")
     
 
@@ -138,7 +139,7 @@ X_FRAME_OPTIONS = "DENY"
 
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
-SECURE_SSL_REDIRECT = True
+#SECURE_SSL_REDIRECT = True
 
 AUTH_USER_MODEL = 'users.CustomUser'
 
