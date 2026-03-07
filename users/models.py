@@ -1,5 +1,3 @@
-# Create your models here.
-
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -9,7 +7,6 @@ from django.core.files.base import ContentFile
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-
 
 class Caste(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -82,10 +79,44 @@ class Profile(models.Model):
         null=True
     )
 
+    @property
+    def is_complete(self):
+        return all([
+            self.user.date_of_birth,
+            self.user.height_cm,
+            self.city_hometown,
+            self.profile_photo
+        ])
+
     def __str__(self):
         return f"Profile of {self.user.full_name}"
     
+import os
+from PIL import Image
+from io import BytesIO
+from django.core.files.base import ContentFile
 
+def save(self, *args, **kwargs):
+
+    # If new image uploaded
+    if self.profile_photo and hasattr(self.profile_photo, 'file'):
+
+        img = Image.open(self.profile_photo)
+
+        max_size = (500, 500)
+        img.thumbnail(max_size)
+
+        img_io = BytesIO()
+        img.save(img_io, format='JPEG', quality=70)
+
+        filename = os.path.basename(self.profile_photo.name)
+
+        self.profile_photo = ContentFile(
+            img_io.getvalue(),
+            name=filename
+        )
+
+    super().save(*args, **kwargs)
     
 @receiver(post_save, sender=CustomUser)
 def create_user_profile(sender, instance, created, **kwargs):
