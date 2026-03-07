@@ -144,6 +144,7 @@ class UserUpdateForm(forms.ModelForm):
         model = CustomUser
         fields = [
             'full_name',
+            'email',
             'gender',
             'phone_number',
             'date_of_birth',
