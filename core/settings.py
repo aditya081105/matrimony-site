@@ -196,3 +196,6 @@ cloudinary.config(
     api_secret=os.getenv("CLOUDINARY_API_SECRET"),
     secure=True
 )
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
