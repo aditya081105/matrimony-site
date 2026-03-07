@@ -49,10 +49,8 @@ def profile_list(request):
     profiles = CustomUser.objects.select_related('profile').filter(
         is_active=True,
         is_approved=True,
-        date_of_birth__isnull=False,
-        height_cm__isnull=False,
-        profile__city_hometown__isnull=False,
-    ).order_by("-id")
+        profile__isnull=False
+    )
 
     if not request.GET.get('gender') and request.user.gender:
         opposite = 'F' if request.user.gender == 'M' else 'M'
