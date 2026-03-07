@@ -239,7 +239,7 @@
 
                 <a href="{% url 'view_profile' profile.id %}">
                     {% if profile.profile.profile_photo %}
-                        <img src="{{ profile.profile.profile_photo.url }}"
+                        <img src="{{ profile.profile.profile_photo }}"
                             class="rounded-circle me-3"
                             style="width:70px;height:70px;object-fit:cover;">
                     {% else %}
