@@ -40,6 +40,7 @@
             <label class="form-label small text-muted">Min Age</label>
             <input type="number"
                    name="min_age"
+                   min="18"
                    class="form-control"
                    value="{{ request.GET.min_age }}">
         </div>
@@ -49,6 +50,7 @@
             <label class="form-label small text-muted">Max Age</label>
             <input type="number"
                    name="max_age"
+                   min="18"
                    class="form-control"
                    value="{{ request.GET.max_age }}">
         </div>
@@ -58,6 +60,7 @@
             <label class="form-label small text-muted">Min Height</label>
             <input type="number"
                    name="min_height"
+                   min="1"
                    class="form-control"
                    value="{{ request.GET.min_height }}">
         </div>
@@ -67,6 +70,7 @@
             <label class="form-label small text-muted">Max Height</label>
             <input type="number"
                    name="max_height"
+                   min="1"
                    class="form-control"
                    value="{{ request.GET.max_height }}">
         </div>
