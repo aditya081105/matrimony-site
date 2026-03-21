@@ -208,3 +208,9 @@ class ProfileForm(forms.ModelForm):
                 raise forms.ValidationError("File must be an image")
 
         return photo
+    
+def clean_height_cm(self):
+    height = self.cleaned_data.get("height_cm")
+    if height and height <= 0:
+        raise forms.ValidationError("Height must be positive")
+    return height

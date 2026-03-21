@@ -96,6 +96,12 @@ def profile_list(request):
             profile__city_hometown__id=city
         )
 
+    if min_height and int(min_height) < 0:
+        min_height = None
+
+    if max_height and int(max_height) < 0:
+        max_height = None
+
     if min_height:
         profiles = profiles.filter(height_cm__gte=min_height)
 
@@ -103,6 +109,15 @@ def profile_list(request):
         profiles = profiles.filter(height_cm__lte=max_height)
 
     today = date.today()
+
+    min_age = request.GET.get('min_age')
+    max_age = request.GET.get('max_age')
+
+    if min_age and int(min_age) < 0:
+        min_age = None
+
+    if max_age and int(max_age) < 0:
+        max_age = None
 
     if min_age:
         max_dob = date(today.year - int(min_age), today.month, today.day)
