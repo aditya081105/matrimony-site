@@ -22,31 +22,29 @@ def register(request):
         form = UserRegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
-            user.is_active = False
+            user.is_active = False # Keep them inactive until admin/email check
             user.save()
 
-            verify_link = request.build_absolute_uri(
-                reverse("verify_email", args=[user.id])
-            )
+            try:
+                verify_link = request.build_absolute_uri(
+                    reverse("verify_email", args=[user.id])
+                )
+                send_mail(
+                    "Verify your account",
+                    f"Click to verify: {verify_link}",
+                    os.getenv("EMAIL_USER"), # Explicitly use the env var
+                    [user.email],
+                    fail_silently=True, # This is the shield!
+                )
+            except Exception as e:
+                print(f"Email error: {e}") # Log it to Render logs, don't crash
 
-            send_mail(
-                "Verify your account",
-                f"Click to verify: {verify_link}",
-                None,
-                [user.email],
-            )
-
-            # Do NOT auto-login
-            messages.success(
-                request,
-                "Registration successful. Your account is pending admin approval."
-            )
-
+            messages.success(request, "Registration successful. Pending admin approval.")
             return redirect('login')
     else:
         form = UserRegisterForm()
-
     return render(request, 'users/register.html', {'form': form})
+
 
 # Keep your profile_list and contact_view below this...
 
@@ -182,11 +180,15 @@ def contact_view(request):
 
 def home(request):
     is_incomplete = False
-
     if request.user.is_authenticated:
-        if hasattr(request.user, "profile"):
-            if not request.user.profile.is_complete:
+        # Use getattr to safely check for profile without crashing
+        profile = getattr(request.user, 'profile', None)
+        if profile:
+            if not profile.is_complete:
                 is_incomplete = True
+        else:
+            # User exists but has no profile object at all
+            is_incomplete = True
 
     return render(request, 'users/home.html', {
         'is_incomplete': is_incomplete
