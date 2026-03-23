@@ -182,14 +182,24 @@ LOGGING = {
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# --- EMAIL CONFIGURATION ---
+# Checks if we are on Render; if so, use SMTP, otherwise use Console for local testing
+if os.getenv("RENDER"):
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
+# Using the exact variable names from your .getenv calls
 EMAIL_HOST_USER = os.getenv("EMAIL_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_PASS")
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-ADMIN_EMAIL = EMAIL_HOST_USER
+
+# THE CRITICAL LINE: Prevents the 500 error if email fails to send
+EMAIL_FAIL_SILENTLY = True 
+
 
