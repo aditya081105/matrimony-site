@@ -151,8 +151,12 @@ class UserUpdateForm(forms.ModelForm):
             'occupation',
             'height_cm',
             'caste_community',
-            'gotra',
-            'annual_income',
+            'profile_photo',
+            'city',
+            'bio',
+            'father_name',
+            'mother_name',
+            'address',
         ]
         widgets = {
             'full_name': forms.TextInput(attrs={'class': 'form-control'}),
