@@ -15,7 +15,7 @@ from .models import CustomUser, Caste, City
 from .forms import UserRegisterForm, ProfileForm, UserUpdateForm
 from django.core.mail import send_mail
 from django.urls import reverse
-
+import os 
 
 def register(request):
     if request.method == 'POST':

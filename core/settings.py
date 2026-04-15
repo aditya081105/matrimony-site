@@ -201,5 +201,3 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 # THE CRITICAL LINE: Prevents the 500 error if email fails to send
 EMAIL_FAIL_SILENTLY = True 
-
-
