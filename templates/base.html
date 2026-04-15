@@ -125,7 +125,7 @@
                    href="#"
                    data-bs-toggle="dropdown">
 
-                    {% if user.profile and user.profile.profile_photo %}
+                    {% if user.is_authenticated and user.profile_id and user.profile.profile_photo %}
                         <img src="{{ user.profile.profile_photo.url }}"
                              class="rounded-circle"
                              style="width:42px;height:42px;object-fit:cover;">
