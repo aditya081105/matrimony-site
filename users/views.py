@@ -196,25 +196,18 @@ def home(request):
 
 @login_required
 def edit_profile(request):
-    user = request.user
-    profile = user.profile
 
     if request.method == 'POST':
-        user_form = UserUpdateForm(request.POST, instance=user)
-        profile_form = ProfileForm(request.POST, request.FILES, instance=profile)
+        form = UserUpdateForm(request.POST, request.FILES, instance=request.user)
 
-        if user_form.is_valid() and profile_form.is_valid():
-            user_form.save()
-            profile_form.save()
-            messages.success(request, "Profile updated successfully")
+        if form.is_valid():
+            form.save()
             return redirect('my_profile')
     else:
-        user_form = UserUpdateForm(instance=user)
-        profile_form = ProfileForm(instance=profile)
+        form = UserUpdateForm(instance=request.user)
 
     return render(request, 'users/edit_profile.html', {
-        'user_form': user_form,
-        'profile_form': profile_form
+        'form': form
     })
 
 @login_required

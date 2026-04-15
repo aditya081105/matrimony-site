@@ -24,36 +24,51 @@ class City(models.Model):
         return self.name
 
 class CustomUser(AbstractUser):
-    # This is the "Base" user (Username/Password)
+
     GENDER_CHOICES = [('M', 'Male'), ('F', 'Female')]
-    
+
     full_name = models.CharField(max_length=100)
-    gender = models.CharField(max_length=1, choices=GENDER_CHOICES, db_index=True)
+    gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
+
     phone_number = models.CharField(max_length=13)
-    gotra = models.CharField(max_length=100, blank=True)
-    annual_income = models.PositiveIntegerField(null=True, blank=True)
-    
-    # Specifics for your hometown bureau
+
+    date_of_birth = models.DateField(null=True, blank=True)
+    occupation = models.CharField(max_length=100, blank=True)
+
+    height_cm = models.PositiveIntegerField(null=True, blank=True)
+
     caste_community = models.ForeignKey(
-        Caste,
-        on_delete=models.SET_NULL,
+        'Caste',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL
+    )
+
+    # 🔥 NEW (replaces Profile)
+    profile_photo = models.ImageField(
+        upload_to="profile_pics/",
         null=True,
         blank=True
     )
-    date_of_birth = models.DateField(null=True, blank=True)
-    occupation = models.CharField(max_length=100, help_text="e.g. Software Engineer, Farmer", blank=True)
-    height_cm = models.PositiveIntegerField(null=True, blank=True, db_index=True)
 
-    is_deleted = models.BooleanField(default=False)
-    is_approved = models.BooleanField(default=False, db_index=True)
-    is_profile_complete = models.BooleanField(default=False, db_index=True)
-    is_suspended = models.BooleanField(default=False, db_index=True)
+    city = models.ForeignKey(
+        'City',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL
+    )
+
+    bio = models.TextField(blank=True)
+    father_name = models.CharField(max_length=100, blank=True)
+    mother_name = models.CharField(max_length=100, blank=True)
+    address = models.CharField(max_length=255, blank=True)
+
+    is_approved = models.BooleanField(default=False)
+    is_suspended = models.BooleanField(default=False)
     is_email_verified = models.BooleanField(default=False)
-    # Language Preference (English/Hindi)
-    language_pref = models.CharField(max_length=10, default='en')
 
     def __str__(self):
-        return f"{self.username} - {self.full_name}"
+        return self.username
 
 class Profile(models.Model):
 
