@@ -53,104 +53,66 @@ from django.db.models import Q
 @login_required(login_url='login')
 def profile_list(request):
 
-    cities = City.objects.all()
-    castes = Caste.objects.all()
-
     if not request.user.is_approved:
         return render(request, 'users/pending_approval.html')
-
-    profiles = CustomUser.objects.filter(
-        is_active=True,
-        is_approved=True
-    )
-
-    # opposite gender default
-    if not request.GET.get('gender') and request.user.gender:
-        opposite = 'F' if request.user.gender == 'M' else 'M'
-        profiles = profiles.filter(gender=opposite)
-
-    # filters
-    gender = request.GET.get('gender')
-    caste = request.GET.get('caste')
-    city = request.GET.get('city')
-    min_height = request.GET.get('min_height')
-    max_height = request.GET.get('max_height')
-    min_age = request.GET.get('min_age')
-    max_age = request.GET.get('max_age')
-
-    if gender:
-        profiles = profiles.filter(gender=gender)
-
-    if caste:
-        profiles = profiles.filter(caste_community__id=caste)
-
-    if city:
-        profiles = profiles.filter(city__id=city)
-
-    if min_height:
-        profiles = profiles.filter(height_cm__gte=min_height)
-
-    if max_height:
-        profiles = profiles.filter(height_cm__lte=max_height)
-
-    today = date.today()
-
-    if min_age:
-        max_dob = date(today.year - int(min_age), today.month, today.day)
-        profiles = profiles.filter(date_of_birth__lte=max_dob)
-
-    if max_age:
-        min_dob = date(today.year - int(max_age), today.month, today.day)
-        profiles = profiles.filter(date_of_birth__gte=min_dob)
 
     if not request.user.is_email_verified:
         return render(request, "users/verify_email_required.html")
 
-    accepted_requests = ContactRequest.objects.filter(
-        status='accepted'
-    ).filter(
-        Q(sender=request.user) | Q(receiver=request.user)
-    )
+    cities = City.objects.all()
+    castes = Caste.objects.all()
 
-    accepted_user_ids = {
-        req.receiver_id if req.sender_id == request.user.id else req.sender_id
-        for req in accepted_requests
-    }
+    profiles = CustomUser.objects.filter(
+        is_active=True,
+        is_approved=True
+    ).exclude(id=request.user.id)
 
-    pending_user_ids = set(
-        ContactRequest.objects.filter(
-            sender=request.user,
-            status='pending'
-        ).values_list('receiver_id', flat=True)
-    )
+    # Opposite gender by default
+    if not request.GET.get('gender') and request.user.gender:
+        opposite = 'F' if request.user.gender == 'M' else 'M'
+        profiles = profiles.filter(gender=opposite)
 
-    blocked_by_me = Block.objects.filter(
-        blocker=request.user
-    ).values_list('blocked_id', flat=True)
+    # Apply filters
+    if request.GET.get('gender'):
+        profiles = profiles.filter(gender=request.GET.get('gender'))
+    if request.GET.get('caste'):
+        profiles = profiles.filter(caste_community_id=request.GET.get('caste'))
+    if request.GET.get('city'):
+        profiles = profiles.filter(city_id=request.GET.get('city'))
+    if request.GET.get('min_height'):
+        profiles = profiles.filter(height_cm__gte=request.GET.get('min_height'))
+    if request.GET.get('max_height'):
+        profiles = profiles.filter(height_cm__lte=request.GET.get('max_height'))
+    if request.GET.get('min_age'):
+        min_age = int(request.GET.get('min_age'))
+        max_dob = date.today().replace(year=date.today().year - min_age)
+        profiles = profiles.filter(date_of_birth__lte=max_dob)
+    if request.GET.get('max_age'):
+        max_age = int(request.GET.get('max_age'))
+        min_dob = date.today().replace(year=date.today().year - max_age)
+        profiles = profiles.filter(date_of_birth__gte=min_dob)
 
-    blocked_me = Block.objects.filter(
-        blocked=request.user
-    ).values_list('blocker_id', flat=True)
+    # Pagination
+    paginator = Paginator(profiles, 9)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
 
-    profiles = profiles.exclude(id__in=blocked_by_me)
-    profiles = profiles.exclude(id__in=blocked_me)
+    # Context data
+    saved_ids = []
+    if request.user.is_authenticated:
+        saved_ids = list(SavedProfile.objects.filter(
+            user=request.user
+        ).values_list("saved_user_id", flat=True))
 
-    paginator = Paginator(profiles, 6)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
-    saved_ids = SavedProfile.objects.filter(
-        user=request.user
-    ).values_list("saved_user_id", flat=True)
-
-    return render(request, 'users/profile_list.html', {
+    context = {
         'page_obj': page_obj,
         'cities': cities,
         'castes': castes,
-        'accepted_user_ids': accepted_user_ids,
-        'pending_user_ids': pending_user_ids,
         'saved_ids': saved_ids,
-    })
+        'accepted_user_ids': set(),      # fill later if needed
+        'pending_user_ids': set(),       # fill later if needed
+    }
+
+    return render(request, 'users/profile_list.html', context)
 
 def contact_view(request):
     return render(request, 'users/contact.html')
