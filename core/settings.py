@@ -71,6 +71,8 @@ DATABASES = {
     'default': dj_database_url.config(
         default=os.getenv('DATABASE_URL'),
         conn_max_age=600,
+        conn_health_checks=True,     
+        ssl_require=True
    )
 }
     
@@ -144,6 +146,7 @@ AUTH_USER_MODEL = 'users.CustomUser'
 
 
 INSTALLED_APPS = [
+    'whitenoise.runserver_nostatic',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
