@@ -23,7 +23,7 @@ def register(request):
         form = UserRegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
-            user.is_active = False # Keep them inactive until admin/email check
+            user.is_active = True # Keep them inactive until admin/email check
             user.save()
 
             try:
