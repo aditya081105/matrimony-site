@@ -12,7 +12,7 @@ from communications.models import Block, ContactRequest, ActivityLog, Report, Sa
 
 from django.contrib.admin.views.decorators import staff_member_required
 from .models import CustomUser, Caste, City
-from .forms import UserRegisterForm, ProfileForm, UserUpdateForm
+from .forms import UserRegisterForm, UserUpdateForm
 from django.core.mail import send_mail
 from django.urls import reverse
 import os 
