@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container text-center py-5">
+
+    <div class="card shadow-sm border-0 rounded-4 p-5">
+
+        <h3 class="mb-3">Verify Your Email</h3>
+
+        <p class="text-muted mb-4">
+            Your email is not verified yet.  
+            Please check your inbox and click the verification link.
+        </p>
+
+        <a href="{% url 'home' %}" class="btn btn-dark rounded-pill px-4">
+            Go Back Home
+        </a>
+
+    </div>
+
+</div>
+{% endblock %}
