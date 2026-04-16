@@ -59,10 +59,9 @@ def profile_list(request):
     if not request.user.is_approved:
         return render(request, 'users/pending_approval.html')
     
-    profiles = CustomUser.objects.select_related('profile').filter(
+    profiles = CustomUser.objects.filter(
         is_active=True,
-        is_approved=True,
-        profile__isnull=False
+        is_approved=True
     )
 
     if not request.GET.get('gender') and request.user.gender:
@@ -91,7 +90,7 @@ def profile_list(request):
 
     if city:
         profiles = profiles.filter(
-            profile__city_hometown__id=city
+            city__id=city
         )
 
     if min_height and int(min_height) < 0:
@@ -181,13 +180,7 @@ def contact_view(request):
 def home(request):
     is_incomplete = False
     if request.user.is_authenticated:
-        # Use getattr to safely check for profile without crashing
-        profile = getattr(request.user, 'profile', None)
-        if profile:
-            if not profile.is_complete:
-                is_incomplete = True
-        else:
-            # User exists but has no profile object at all
+        if not request.user.profile_photo:
             is_incomplete = True
 
     return render(request, 'users/home.html', {

@@ -13,35 +13,7 @@
                 <!-- Profile Form -->
                 <form method="POST" enctype="multipart/form-data">
                     {% csrf_token %}
-
-                    <h5 class="mb-3">Basic Information</h5>
-                    {% for field in user_form %}
-                        <div class="mb-3">
-                            {{ field.label_tag }}
-                            {{ field }}
-                            {% if field.errors %}
-                                <div class="text-danger small">
-                                    {{ field.errors|striptags }}
-                                </div>
-                            {% endif %}
-                        </div>
-                    {% endfor %}
-
-                    <hr>
-
-                    <h5 class="mb-3">Family & Personal</h5>
-                    {% for field in profile_form %}
-                        <div class="mb-3">
-                            {{ field.label_tag }}
-                            {{ field }}
-                            {% if field.errors %}
-                                <div class="text-danger small">
-                                    {{ field.errors|striptags }}
-                                </div>
-                            {% endif %}
-                        </div>
-                    {% endfor %}
-
+                    {{ form.as_p }}
                     <button type="submit" class="btn btn-dark w-100">
                         Save Changes
                     </button>
