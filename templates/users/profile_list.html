@@ -242,8 +242,8 @@
             <div class="d-flex align-items-center">
 
                 <a href="{% url 'view_profile' profile.id %}">
-                    {% if profile.profile_id and profile.profile.profile_photo %}
-                        <img src="{{ profile.profile.profile_photo }}"
+                    {% if profile.profile_photo %}
+                        <img src="{{ profile.profile_photo.url }}"
                             class="rounded-circle me-3"
                             style="width:70px;height:70px;object-fit:cover;">
                     {% else %}
@@ -282,7 +282,7 @@
             <!-- Secondary Info -->
             <div class="mt-3 small text-muted">
 
-                {{ profile.profile.city_hometown|default:"City not specified" }}
+                {{ profile.city|default:"City not specified" }}
 
                 <br>
 
