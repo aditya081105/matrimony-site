@@ -9,6 +9,7 @@ from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import logout
 from communications.models import Block, ContactRequest, ActivityLog, Report, SavedProfile
+from django.http import HttpResponse
 
 from django.contrib.admin.views.decorators import staff_member_required
 from .models import CustomUser, Caste, City
@@ -57,7 +58,10 @@ def profile_list(request):
         return render(request, 'users/pending_approval.html')
 
     if not request.user.is_email_verified:
-        return render(request, "users/verify_email_required.html")
+        return HttpResponse(
+        "<h3>Email not verified</h3>"
+        "<p>Check your email and click the verification link.</p>"
+    )
 
     cities = City.objects.all()
     castes = Caste.objects.all()
@@ -272,7 +276,7 @@ def contact_view(request):
             subject=f"Contact Form - {name}",
             message=f"From: {email}\n\n{message}",
             from_email=None,
-            recipient_list=["yourgmail@gmail.com"],
+            recipient_list=["aditya08112005@gmail.com"],
         )
 
         return render(request, "users/contact.html", {"success": True})
@@ -284,4 +288,7 @@ def verify_email(request, user_id):
     user.is_email_verified = True
     user.is_active = True
     user.save()
-    return redirect("login")
+
+    login(request, user)  # auto login after verification
+
+    return redirect("profile_list")
