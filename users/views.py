@@ -283,12 +283,21 @@ def contact_view(request):
 
     return render(request, "users/contact.html")
 
-def verify_email(request, user_id):
-    user = CustomUser.objects.get(id=user_id)
-    user.is_email_verified = True
-    user.is_active = True
-    user.save()
+from django.core.signing import Signer, BadSignature
 
-    login(request, user)  # auto login after verification
+def verify_email(request, token):
+    signer = Signer()
 
-    return redirect("profile_list")
+    try:
+        user_id = signer.unsign(token)
+        user = CustomUser.objects.get(id=user_id)
+
+        user.is_email_verified = True
+        user.is_active = True
+        user.save()
+
+        return HttpResponse("Email verified successfully")
+
+    except BadSignature:
+        return HttpResponse("Invalid or expired link")
+    
