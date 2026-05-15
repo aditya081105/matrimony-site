@@ -62,7 +62,14 @@ def register(request):
 
             messages.success(
                 request,
-                "Account created successfully. Please verify your email."
+                f"""
+                Account created successfully.
+
+                A verification email has been sent to:
+                {user.email}
+
+                Please verify your email to unlock matchmaking.
+                """
             )
 
             return redirect("home")
