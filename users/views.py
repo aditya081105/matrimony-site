@@ -19,41 +19,53 @@ from django.core.mail import send_mail
 from django.urls import reverse
 import os 
 
+def send_verification_email(request, user):
+
+    signer = Signer()
+    token = signer.sign(user.id)
+
+    verify_link = request.build_absolute_uri(
+        reverse("verify_email", args=[token])
+    )
+
+    send_mail(
+        subject="Verify your email - Siwan Matrimony",
+        message=f"""
+Welcome to Siwan Matrimony.
+
+Please verify your email by clicking below:
+
+{verify_link}
+
+If you did not create this account, ignore this email.
+""",
+        from_email=os.getenv("EMAIL_USER"),
+        recipient_list=[user.email],
+        fail_silently=False,
+    )
+
 def register(request):
     if request.method == 'POST':
         form = UserRegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
-            user.is_active = True # Keep them inactive until admin/email check
+            user.is_active = True # Allow login immediately
             user.save()
 
             try:
-                signer = Signer()
-                token = signer.sign(user.id)
+                send_verification_email(request, user)
 
-                verify_link = request.build_absolute_uri(
-                    reverse("verify_email", args=[token])
-                )
-                send_mail(
-                    "Verify your account",
-                    f"""
-                    Welcome to your site.
-
-                    Click the link below to verify your email:
-
-                    {verify_link}
-
-                    If you did not create this account, ignore this email.
-                    """,
-                    os.getenv("EMAIL_USER"), # Explicitly use the env var
-                    [user.email],
-                    fail_silently=True, # This is the shield!
-                )
             except Exception as e:
                 print(f"Email error: {e}") # Log it to Render logs, don't crash
 
-            messages.success(request, "Registration successful. Pending admin approval.")
-            return redirect('login')
+            login(request, user)
+
+            messages.success(
+                request,
+                "Account created successfully. Please verify your email."
+            )
+
+            return redirect("home")
     else:
         form = UserRegisterForm()
     return render(request, 'users/register.html', {'form': form})
@@ -295,18 +307,52 @@ def contact_view(request):
 from django.core.signing import Signer, BadSignature
 
 def verify_email(request, token):
+
     signer = Signer()
 
     try:
         user_id = signer.unsign(token)
+
         user = CustomUser.objects.get(id=user_id)
 
+        if user.is_email_verified:
+            messages.success(request, "Email already verified.")
+            return redirect("home")
+
         user.is_email_verified = True
-        user.is_active = True
         user.save()
 
-        return HttpResponse("Email verified successfully")
+        messages.success(request, "Email verified successfully.")
+
+        return redirect("home")
 
     except BadSignature:
         return HttpResponse("Invalid or expired link")
+
+    except CustomUser.DoesNotExist:
+        return HttpResponse("User not found")
     
+@login_required
+def resend_verification_email(request):
+
+    if request.user.is_email_verified:
+        messages.success(request, "Email already verified.")
+        return redirect("home")
+
+    try:
+        send_verification_email(request, request.user)
+
+        messages.success(
+            request,
+            "Verification email sent successfully."
+        )
+
+    except Exception as e:
+        print(e)
+
+        messages.error(
+            request,
+            "Unable to send verification email."
+        )
+
+    return redirect("home")

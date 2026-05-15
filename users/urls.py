@@ -16,4 +16,9 @@ urlpatterns = [
     path('delete-account/', views.delete_account, name='delete_account'),
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path("verify/<str:token>/", views.verify_email, name="verify_email"),
+    path(
+        "resend-verification/",
+        views.resend_verification_email,
+        name="resend_verification"
+    ),
 ]
