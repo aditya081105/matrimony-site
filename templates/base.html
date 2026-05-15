@@ -146,6 +146,15 @@
 
                     <li><a class="dropdown-item" href="{% url 'my_profile' %}">My Profile</a></li>
 
+                    {% if not user.is_email_verified %}
+                    <li>
+                        <a class="dropdown-item text-warning"
+                        href="{% url 'resend_verification' %}">
+                        Verify Email
+                        </a>
+                    </li>
+                    {% endif %}
+                    
                     <li>
                         <a class="dropdown-item d-flex justify-content-between"
                            href="{% url 'received_requests' %}">
