@@ -15,5 +15,5 @@ urlpatterns = [
     path('profile/<int:user_id>/', views.view_profile, name='view_profile'),
     path('delete-account/', views.delete_account, name='delete_account'),
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
-    path("verify/<int:user_id>/", views.verify_email, name="verify_email"),
+    path("verify/<str:token>/", views.verify_email, name="verify_email"),
 ]
