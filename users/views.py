@@ -10,6 +10,7 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth import logout
 from communications.models import Block, ContactRequest, ActivityLog, Report, SavedProfile
 from django.http import HttpResponse
+from django.core.signing import Signer
 
 from django.contrib.admin.views.decorators import staff_member_required
 from .models import CustomUser, Caste, City
@@ -27,12 +28,23 @@ def register(request):
             user.save()
 
             try:
+                signer = Signer()
+                token = signer.sign(user.id)
+
                 verify_link = request.build_absolute_uri(
-                    reverse("verify_email", args=[user.id])
+                    reverse("verify_email", args=[token])
                 )
                 send_mail(
                     "Verify your account",
-                    f"Click to verify: {verify_link}",
+                    f"""
+                    Welcome to your site.
+
+                    Click the link below to verify your email:
+
+                    {verify_link}
+
+                    If you did not create this account, ignore this email.
+                    """,
                     os.getenv("EMAIL_USER"), # Explicitly use the env var
                     [user.email],
                     fail_silently=True, # This is the shield!
@@ -58,10 +70,7 @@ def profile_list(request):
         return render(request, 'users/pending_approval.html')
 
     if not request.user.is_email_verified:
-        return HttpResponse(
-        "<h3>Email not verified</h3>"
-        "<p>Check your email and click the verification link.</p>"
-    )
+        return render(request, "users/verify_email_required.html")
 
     cities = City.objects.all()
     castes = Caste.objects.all()
