@@ -317,7 +317,7 @@ def verify_email(request, token):
 
         if user.is_email_verified:
             messages.success(request, "Email already verified.")
-            return redirect("home")
+            return redirect("edit_profile")
 
         user.is_email_verified = True
         user.save()
@@ -355,4 +355,8 @@ def resend_verification_email(request):
             "Unable to send verification email."
         )
 
+    messages.success(
+        request,
+        f"Verification email sent to {request.user.email}"
+    )
     return redirect("home")
