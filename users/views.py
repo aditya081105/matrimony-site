@@ -355,7 +355,9 @@ def resend_verification_email(request):
         )
 
     except Exception as e:
-        print(e)
+        import traceback
+        traceback.print_exc()
+        raise e
 
         messages.error(
             request,

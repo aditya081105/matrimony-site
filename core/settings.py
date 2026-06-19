@@ -8,7 +8,8 @@ import dj_database_url
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+# FORCES Django to find your .env file locally
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -66,15 +67,20 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 
+import dj_database_url
+
+# The fallback string here is now completely clean and secure
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL'),
+        default=os.getenv('DATABASE_URL', ''),
         conn_max_age=600,
         conn_health_checks=True,     
         ssl_require=True
    )
 }
-    
+
+
+
 
 
 # Password validation
@@ -191,6 +197,7 @@ EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
+EMAIL_TIMEOUT = 10
 
 # Using the exact variable names from your .getenv calls
 EMAIL_HOST_USER = os.getenv("EMAIL_USER")
@@ -199,4 +206,4 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_PASS")
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 # THE CRITICAL LINE: Prevents the 500 error if email fails to send
-EMAIL_FAIL_SILENTLY = True 
+#EMAIL_FAIL_SILENTLY = True 
