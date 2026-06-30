@@ -157,9 +157,14 @@ def contact_view(request):
 
 def home(request):
     is_incomplete = False
+
     if request.user.is_authenticated:
-        if not request.user.profile_photo:
-            is_incomplete = True
+        is_incomplete = not all([
+            request.user.date_of_birth,
+            request.user.height_cm,
+            request.user.city,
+            request.user.profile_photo,
+        ])
 
     return render(request, 'users/home.html', {
         'is_incomplete': is_incomplete
@@ -378,13 +383,3 @@ def resend_verification_email(request):
 
 from django.conf import settings
 
-
-def test_email(request):
-    send_mail(
-        "Test Email",
-        "Hello",
-        settings.DEFAULT_FROM_EMAIL,
-        ["aditya08112005@gmail.com"],
-        fail_silently=False,
-    )
-    return HttpResponse("Email sent!")
