@@ -141,13 +141,31 @@ def profile_list(request):
             user=request.user
         ).values_list("saved_user_id", flat=True))
 
+    accepted_requests = ContactRequest.objects.filter(
+        status="accepted"
+    ).filter(
+        Q(sender=request.user) | Q(receiver=request.user)
+    )
+
+    accepted_user_ids = {
+        r.receiver_id if r.sender_id == request.user.id else r.sender_id
+        for r in accepted_requests
+    }
+
+    pending_user_ids = set(
+        ContactRequest.objects.filter(
+            sender=request.user,
+            status="pending"
+        ).values_list("receiver_id", flat=True)
+    )
+
     context = {
         'page_obj': page_obj,
         'cities': cities,
         'castes': castes,
         'saved_ids': saved_ids,
-        'accepted_user_ids': set(),      # fill later if needed
-        'pending_user_ids': set(),       # fill later if needed
+        'accepted_user_ids': accepted_user_ids,
+        'pending_user_ids': pending_user_ids,
     }
 
     return render(request, 'users/profile_list.html', context)
