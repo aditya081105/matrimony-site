@@ -17,9 +17,17 @@ User = get_user_model()
 @login_required
 def send_request(request, user_id):
 
+    if request.user.is_suspended:
+        messages.error(request, "Your account has been suspended.")
+        return redirect("home")
+
     if not request.user.is_approved:
         messages.error(request, "Your account is pending approval.")
         return redirect('home')
+    
+    if not request.user.is_email_verified:
+        messages.error(request, "Verify your email first.")
+        return redirect("home")
 
     if not all([
         request.user.date_of_birth,
@@ -67,9 +75,6 @@ def send_request(request, user_id):
     
     if Block.objects.filter(blocker=request.user, blocked=receiver).exists():
         return redirect("profile_list")
-
-    if receiver == request.user:
-        return redirect('profile_list')
 
     today = date.today()
 
@@ -204,6 +209,11 @@ def cancel_request(request, user_id):
 
 @login_required
 def block_user(request, user_id):
+
+    if request.user.is_suspended:
+        messages.error(request, "Your account has been suspended.")
+        return redirect("home")
+    
     target = get_object_or_404(CustomUser, id=user_id)
 
     if target == request.user:
@@ -242,6 +252,11 @@ def block_user(request, user_id):
 
 @login_required
 def report_user(request, user_id):
+
+    if request.user.is_suspended:
+        messages.error(request, "Your account has been suspended.")
+        return redirect("home")
+
     target = get_object_or_404(CustomUser, id=user_id)
 
     if request.method == "POST":
@@ -297,6 +312,10 @@ def unblock_user(request, user_id):
 
 @login_required
 def toggle_save(request, user_id):
+
+    if request.user.is_suspended:
+        messages.error(request, "Your account has been suspended.")
+        return redirect("home")
 
     target = get_object_or_404(CustomUser, id=user_id)
 
