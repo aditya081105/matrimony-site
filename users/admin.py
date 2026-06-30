@@ -8,13 +8,17 @@ from .models import CustomUser, Profile, Caste, City
 def approve_users(modeladmin, request, queryset):
     queryset.update(is_approved=True)
 
+@admin.action(description="Mark selected users as email verified")
+def verify_users(modeladmin, request, queryset):
+    queryset.update(is_email_verified=True)
+
 class CustomUserAdmin(UserAdmin):
     model = CustomUser
-    list_display = ('username', 'full_name', 'is_approved', 'is_staff')
-    list_filter = ('is_approved', 'is_staff')
-    actions = [approve_users]
+    list_display = ('username', 'full_name', 'is_approved', 'is_staff', 'is_email_verified')
+    list_filter = ('is_email_verified', 'is_approved', 'is_staff')
+    actions = [approve_users, verify_users]
     fieldsets = UserAdmin.fieldsets + (
-        ("Approval", {"fields": ("is_approved",)}),
+        ("Approval", {"fields": ("is_approved", "is_email_verified",)}),
     )
 
 
