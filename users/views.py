@@ -21,9 +21,6 @@ from django.urls import reverse
 import os 
 
 import resend
-from django.conf import settings
-from django.core.signing import Signer
-from django.urls import reverse
 
 def send_verification_email(request, user):
     signer = Signer()
@@ -100,10 +97,24 @@ def profile_list(request):
     cities = City.objects.all()
     castes = Caste.objects.all()
 
+    blocked_by_me = Block.objects.filter(
+        blocker=request.user
+    ).values_list("blocked_id", flat=True)
+
+    blocked_me = Block.objects.filter(
+        blocked=request.user
+    ).values_list("blocker_id", flat=True)
+
+    blocked_ids = list(blocked_by_me) + list(blocked_me)
+
     profiles = CustomUser.objects.filter(
         is_active=True,
         is_approved=True
-    ).exclude(id=request.user.id)
+    ).exclude(
+        id__in=blocked_ids
+    ).exclude(
+        id=request.user.id
+    )
 
     # Opposite gender by default
     if not request.GET.get('gender') and request.user.gender:
@@ -239,6 +250,21 @@ def my_matches(request):
         else:
             matched_users.append(m.sender)
 
+    blocked_by_me = Block.objects.filter(
+        blocker=request.user
+    ).values_list("blocked_id", flat=True)
+
+    blocked_me = Block.objects.filter(
+        blocked=request.user
+    ).values_list("blocker_id", flat=True)
+
+    blocked_ids = set(blocked_by_me) | set(blocked_me)
+
+    matched_users = [
+        u for u in matched_users
+        if u.id not in blocked_ids
+    ]
+
     return render(request, 'users/my_matches.html', {
         'matched_users': matched_users
     })
@@ -248,7 +274,16 @@ def view_profile(request, user_id):
 
     profile_user = get_object_or_404(CustomUser, id=user_id)
 
-    if Block.objects.filter(blocker=profile_user, blocked=request.user).exists():
+    if profile_user.is_suspended:
+        messages.error(request, "Profile unavailable.")
+        return redirect("profile_list")
+
+    if (
+        Block.objects.filter(blocker=profile_user, blocked=request.user).exists()
+        or
+        Block.objects.filter(blocker=request.user, blocked=profile_user).exists()
+    ):
+        messages.error(request, "Profile unavailable.")
         return redirect("profile_list")
 
     # accepted match
@@ -329,18 +364,33 @@ def contact_view(request):
         email = request.POST.get("email")
         message = request.POST.get("message")
 
-        send_mail(
-            subject=f"Contact Form - {name}",
-            message=f"From: {email}\n\n{message}",
-            from_email=None,
-            recipient_list=["aditya08112005@gmail.com"],
-        )
+        try:
+            resend.api_key = settings.RESEND_API_KEY
+
+            resend.Emails.send({
+                "from": "onboarding@resend.dev",
+                "to": "aditya08112005@gmail.com",
+                "subject": f"Contact Form - {name}",
+                "text": f"""
+        Name: {name}
+        Email: {email}
+
+        Message:
+        {message}
+        """
+            })
+
+            return render(request, "users/contact.html", {"success": True})
+
+        except Exception:
+            messages.error(request, "Unable to send message right now.")
+            return redirect("contact_us")
 
         return render(request, "users/contact.html", {"success": True})
 
     return render(request, "users/contact.html")
 
-from django.core.signing import Signer, BadSignature
+from django.core.signing import BadSignature
 
 def verify_email(request, token):
 
@@ -399,5 +449,4 @@ def resend_verification_email(request):
     )
     return redirect("home")
 
-from django.conf import settings
 
