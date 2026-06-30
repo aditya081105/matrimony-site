@@ -11,6 +11,7 @@ from django.contrib.auth import logout
 from communications.models import Block, ContactRequest, ActivityLog, Report, SavedProfile
 from django.http import HttpResponse
 from django.core.signing import Signer
+from django.conf import settings
 
 from django.contrib.admin.views.decorators import staff_member_required
 from .models import CustomUser, Caste, City
@@ -369,3 +370,13 @@ def resend_verification_email(request):
         f"Verification email sent to {request.user.email}"
     )
     return redirect("home")
+
+from django.conf import settings
+
+send_mail(
+    "Test Email",
+    "Hello",
+    settings.EMAIL_HOST_USER,
+    ["aditya08112005@gmail.com"],
+    fail_silently=False,
+)
