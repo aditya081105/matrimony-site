@@ -21,9 +21,14 @@ def send_request(request, user_id):
         messages.error(request, "Your account is pending approval.")
         return redirect('home')
 
-    if not request.user.profile.is_complete:
+    if not all([
+        request.user.date_of_birth,
+        request.user.height_cm,
+        request.user.city,
+        request.user.profile_photo,
+    ]):
         messages.error(request, "Complete your profile before sending requests.")
-        return redirect('edit_profile')
+        return redirect("edit_profile")
 
     receiver = get_object_or_404(CustomUser, id=user_id)
 
