@@ -20,8 +20,12 @@ from django.core.mail import send_mail
 from django.urls import reverse
 import os 
 
-def send_verification_email(request, user):
+import resend
+from django.conf import settings
+from django.core.signing import Signer
+from django.urls import reverse
 
+def send_verification_email(request, user):
     signer = Signer()
     token = signer.sign(user.id)
 
@@ -29,9 +33,13 @@ def send_verification_email(request, user):
         reverse("verify_email", args=[token])
     )
 
-    send_mail(
-        subject="Verify your email - Siwan Matrimony",
-        message=f"""
+    resend.api_key = settings.RESEND_API_KEY
+
+    resend.Emails.send({
+        "from": "onboarding@resend.dev",
+        "to": user.email,
+        "subject": "Verify your email - Siwan Matrimony",
+        "text": f"""
 Welcome to Siwan Matrimony.
 
 Please verify your email by clicking below:
@@ -39,11 +47,8 @@ Please verify your email by clicking below:
 {verify_link}
 
 If you did not create this account, ignore this email.
-""",
-        from_email=os.getenv("EMAIL_USER"),
-        recipient_list=[user.email],
-        fail_silently=False,
-    )
+"""
+    })
 
 def register(request):
     if request.method == 'POST':
