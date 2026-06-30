@@ -373,10 +373,13 @@ def resend_verification_email(request):
 
 from django.conf import settings
 
-send_mail(
-    "Test Email",
-    "Hello",
-    settings.EMAIL_HOST_USER,
-    ["aditya08112005@gmail.com"],
-    fail_silently=False,
-)
+
+def test_email(request):
+    send_mail(
+        "Test Email",
+        "Hello",
+        settings.DEFAULT_FROM_EMAIL,
+        ["aditya08112005@gmail.com"],
+        fail_silently=False,
+    )
+    return HttpResponse("Email sent!")
