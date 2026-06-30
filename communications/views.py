@@ -32,6 +32,15 @@ def send_request(request, user_id):
 
     receiver = get_object_or_404(CustomUser, id=user_id)
 
+    if ContactRequest.objects.filter(
+        status="accepted"
+    ).filter(
+        Q(sender=request.user, receiver=receiver) |
+        Q(sender=receiver, receiver=request.user)
+    ).exists():
+        messages.info(request, "You are already matched with this user.")
+        return redirect("profile_list")
+
     # Prevent sending request to yourself
     if receiver == request.user:
         return redirect("profile_list")
