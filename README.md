@@ -58,7 +58,7 @@ The project was initially designed for the Siwan community but is structured to 
 
 ### Homepage
 
-![Homepage](screenshots/homepage.png)
+![Homepage](screenshots/home.png)
 
 ### Matchmaking
 
