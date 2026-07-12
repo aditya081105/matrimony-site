@@ -95,6 +95,12 @@ class CommunicationTests(TestCase):
 
         self.assertEqual(SavedProfile.objects.count(), 0)
 
+        response = self.client.get(reverse("toggle_save", args=[self.user2.id]))
+
+        print("status:", response.status_code)
+        print("url:", response.url)
+        print("saved:", SavedProfile.objects.count())
+
 
     def test_duplicate_request_not_created(self):
         self.client.login(username="user1", password="Test12345!")
