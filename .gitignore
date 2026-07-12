@@ -8,3 +8,4 @@ staticfiles/
 media/
 .DS_Store
 Thumbs.db
+structure.txt
