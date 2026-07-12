@@ -42,6 +42,7 @@ class CommunicationTests(TestCase):
             city=self.city,
             profile_photo="test.jpg"
         )
+        print(self.client.login(username="user1", password="Test12345!"))
 
 
     def test_cannot_send_request_to_self(self):
