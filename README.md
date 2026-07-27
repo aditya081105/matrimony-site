@@ -165,3 +165,13 @@ The application is deployed on Render with:
 Aditya Kumar
 
 GitHub: https://github.com/aditya081105
+
+# Commercial Use & Resale Warning
+This project is strictly protected. Unauthorized commercial resale, including 
+listing this codebase on marketplaces like Codester, Envato Market, or Fiverr, 
+is a direct violation of copyright laws and will face immediate DMCA takedown action.
+
+## License
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+
+
