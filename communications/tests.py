@@ -49,7 +49,7 @@ class CommunicationTests(TestCase):
         self.client.login(username="user1", password="Test12345!")
 
     def test_cannot_send_request_to_self(self):
-        self.client.get(reverse("send_request", args=[self.user1.id]))
+        self.client.post(reverse("send_request", args=[self.user1.id]))
 
         self.assertEqual(ContactRequest.objects.count(), 0)
 
@@ -59,7 +59,7 @@ class CommunicationTests(TestCase):
             blocked=self.user1,
         )
 
-        self.client.get(reverse("send_request", args=[self.user2.id]))
+        self.client.post(reverse("send_request", args=[self.user2.id]))
 
         self.assertEqual(ContactRequest.objects.count(), 0)
 
@@ -69,7 +69,7 @@ class CommunicationTests(TestCase):
             blocked=self.user2,
         )
 
-        self.client.get(reverse("unblock_user", args=[self.user2.id]))
+        self.client.post(reverse("unblock_user", args=[self.user2.id]))
 
         self.assertFalse(
             Block.objects.filter(
@@ -79,11 +79,11 @@ class CommunicationTests(TestCase):
         )
 
     def test_toggle_save(self):
-        self.client.get(reverse("toggle_save", args=[self.user2.id]))
+        self.client.post(reverse("toggle_save", args=[self.user2.id]))
 
         self.assertEqual(SavedProfile.objects.count(), 1)
 
-        self.client.get(reverse("toggle_save", args=[self.user2.id]))
+        self.client.post(reverse("toggle_save", args=[self.user2.id]))
 
         self.assertEqual(SavedProfile.objects.count(), 0)
 
@@ -95,7 +95,7 @@ class CommunicationTests(TestCase):
             attempt_count=1,
         )
 
-        response = self.client.get(
+        response = self.client.post(
             reverse("send_request", args=[self.user2.id])
         )
 
@@ -109,7 +109,7 @@ class CommunicationTests(TestCase):
                 receiver=self.user2,
             )
 
-        response = self.client.get(
+        response = self.client.post(
             reverse("send_request", args=[self.user2.id])
         )
 
@@ -124,7 +124,7 @@ class CommunicationTests(TestCase):
             attempt_count=1,
         )
 
-        response = self.client.get(
+        response = self.client.post(
             reverse("send_request", args=[self.user2.id])
         )
 
@@ -137,7 +137,7 @@ class CommunicationTests(TestCase):
                 receiver=self.user2,
             )
 
-        self.client.get(reverse("send_request", args=[self.user2.id]))
+        self.client.post(reverse("send_request", args=[self.user2.id]))
 
         self.assertEqual(ContactRequest.objects.count(), 0)
 
@@ -150,7 +150,7 @@ class CommunicationTests(TestCase):
             attempt_count=1,
         )
         # User 1 sends request to User 2 -> auto match!
-        response = self.client.get(reverse("send_request", args=[self.user2.id]))
+        response = self.client.post(reverse("send_request", args=[self.user2.id]))
         self.assertEqual(response.status_code, 302)
 
         # Both requests should now be accepted
@@ -163,15 +163,31 @@ class CommunicationTests(TestCase):
             receiver=self.user2,
             status='accepted',
         )
-        self.client.get(reverse("unmatch", args=[self.user2.id]))
+        self.client.post(reverse("unmatch", args=[self.user2.id]))
         self.assertEqual(ContactRequest.objects.count(), 0)
         self.assertTrue(ActivityLog.objects.filter(user=self.user1, target_user=self.user2, action='unmatch').exists())
 
     def test_block_removes_saved_profiles_bidirectionally(self):
         SavedProfile.objects.create(user=self.user1, saved_user=self.user2)
         SavedProfile.objects.create(user=self.user2, saved_user=self.user1)
-        self.client.get(reverse("block_user", args=[self.user2.id]))
+        self.client.post(reverse("block_user", args=[self.user2.id]))
         self.assertEqual(SavedProfile.objects.count(), 0)
+
+    def test_state_mutating_endpoints_reject_get_requests(self):
+        # Enforce HTTP 405 Method Not Allowed on plain GET requests
+        for endpoint, args in [
+            ("send_request", [self.user2.id]),
+            ("block_user", [self.user2.id]),
+            ("unblock_user", [self.user2.id]),
+            ("unmatch", [self.user2.id]),
+            ("cancel_request", [self.user2.id]),
+            ("toggle_save", [self.user2.id]),
+        ]:
+            response = self.client.get(reverse(endpoint, args=args))
+            self.assertEqual(
+                response.status_code, 405,
+                f"Endpoint {endpoint} allowed GET but must require POST"
+            )
 
 
 @skipUnlessDBFeature('has_select_for_update')
@@ -206,8 +222,41 @@ class CommunicationConcurrencyTests(TransactionTestCase):
             city=self.city,
             profile_photo="test.jpg",
         )
+        self.user3 = CustomUser.objects.create_user(
+            username="concurrent_user3",
+            email="concurrent3@test.com",
+            password="Test12345!",
+            full_name="User Three",
+            gender="F",
+            phone_number="8888888883",
+            is_approved=True,
+            is_email_verified=True,
+            date_of_birth="2000-01-01",
+            height_cm=165,
+            city=self.city,
+            profile_photo="test.jpg",
+        )
+        self.user4 = CustomUser.objects.create_user(
+            username="concurrent_user4",
+            email="concurrent4@test.com",
+            password="Test12345!",
+            full_name="User Four",
+            gender="F",
+            phone_number="8888888884",
+            is_approved=True,
+            is_email_verified=True,
+            date_of_birth="2000-01-01",
+            height_cm=165,
+            city=self.city,
+            profile_photo="test.jpg",
+        )
 
-    def test_concurrent_send_request_thread_safety(self):
+    def test_concurrent_quota_race_condition_prevention(self):
+        # User 1 is on free tier (daily limit = 3).
+        # Pre-populate 2 attempts so only 1 attempt remains.
+        RequestAttempt.objects.create(sender=self.user1, receiver=self.user4)
+        RequestAttempt.objects.create(sender=self.user1, receiver=self.user4)
+
         errors = []
         clients = []
         for _ in range(2):
@@ -215,21 +264,32 @@ class CommunicationConcurrencyTests(TransactionTestCase):
             c.force_login(self.user1)
             clients.append(c)
 
-        def attempt_send(c):
+        targets = [self.user2, self.user3]
+
+        def attempt_send(c, target):
             try:
-                c.post(reverse("send_request", args=[self.user2.id]))
+                c.post(reverse("send_request", args=[target.id]))
             except Exception as e:
-                import traceback
-                traceback.print_exc()
                 errors.append(e)
             finally:
                 connection.close()
 
-        threads = [threading.Thread(target=attempt_send, args=(clients[i],)) for i in range(2)]
+        threads = [
+            threading.Thread(target=attempt_send, args=(clients[i], targets[i]))
+            for i in range(2)
+        ]
         for t in threads:
             t.start()
         for t in threads:
             t.join()
 
         self.assertEqual(errors, [])
-        self.assertEqual(ContactRequest.objects.filter(sender=self.user1, receiver=self.user2).count(), 1)
+        # Exactly 3 total daily attempts allowed (2 initial + 1 successful from threads)
+        self.assertEqual(RequestAttempt.objects.filter(sender=self.user1).count(), 3)
+        # Exactly 1 new ContactRequest created (the other was rejected by quota)
+        self.assertEqual(
+            ContactRequest.objects.filter(sender=self.user1).filter(
+                receiver__in=[self.user2, self.user3]
+            ).count(),
+            1
+        )

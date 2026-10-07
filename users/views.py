@@ -411,32 +411,8 @@ def contact_view(request):
             messages.error(request, "Please fill in all fields.")
             return render(request, "users/contact.html")
 
-        subject = f"Contact Form Inquiry - {name}"
-        body = f"Name: {name}\nEmail: {email}\n\nMessage:\n{message}"
-        admin_email = getattr(settings, 'EMAIL_HOST_USER', None) or "aditya08112005@gmail.com"
-
-        sent = False
-        if getattr(settings, 'EMAIL_HOST_USER', None):
-            try:
-                from django.core.mail import send_mail
-                send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [admin_email], fail_silently=False)
-                sent = True
-            except Exception as e:
-                print(f"SMTP contact error: {e}")
-
-        if not sent and getattr(settings, 'RESEND_API_KEY', None):
-            try:
-                import resend
-                resend.api_key = settings.RESEND_API_KEY
-                resend.Emails.send({
-                    "from": getattr(settings, 'RESEND_FROM_EMAIL', 'onboarding@resend.dev'),
-                    "to": admin_email,
-                    "subject": subject,
-                    "text": body
-                })
-                sent = True
-            except Exception as e:
-                print(f"Resend contact error: {e}")
+        from core.services import send_contact_email
+        sent = send_contact_email(name, email, message)
 
         if sent:
             return render(request, "users/contact.html", {"success": True})

@@ -23,17 +23,21 @@
                     <ul class="dropdown-menu dropdown-menu-end">
 
                         <li>
-                            <a class="dropdown-item text-danger"
-                               href="{% url 'unmatch' user.id %}">
-                                Remove Match
-                            </a>
+                            <form method="POST" action="{% url 'unmatch' user.id %}" class="d-inline w-100">
+                                {% csrf_token %}
+                                <button type="submit" class="dropdown-item text-danger border-0 bg-transparent">
+                                    Remove Match
+                                </button>
+                            </form>
                         </li>
 
                         <li>
-                            <a class="dropdown-item text-danger"
-                               href="{% url 'block_user' user.id %}">
-                                Block
-                            </a>
+                            <form method="POST" action="{% url 'block_user' user.id %}" class="d-inline w-100">
+                                {% csrf_token %}
+                                <button type="submit" class="dropdown-item text-danger border-0 bg-transparent">
+                                    Block
+                                </button>
+                            </form>
                         </li>
 
                         <li>

@@ -1,3 +1,5 @@
+import re
+from django.db import transaction, IntegrityError
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -75,9 +77,9 @@ def checkout_view(request, plan_code):
         action = request.POST.get('action', 'submit_utr')
         utr_number = request.POST.get('utr_number', '').strip()
 
-        # UPI UTR submission validation (alphanumeric, valid reference length)
-        if not utr_number or len(utr_number) < 8 or len(utr_number) > 22 or not utr_number.isalnum():
-            messages.error(request, "Please enter a valid 12-digit UPI reference (UTR) number.")
+        # Standard 12-character alphanumeric UPI UTR validation
+        if not utr_number or not re.fullmatch(r'^[A-Za-z0-9]{12}$', utr_number):
+            messages.error(request, "Please enter a valid 12-character alphanumeric UPI reference (UTR) number.")
             return render(request, 'payments/checkout.html', {
                 'plan': plan,
                 'upi_id': upi_id,
@@ -87,8 +89,28 @@ def checkout_view(request, plan_code):
                 'custom_qr_image': custom_qr_image,
             })
 
-        # Prevent duplicate UTR submission across active/pending orders
-        if PaymentOrder.objects.filter(utr_number=utr_number).exclude(status='rejected').exists():
+        try:
+            with transaction.atomic():
+                # Prevent duplicate UTR submission across active/pending orders
+                if PaymentOrder.objects.filter(utr_number=utr_number).exclude(status='rejected').exists():
+                    messages.error(request, "This UPI reference (UTR) number has already been submitted for verification.")
+                    return render(request, 'payments/checkout.html', {
+                        'plan': plan,
+                        'upi_id': upi_id,
+                        'upi_name': upi_name,
+                        'upi_uri': upi_uri,
+                        'qr_code_url': qr_code_url,
+                        'custom_qr_image': custom_qr_image,
+                    })
+
+                order = PaymentOrder.objects.create(
+                    user=request.user,
+                    plan=plan,
+                    amount=plan.price,
+                    utr_number=utr_number,
+                    payment_method="UPI QR Payment",
+                )
+        except IntegrityError:
             messages.error(request, "This UPI reference (UTR) number has already been submitted for verification.")
             return render(request, 'payments/checkout.html', {
                 'plan': plan,
@@ -98,14 +120,6 @@ def checkout_view(request, plan_code):
                 'qr_code_url': qr_code_url,
                 'custom_qr_image': custom_qr_image,
             })
-
-        order = PaymentOrder.objects.create(
-            user=request.user,
-            plan=plan,
-            amount=plan.price,
-            utr_number=utr_number,
-            payment_method="UPI QR Payment",
-        )
 
         messages.success(
             request,

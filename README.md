@@ -16,10 +16,10 @@ A full-stack community matrimonial web platform built with Django 6, PostgreSQL,
 
 ### 1. Database Concurrency Control & Transactions
 - **Atomic State Transitions:** Critical business logic (interest acceptance, mutual auto-matching, subscription activation) is wrapped inside `transaction.atomic()` blocks.
-- **Row-Level Locking:** Uses `select_for_update()` on `ContactRequest` and `Subscription` models to prevent race conditions and duplicate state mutations when concurrent actions occur on the same record.
+- **Row-Level Locking:** Uses `select_for_update()` on sender user rows during request creation and on `Subscription` models during payment activation to eliminate race conditions, duplicate state mutations, and quota-bypassing races.
 
 ### 2. Query Optimization & Indexing
-- **N+1 Prevention:** Views make extensive use of `select_related()` (for `Profile`, `City`, `Caste`, `Subscription`) and `prefetch_related()` across relational lookups to keep query counts bounded. Unit tests enforce this via `assertNumQueries` and `CaptureQueriesContext`.
+- **N+1 Prevention:** Views make extensive use of `select_related()` (for `Profile`, `City`, `Caste`, `Subscription`) across relational lookups to keep query counts bounded. Unit tests enforce this via `assertNumQueries` and `CaptureQueriesContext`.
 - **Compound B-Tree Indexing:** Multi-column indexes target frequent filter vectors:
   - `user_match_idx`: `(is_active, is_approved, is_suspended, gender)`
   - `user_city_gender_idx`: `(city, gender)`
@@ -31,14 +31,15 @@ A full-stack community matrimonial web platform built with Django 6, PostgreSQL,
 - Frequently read, infrequently modified taxonomy data (Cities, Castes, Active Membership Plans) utilizes a cache-aside pattern with automatic signal-based invalidation (`post_save` and `post_delete` signals) ensuring stale data is evicted immediately upon admin updates.
 
 ### 4. Background Email Processing
-- **Decoupled Delivery:** Transactional emails (welcome messages, contact inquiries, verification links) are offloaded to an in-process `ThreadPoolExecutor` worker pool, preventing third-party SMTP/API latency from degrading user HTTP response times (~30ms response cycle).
-- **Test Fallback:** Automatically switches to synchronous execution during automated test runs to maintain deterministic assertions.
+- **Decoupled Delivery:** Transactional email dispatch (email verification tokens and contact form inquiries) is offloaded to a background `ThreadPoolExecutor` worker pool, preventing third-party SMTP/API network latency from blocking web worker request cycles.
+- **Deterministic Testing:** Automatically falls back to synchronous execution during automated test runs to maintain deterministic test assertions.
 
 ### 5. Security & Verification
+- **State Mutation Protection:** All state-modifying actions (`send_request`, `update_request`, `cancel_request`, `unmatch`, `block_user`, `unblock_user`, `toggle_save`) strictly enforce HTTP POST with CSRF tokens (`@require_POST`), preventing GET-based CSRF and link pre-fetching attacks.
 - **Expiring Email Verification:** Verification links use Django's `TimestampSigner` with a 24-hour expiration window (`max_age=86400`) and rate-limiting cooldown to prevent verification link reuse or flooding.
-- **Payment Reference Integrity:** UPI UTR submissions enforce 12-character alphanumeric format validation and reject duplicate UTR numbers across existing non-rejected orders.
+- **Payment Reference Integrity:** UPI UTR submissions enforce 12-character alphanumeric format validation (`^[A-Za-z0-9]{12}$`) and a database `UniqueConstraint` on active orders to reject duplicate or racing submissions.
 - **Profile Access Gate:** Public profile viewing verifies that the targeted user has been approved by administrators before revealing details.
-- **Bidirectional Privacy:** Blocking isolates both users symmetrically across searches, recommendations, and messaging paths.
+- **Bidirectional Privacy:** Blocking isolates both users symmetrically across searches and contact request paths.
 
 ---
 
@@ -73,7 +74,7 @@ This project was built to address real-world community matrimonial needs with pr
 - **Authentication & Profiles:** Custom user model extending `AbstractUser`, phone number validation against Indian telecom numbering (`^[6-9]\d{9}$`), Cloudinary image management, and time-stamped email verification.
 - **Matchmaking & Discovery:** Filter by age, height, city, and caste. Mutual interest matching automatically detects reciprocal requests and creates match connections.
 - **Privacy & Rate Limiting:** Sensitive contact details are shielded until mutual approval. Free users are throttled to 3 requests/day across profiles, Silver members to 10/day, and Gold members enjoy unlimited requests, with an additional per-target throttle of 3 attempts/day.
-- **UPI Subscriptions:** Tiered plans (Silver, Gold, Diamond VIP) with dynamic QR codes, 12-character UTR submission, duplicate prevention, and row-locked subscription activation.
+- **UPI Subscriptions:** Tiered plans (Silver, Gold, Diamond VIP) with dynamic QR codes, 12-character UTR submission, duplicate prevention via database constraints, and row-locked subscription activation.
 
 ---
 
@@ -88,7 +89,7 @@ This project was built to address real-world community matrimonial needs with pr
 | **Observability** | Custom `RequestIDMiddleware`, structured logging with `X-Request-ID` telemetry |
 | **Media & Assets** | Cloudinary CDN Storage, WhiteNoise |
 | **Email Delivery** | Gmail SMTP / Resend API |
-| **CI/CD** | GitHub Actions (`.github/workflows/ci.yml`) |
+| **CI/CD** | GitHub Actions (`.github/workflows/ci.yml`) with PostgreSQL 15 service |
 | **Containerization** | Docker (Gunicorn WSGI), Docker Compose |
 | **Frontend** | Django Templates, Bootstrap 5.3 |
 
@@ -152,14 +153,15 @@ python manage.py runserver
 
 ## Automated Test Suite
 
-The test suite contains **36 automated tests** covering:
+The test suite contains **39 automated tests** covering:
 - Authentication constraints, phone regex checks, and unapproved profile access security.
 - Expiring token email verification via `TimestampSigner` and rate-limiting cooldown.
+- HTTP POST enforcement and 405 rejection for state-mutating endpoints (`send_request`, `block_user`, `unblock_user`, `unmatch`, `cancel_request`, `toggle_save`).
 - Mutual request matching, bidirectional blocking, and daily request quota enforcement across membership tiers.
 - Reverse OneToOne `select_related` query bounding (`assertNumQueries` / `CaptureQueriesContext`).
 - Cache-aside hit/miss lifecycle and signal-driven cache invalidation.
-- Membership order creation, 12-character UTR validation, duplicate UTR rejection, and subscription lifecycle transitions.
-- Concurrency test scaffolding using `TransactionTestCase` and `@skipUnlessDBFeature('has_select_for_update')`.
+- Membership order creation, strict 12-character alphanumeric UTR validation, duplicate UTR database rejection, and subscription lifecycle transitions.
+- Concurrency quota race testing using `TransactionTestCase` and `@skipUnlessDBFeature('has_select_for_update')`, executed against PostgreSQL in GitHub Actions CI.
 
 ```bash
 python manage.py test

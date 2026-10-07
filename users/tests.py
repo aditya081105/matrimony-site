@@ -227,3 +227,13 @@ class UserModelTest(TestCase):
         self.assertEqual(response.status_code, 302)
         unverified.refresh_from_db()
         self.assertTrue(unverified.is_email_verified)
+
+    def test_contact_form_submission(self):
+        from django.urls import reverse
+        response = self.client.post(reverse('contact_us'), {
+            'name': 'Test Submitter',
+            'email': 'submitter@example.com',
+            'message': 'Testing contact submission asynchronously',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Your message has been sent successfully.")

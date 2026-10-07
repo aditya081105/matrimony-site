@@ -30,10 +30,12 @@ View Profile
 </li>
 
 <li>
-<a class="dropdown-item text-danger"
-href="{% url 'unblock_user' entry.blocked.id %}">
-Unblock
-</a>
+<form method="POST" action="{% url 'unblock_user' entry.blocked.id %}" class="d-inline w-100">
+    {% csrf_token %}
+    <button type="submit" class="dropdown-item text-danger border-0 bg-transparent">
+        Unblock
+    </button>
+</form>
 </li>
 
 </ul>
@@ -67,10 +69,12 @@ style="width:100px;height:100px;object-fit:cover;">
 {{ entry.blocked.occupation|default:"Occupation not specified" }}
 </p>
 
-<a href="{% url 'unblock_user' entry.blocked.id %}"
-class="btn btn-outline-danger btn-sm rounded-pill px-4">
-Unblock
-</a>
+<form method="POST" action="{% url 'unblock_user' entry.blocked.id %}" class="d-inline">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-4">
+        Unblock
+    </button>
+</form>
 
 </div>
 

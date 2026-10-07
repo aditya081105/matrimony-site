@@ -87,3 +87,54 @@ def send_verification_email(request, user):
     else:
         _email_executor.submit(_dispatch_email_job, user_email, user_name, verify_link)
         return True
+
+
+def _dispatch_contact_email_job(name, sender_email, message_content):
+    subject = f"Contact Form Inquiry - {name}"
+    body = f"Name: {name}\nEmail: {sender_email}\n\nMessage:\n{message_content}"
+    admin_email = getattr(settings, 'CONTACT_ADMIN_EMAIL', None) or getattr(settings, 'DEFAULT_FROM_EMAIL', 'admin@siwan-matrimony.com')
+
+    if getattr(settings, 'EMAIL_HOST_USER', None):
+        try:
+            send_mail(
+                subject=subject,
+                message=body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[admin_email],
+                fail_silently=False,
+            )
+            logger.info(f"Contact email sent via SMTP to {admin_email}")
+            return True
+        except Exception as e:
+            logger.error(f"SMTP contact error: {e}")
+
+    if getattr(settings, 'RESEND_API_KEY', None):
+        try:
+            resend.api_key = settings.RESEND_API_KEY
+            from_email = getattr(settings, 'RESEND_FROM_EMAIL', 'onboarding@resend.dev')
+            resend.Emails.send({
+                "from": from_email,
+                "to": admin_email,
+                "subject": subject,
+                "text": body,
+            })
+            logger.info(f"Contact email sent via Resend to {admin_email}")
+            return True
+        except Exception as e:
+            logger.error(f"Resend contact error: {e}")
+
+    logger.info(f"==> CONTACT INQUIRY logged: From {sender_email} ({name}): {message_content}")
+    return True
+
+
+def send_contact_email(name, sender_email, message_content):
+    """
+    Dispatches contact form inquiries.
+    Runs asynchronously via ThreadPoolExecutor in production, synchronously in tests.
+    """
+    if _is_testing():
+        return _dispatch_contact_email_job(name, sender_email, message_content)
+    else:
+        _email_executor.submit(_dispatch_contact_email_job, name, sender_email, message_content)
+        return True
+

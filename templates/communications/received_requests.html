@@ -23,10 +23,12 @@ data-bs-toggle="dropdown">
 <ul class="dropdown-menu dropdown-menu-end">
 
 <li>
-<a class="dropdown-item text-danger"
-href="{% url 'block_user' req.sender.id %}">
-Block
-</a>
+<form method="POST" action="{% url 'block_user' req.sender.id %}" class="d-inline w-100">
+    {% csrf_token %}
+    <button type="submit" class="dropdown-item text-danger border-0 bg-transparent">
+        Block
+    </button>
+</form>
 </li>
 
 <li>
@@ -73,15 +75,19 @@ style="width:100px;height:100px;object-fit:cover;">
 
 <div class="d-grid gap-2">
 
-<a href="{% url 'update_request' req.id 'accept' %}"
-class="btn btn-success btn-sm rounded-pill">
-Accept
-</a>
+<form method="POST" action="{% url 'update_request' req.id 'accept' %}" class="d-grid">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-success btn-sm rounded-pill">
+        Accept
+    </button>
+</form>
 
-<a href="{% url 'update_request' req.id 'reject' %}"
-class="btn btn-outline-danger btn-sm rounded-pill">
-Reject
-</a>
+<form method="POST" action="{% url 'update_request' req.id 'reject' %}" class="d-grid">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill">
+        Reject
+    </button>
+</form>
 
 </div>
 

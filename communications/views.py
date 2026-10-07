@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from django.contrib import messages
-from django.shortcuts import redirect
 from datetime import date
 from django.utils import timezone
 from datetime import timedelta
@@ -16,6 +16,7 @@ from django.db import transaction
 User = get_user_model()
 
 @login_required
+@require_POST
 def send_request(request, user_id):
 
     if request.user.is_suspended:
@@ -71,6 +72,9 @@ def send_request(request, user_id):
         return redirect('profile_list')
 
     with transaction.atomic():
+        # Acquire row-level lock on sender to serialize concurrent requests and prevent quota races
+        CustomUser.objects.select_for_update().get(id=request.user.id)
+
         # Prevent duplicate requests in same direction
         if ContactRequest.objects.filter(sender=request.user, receiver=receiver, status='pending').exists():
             messages.info(request, "You have already sent a pending request to this user.")
@@ -150,6 +154,7 @@ def send_request(request, user_id):
     return redirect(request.META.get("HTTP_REFERER", "profile_list"))
 
 @login_required
+@require_POST
 def update_request(request, request_id, action):
     with transaction.atomic():
         contact_request = get_object_or_404(
@@ -191,6 +196,7 @@ def received_requests(request):
     })
 
 @login_required
+@require_POST
 def unmatch(request, user_id):
     target = get_object_or_404(CustomUser, id=user_id)
     ContactRequest.objects.filter(
@@ -208,6 +214,7 @@ def unmatch(request, user_id):
     return redirect('profile_list')
 
 @login_required
+@require_POST
 def cancel_request(request, user_id):
     ContactRequest.objects.filter(
         sender=request.user,
@@ -219,6 +226,7 @@ def cancel_request(request, user_id):
     return redirect(request.META.get('HTTP_REFERER', 'profile_list'))
 
 @login_required
+@require_POST
 def block_user(request, user_id):
 
     if request.user.is_suspended:
@@ -308,6 +316,7 @@ def blocked_users(request):
 
 
 @login_required
+@require_POST
 def unblock_user(request, user_id):
     Block.objects.filter(
         blocker=request.user,
@@ -318,6 +327,7 @@ def unblock_user(request, user_id):
     return redirect('blocked_users')
 
 @login_required
+@require_POST
 def toggle_save(request, user_id):
 
     if request.user.is_suspended:

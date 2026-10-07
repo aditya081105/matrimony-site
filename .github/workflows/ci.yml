@@ -11,6 +11,21 @@ jobs:
     name: Run Automated Tests & Static Checks
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: test_matrimony
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -38,5 +53,7 @@ jobs:
         env:
           SECRET_KEY: 'ci-secret-key-for-running-tests-safely'
           DEBUG: 'True'
+          CI: 'true'
+          DATABASE_URL: 'postgresql://postgres:postgrespassword@localhost:5432/test_matrimony'
         run: |
           python manage.py test --verbosity=2

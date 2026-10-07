@@ -62,6 +62,13 @@ class PaymentOrder(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['utr_number'],
+                condition=models.Q(utr_number__isnull=False) & ~models.Q(status='rejected'),
+                name='unique_active_utr_order'
+            )
+        ]
 
     def __str__(self):
         return f"Order #{self.id} - {self.user.username} - {self.plan.name} (₹{self.amount}) [{self.status}]"

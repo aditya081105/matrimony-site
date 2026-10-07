@@ -55,6 +55,24 @@ class PaymentTests(TestCase):
         )
         self.assertEqual(PaymentOrder.objects.filter(utr_number='987654321098').count(), 1)
 
+    def test_invalid_utr_format_rejected(self):
+        self.client.get(reverse('plans'))
+        # Too short (not 12 chars)
+        self.client.post(
+            reverse('checkout', args=['gold']),
+            {'action': 'submit_utr', 'utr_number': '12345'},
+            follow=True
+        )
+        self.assertEqual(PaymentOrder.objects.filter(utr_number='12345').count(), 0)
+
+        # Special characters
+        self.client.post(
+            reverse('checkout', args=['gold']),
+            {'action': 'submit_utr', 'utr_number': '1234567890@#'},
+            follow=True
+        )
+        self.assertEqual(PaymentOrder.objects.filter(utr_number='1234567890@#').count(), 0)
+
     def test_order_activation_updates_subscription(self):
         self.client.get(reverse('plans'))
         plan = Plan.objects.get(code='gold')

@@ -18,10 +18,12 @@
 
             {% if is_allowed %}
                 <li>
-                    <a class="dropdown-item text-danger"
-                        href="{% url 'unmatch' profile_user.id %}">
-                        Remove Match
-                    </a>
+                    <form method="POST" action="{% url 'unmatch' profile_user.id %}" class="d-inline w-100">
+                        {% csrf_token %}
+                        <button type="submit" class="dropdown-item text-danger border-0 bg-transparent">
+                            Remove Match
+                        </button>
+                    </form>
                 </li> 
             {% endif %}
 
@@ -30,28 +32,34 @@
             {% if profile_user.id in saved_ids %}
 
                 <li>
-                    <a class="dropdown-item"
-                    href="{% url 'toggle_save' profile_user.id %}">
-                    Remove Saved
-                    </a>
+                    <form method="POST" action="{% url 'toggle_save' profile_user.id %}" class="d-inline w-100">
+                        {% csrf_token %}
+                        <button type="submit" class="dropdown-item border-0 bg-transparent">
+                            Remove Saved
+                        </button>
+                    </form>
                 </li>
 
             {% else %}
 
                 <li>
-                    <a class="dropdown-item"
-                    href="{% url 'toggle_save' profile_user.id %}">
-                    Save Profile
-                    </a>
+                    <form method="POST" action="{% url 'toggle_save' profile_user.id %}" class="d-inline w-100">
+                        {% csrf_token %}
+                        <button type="submit" class="dropdown-item border-0 bg-transparent">
+                            Save Profile
+                        </button>
+                    </form>
                 </li>
 
             {% endif %}
 
             <li>
-                <a class="dropdown-item text-danger"
-                   href="{% url 'block_user' profile_user.id %}">
-                   Block
-                </a>
+                <form method="POST" action="{% url 'block_user' profile_user.id %}" class="d-inline w-100">
+                    {% csrf_token %}
+                    <button type="submit" class="dropdown-item text-danger border-0 bg-transparent">
+                        Block
+                    </button>
+                </form>
             </li>
             <li>
                 <a class="dropdown-item"
@@ -104,17 +112,21 @@
 
                 <br>
 
-                <a href="{% url 'cancel_request' profile_user.id %}"
-                class="btn btn-outline-danger rounded-pill px-4">
-                Cancel Request
-                </a>
+                <form method="POST" action="{% url 'cancel_request' profile_user.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger rounded-pill px-4">
+                        Cancel Request
+                    </button>
+                </form>
 
             {% else %}
 
-                <a href="{% url 'send_request' profile_user.id %}"
-                class="btn btn-dark rounded-pill px-4">
-                Request Contact
-                </a>
+                <form method="POST" action="{% url 'send_request' profile_user.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-dark rounded-pill px-4">
+                        Request Contact
+                    </button>
+                </form>
 
             {% endif %}
 
@@ -126,10 +138,12 @@
 
     <div class="text-center mt-4">
 
-    <a href="{% url 'unmatch' profile_user.id %}"
-    class="btn btn-outline-danger rounded-pill px-4">
-    Remove Match
-    </a>
+    <form method="POST" action="{% url 'unmatch' profile_user.id %}" class="d-inline">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-danger rounded-pill px-4">
+            Remove Match
+        </button>
+    </form>
 
     </div>
 
