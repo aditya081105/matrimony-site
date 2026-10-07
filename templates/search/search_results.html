@@ -71,8 +71,10 @@
                         {% endif %}
                     </div>
 
-                    <div class="card-body text-center p-4">
-                        <h5 class="fw-bold mb-1">{{ profile.full_name }}</h5>
+                        <h5 class="fw-bold mb-1 d-flex align-items-center justify-content-center flex-wrap gap-1">
+                            <span>{{ profile.full_name }}</span>
+                            {% include 'includes/tier_badge.html' with badge_user=profile %}
+                        </h5>
                         <p class="text-muted small mb-2">
                             {% if profile.occupation %}{{ profile.occupation }}{% else %}Profile{% endif %}
                         </p>

@@ -1,0 +1,33 @@
+{% if badge_user and badge_user.is_premium %}
+    {% with tier=badge_user.membership_tier %}
+        {% if tier == 'diamond' %}
+            <span class="badge-tier badge-tier-diamond {% if size == 'lg' %}badge-tier-lg{% endif %} {{ extra_classes }}" title="Diamond VIP Member">
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" class="badge-tier-icon">
+                    <path d="M6.93.859h2.14c.211 0 .409.096.537.26l5.6 7.2a.67.67 0 0 1-.03.88l-6.64 6.4a.67.67 0 0 1-.94 0l-6.64-6.4a.67.67 0 0 1-.03-.88l5.6-7.2a.67.67 0 0 1 .533-.26M7.5 2.14 3.03 7.89l4.47 4.31 4.47-4.31L7.5 2.14z"/>
+                </svg>
+                <span>{% if size == 'lg' %}Diamond VIP{% else %}Diamond{% endif %}</span>
+            </span>
+        {% elif tier == 'gold' %}
+            <span class="badge-tier badge-tier-gold {% if size == 'lg' %}badge-tier-lg{% endif %} {{ extra_classes }}" title="Verified Gold Member">
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" class="badge-tier-icon">
+                    <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z"/>
+                </svg>
+                <span>{% if size == 'lg' %}Gold Member{% else %}Gold{% endif %}</span>
+            </span>
+        {% elif tier == 'silver' %}
+            <span class="badge-tier badge-tier-silver {% if size == 'lg' %}badge-tier-lg{% endif %} {{ extra_classes }}" title="Verified Silver Member">
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" class="badge-tier-icon">
+                    <path d="M8 0c-.69 0-1.843.265-2.928.56-1.11.3-2.229.655-2.887.87a1.54 1.54 0 0 0-1.044 1.262c-.596 4.477.787 7.795 2.464 9.99 1.579 2.062 3.456 2.973 4.195 3.255a.76.76 0 0 0 .56 0c.74-.282 2.616-1.193 4.195-3.255 1.677-2.195 3.06-5.513 2.464-9.99a1.54 1.54 0 0 0-1.044-1.263 63 63 0 0 0-2.887-.87C9.843.266 8.69 0 8 0m2.146 5.854a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L6.854 8.56l2.646-2.647a.5.5 0 0 1 .708 0"/>
+                </svg>
+                <span>{% if size == 'lg' %}Silver Member{% else %}Silver{% endif %}</span>
+            </span>
+        {% else %}
+            <span class="badge-tier badge-tier-vip {% if size == 'lg' %}badge-tier-lg{% endif %} {{ extra_classes }}" title="VIP Member">
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" class="badge-tier-icon">
+                    <path d="M10.067.87a2.89 2.89 0 0 0-4.134 0l-.622.638-.89-.011a2.89 2.89 0 0 0-2.924 2.924l.01.89-.636.622a2.89 2.89 0 0 0 0 4.134l.637.622-.011.89a2.89 2.89 0 0 0 2.924 2.924l.89-.01.622.636a2.89 2.89 0 0 0 4.134 0l.622-.637.89.011a2.89 2.89 0 0 0 2.924-2.924l-.01-.89.636-.622a2.89 2.89 0 0 0 0-4.134l-.637-.622.011-.89a2.89 2.89 0 0 0-2.924-2.924l-.89.01zm.287 5.984-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7 8.793l2.646-2.647a.5.5 0 0 1 .708.708"/>
+                </svg>
+                <span>VIP</span>
+            </span>
+        {% endif %}
+    {% endwith %}
+{% endif %}

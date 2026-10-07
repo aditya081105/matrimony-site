@@ -115,7 +115,7 @@ def profile_list(request):
         id__in=blocked_ids
     ).exclude(
         id=request.user.id
-    ).select_related('city', 'caste_community', 'subscription')
+    ).select_related('city', 'caste_community', 'subscription', 'subscription__plan')
 
     # Opposite gender by default
     if not request.GET.get('gender') and request.user.gender:

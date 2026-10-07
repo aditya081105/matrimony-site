@@ -99,6 +99,57 @@
             font-weight: 500;
         }
 
+        /* Professional Membership Badges (Clean, Modern, No Emojis) */
+        .badge-tier {
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.35px;
+            padding: 0.22rem 0.55rem;
+            border-radius: 50rem;
+            line-height: 1.2;
+            text-transform: uppercase;
+            vertical-align: middle;
+            white-space: nowrap;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .badge-tier-icon {
+            display: inline-block;
+            margin-right: 0.28rem;
+            vertical-align: -1px;
+            flex-shrink: 0;
+        }
+        .badge-tier-lg {
+            font-size: 0.8rem;
+            padding: 0.32rem 0.8rem;
+            letter-spacing: 0.4px;
+        }
+        .badge-tier-silver {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            color: #334155 !important;
+            border: 1px solid #94a3b8;
+            box-shadow: 0 1px 3px rgba(100, 116, 139, 0.15);
+        }
+        .badge-tier-gold {
+            background: linear-gradient(135deg, #fffbeb 0%, #fde68a 100%);
+            color: #854d0e !important;
+            border: 1px solid #eab308;
+            box-shadow: 0 1px 4px rgba(202, 138, 4, 0.22);
+        }
+        .badge-tier-diamond {
+            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+            color: #0369a1 !important;
+            border: 1px solid #38bdf8;
+            box-shadow: 0 1px 4px rgba(2, 132, 199, 0.25);
+        }
+        .badge-tier-vip {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            color: #991b1b !important;
+            border: 1px solid #f87171;
+            box-shadow: 0 1px 3px rgba(185, 28, 28, 0.15);
+        }
+
         .logo-font {
             font-family: 'Playfair Display', serif;
             letter-spacing: 0.5px;
@@ -134,8 +185,8 @@
             {% if user.is_authenticated %}
 
             {% if user.is_premium %}
-                <span class="badge bg-white text-danger rounded-pill me-2 px-2 py-1 small fw-bold d-none d-md-inline-block">
-                    VIP
+                <span class="me-2 d-none d-md-inline-block">
+                    {% include 'includes/tier_badge.html' with badge_user=user %}
                 </span>
             {% endif %}
 

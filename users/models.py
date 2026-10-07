@@ -84,6 +84,26 @@ class CustomUser(AbstractUser):
         except Exception:
             return False
 
+    @property
+    def membership_tier(self):
+        try:
+            if hasattr(self, 'subscription') and self.subscription.is_valid:
+                sub = self.subscription
+                if sub.plan and sub.plan.code:
+                    return sub.plan.code.lower()
+                pt = (sub.plan_type or '').lower()
+                if 'silver' in pt:
+                    return 'silver'
+                elif 'gold' in pt:
+                    return 'gold'
+                elif 'diamond' in pt:
+                    return 'diamond'
+                elif pt and pt != 'free':
+                    return 'vip'
+        except Exception:
+            pass
+        return None
+
     def __str__(self):
         return self.username
 

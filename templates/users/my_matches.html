@@ -66,8 +66,9 @@
                 </a>
 
                 <!-- NAME -->
-                <h6 class="fw-semibold mb-1">
-                    {{ user.full_name }}
+                <h6 class="fw-semibold mb-1 d-flex align-items-center justify-content-center flex-wrap gap-1">
+                    <span>{{ user.full_name }}</span>
+                    {% include 'includes/tier_badge.html' with badge_user=user %}
                 </h6>
 
                 <!-- OCCUPATION -->

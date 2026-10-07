@@ -30,7 +30,7 @@ def search_view(request):
             Q(city__name__icontains=query) |
             Q(caste_community__name__icontains=query) |
             Q(bio__icontains=query)
-        ).select_related('city', 'caste_community', 'subscription').distinct()
+        ).select_related('city', 'caste_community', 'subscription', 'subscription__plan').distinct()
 
     return render(request, 'search/search_results.html', {
         'query': query,

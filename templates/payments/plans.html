@@ -14,10 +14,12 @@
         </p>
 
         {% if user_sub and user_sub.is_valid %}
-            <div class="alert alert-success d-inline-block px-4 py-2 rounded-pill mt-2">
-                <strong>Active Membership:</strong> {{ user_sub.plan_type }} 
+            <div class="alert alert-success d-inline-flex align-items-center flex-wrap gap-2 px-4 py-2 rounded-pill mt-2">
+                <strong>Active Membership:</strong>
+                <span>{{ user_sub.plan_type }}</span>
+                {% include 'includes/tier_badge.html' with badge_user=request.user %}
                 {% if user_sub.expires_at %}
-                    (Valid until {{ user_sub.expires_at|date:"M d, Y" }})
+                    <span class="text-muted small ms-1">(Valid until {{ user_sub.expires_at|date:"M d, Y" }})</span>
                 {% endif %}
             </div>
         {% endif %}
@@ -38,7 +40,25 @@
                 <div class="card-body p-4 p-xl-5 d-flex flex-column">
                     <div class="mb-3">
                         <h4 class="fw-bold mb-1">{{ plan.name }}</h4>
-                        <span class="text-muted small">{{ plan.duration_days }} Days Validity</span>
+                        <div class="d-flex align-items-center gap-2 flex-wrap mt-1">
+                            <span class="text-muted small">{{ plan.duration_days }} Days Validity</span>
+                            {% if plan.code == 'silver' %}
+                                <span class="badge-tier badge-tier-silver">
+                                    <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" class="badge-tier-icon"><path d="M8 0c-.69 0-1.843.265-2.928.56-1.11.3-2.229.655-2.887.87a1.54 1.54 0 0 0-1.044 1.262c-.596 4.477.787 7.795 2.464 9.99 1.579 2.062 3.456 2.973 4.195 3.255a.76.76 0 0 0 .56 0c.74-.282 2.616-1.193 4.195-3.255 1.677-2.195 3.06-5.513 2.464-9.99a1.54 1.54 0 0 0-1.044-1.263 63 63 0 0 0-2.887-.87C9.843.266 8.69 0 8 0m2.146 5.854a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L6.854 8.56l2.646-2.647a.5.5 0 0 1 .708 0"/></svg>
+                                    Silver Badge
+                                </span>
+                            {% elif plan.code == 'gold' %}
+                                <span class="badge-tier badge-tier-gold">
+                                    <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" class="badge-tier-icon"><path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z"/></svg>
+                                    Gold Badge
+                                </span>
+                            {% elif plan.code == 'diamond' %}
+                                <span class="badge-tier badge-tier-diamond">
+                                    <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" class="badge-tier-icon"><path d="M6.93.859h2.14c.211 0 .409.096.537.26l5.6 7.2a.67.67 0 0 1-.03.88l-6.64 6.4a.67.67 0 0 1-.94 0l-6.64-6.4a.67.67 0 0 1-.03-.88l5.6-7.2a.67.67 0 0 1 .533-.26M7.5 2.14 3.03 7.89l4.47 4.31 4.47-4.31L7.5 2.14z"/></svg>
+                                    Diamond VIP
+                                </span>
+                            {% endif %}
+                        </div>
                     </div>
 
                     <div class="my-3">

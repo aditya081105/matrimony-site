@@ -22,7 +22,10 @@
                 <span class="text-muted small text-uppercase fw-bold">Current Status</span>
                 <div class="d-flex align-items-center gap-2 mt-1">
                     {% if user_sub and user_sub.is_valid %}
-                        <h4 class="fw-bold mb-0 text-success">Active Member ({{ user_sub.plan_type }})</h4>
+                        <h4 class="fw-bold mb-0 text-dark d-flex align-items-center flex-wrap gap-2">
+                            <span>Active Member ({{ user_sub.plan_type }})</span>
+                            {% include 'includes/tier_badge.html' with badge_user=request.user size='lg' %}
+                        </h4>
                         <span class="badge bg-success rounded-pill px-3 py-1">Active</span>
                     {% else %}
                         <h4 class="fw-bold mb-0 text-secondary">Free Tier Account</h4>

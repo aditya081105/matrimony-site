@@ -81,7 +81,10 @@
              style="width:160px;height:160px;object-fit:cover;">
         {% endif %}
 
-        <h3 class="fw-bold mb-1">{{ profile_user.full_name }}</h3>
+        <div class="d-flex align-items-center justify-content-center flex-wrap gap-2 mb-1">
+            <h3 class="fw-bold mb-0">{{ profile_user.full_name }}</h3>
+            {% include 'includes/tier_badge.html' with badge_user=profile_user size='lg' %}
+        </div>
 
         <p class="text-muted">
             {{ profile_user.occupation|default:"Occupation not specified" }}
