@@ -25,5 +25,5 @@ COPY . /app/
 # Expose Django port
 EXPOSE 8000
 
-# Default command to run Django development server
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# Default command to run Django WSGI server via Gunicorn
+CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]

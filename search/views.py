@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db.models import Q
 from users.models import CustomUser
 from communications.models import Block
@@ -32,9 +33,13 @@ def search_view(request):
             Q(sub_caste__icontains=query) |
             Q(caste_community__name__icontains=query) |
             Q(bio__icontains=query)
-        ).select_related('city', 'caste_community', 'subscription', 'subscription__plan').distinct()
+        ).select_related('profile', 'city', 'caste_community', 'subscription', 'subscription__plan').order_by('-date_joined').distinct()
+
+    paginator = Paginator(profiles, 12)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
 
     return render(request, 'search/search_results.html', {
         'query': query,
-        'profiles': profiles,
+        'page_obj': page_obj,
+        'profiles': page_obj,
     })

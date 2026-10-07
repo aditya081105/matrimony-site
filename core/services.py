@@ -3,7 +3,7 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from django.conf import settings
 from django.core.mail import send_mail
-from django.core.signing import Signer
+from django.core.signing import TimestampSigner
 from django.urls import reverse
 import resend
 
@@ -74,7 +74,7 @@ def send_verification_email(request, user):
     In testing: executes synchronously for deterministic assertions.
     In production: executes asynchronously via ThreadPoolExecutor so HTTP workers are never blocked.
     """
-    signer = Signer()
+    signer = TimestampSigner()
     token = signer.sign(user.id)
     verify_link = request.build_absolute_uri(
         reverse("verify_email", args=[token])

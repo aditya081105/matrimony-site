@@ -11,8 +11,8 @@ from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import logout
 from communications.models import Block, ContactRequest, ActivityLog, Report, SavedProfile
-from django.http import HttpResponse
-from django.core.signing import Signer
+from django.http import HttpResponse, Http404
+from django.core.signing import TimestampSigner, BadSignature, SignatureExpired
 from django.conf import settings
 
 from django.contrib.admin.views.decorators import staff_member_required
@@ -184,9 +184,6 @@ def profile_list(request):
 
     return render(request, 'users/profile_list.html', context)
 
-def contact_view(request):
-    return render(request, 'users/contact.html')
-
 def home(request):
     is_incomplete = False
 
@@ -247,10 +244,12 @@ def my_matches(request):
     matches = ContactRequest.objects.filter(
         status='accepted'
     ).filter(
-        sender=request.user
-    ) | ContactRequest.objects.filter(
-        status='accepted',
-        receiver=request.user
+        Q(sender=request.user) | Q(receiver=request.user)
+    ).select_related(
+        'sender', 'receiver',
+        'sender__city', 'receiver__city',
+        'sender__subscription', 'receiver__subscription',
+        'sender__subscription__plan', 'receiver__subscription__plan'
     )
 
     matched_users = []
@@ -284,6 +283,11 @@ def my_matches(request):
 def view_profile(request, user_id):
 
     profile_user = get_object_or_404(CustomUser, id=user_id)
+
+    # Security: unapproved profiles must not be exposed to other non-staff users
+    if not profile_user.is_approved and not request.user.is_staff and profile_user != request.user:
+        messages.error(request, "This profile is pending approval.")
+        return redirect("profile_list")
 
     if profile_user.is_suspended:
         messages.error(request, "Profile unavailable.")
@@ -399,63 +403,73 @@ def admin_reject_user(request, user_id):
 
 def contact_view(request):
     if request.method == "POST":
-        name = request.POST.get("name")
-        email = request.POST.get("email")
-        message = request.POST.get("message")
+        name = request.POST.get("name", "").strip()
+        email = request.POST.get("email", "").strip()
+        message = request.POST.get("message", "").strip()
 
-        try:
-            resend.api_key = settings.RESEND_API_KEY
+        if not name or not email or not message:
+            messages.error(request, "Please fill in all fields.")
+            return render(request, "users/contact.html")
 
-            resend.Emails.send({
-                "from": "onboarding@resend.dev",
-                "to": "aditya08112005@gmail.com",
-                "subject": f"Contact Form - {name}",
-                "text": f"""
-        Name: {name}
-        Email: {email}
+        subject = f"Contact Form Inquiry - {name}"
+        body = f"Name: {name}\nEmail: {email}\n\nMessage:\n{message}"
+        admin_email = getattr(settings, 'EMAIL_HOST_USER', None) or "aditya08112005@gmail.com"
 
-        Message:
-        {message}
-        """
-            })
+        sent = False
+        if getattr(settings, 'EMAIL_HOST_USER', None):
+            try:
+                from django.core.mail import send_mail
+                send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [admin_email], fail_silently=False)
+                sent = True
+            except Exception as e:
+                print(f"SMTP contact error: {e}")
 
+        if not sent and getattr(settings, 'RESEND_API_KEY', None):
+            try:
+                import resend
+                resend.api_key = settings.RESEND_API_KEY
+                resend.Emails.send({
+                    "from": getattr(settings, 'RESEND_FROM_EMAIL', 'onboarding@resend.dev'),
+                    "to": admin_email,
+                    "subject": subject,
+                    "text": body
+                })
+                sent = True
+            except Exception as e:
+                print(f"Resend contact error: {e}")
+
+        if sent:
             return render(request, "users/contact.html", {"success": True})
-
-        except Exception:
-            messages.error(request, "Unable to send message right now.")
+        else:
+            messages.error(request, "Unable to send message right now. Please try again later.")
             return redirect("contact_us")
-
-        return render(request, "users/contact.html", {"success": True})
 
     return render(request, "users/contact.html")
 
-from django.core.signing import BadSignature
 
 def verify_email(request, token):
-
-    signer = Signer()
+    signer = TimestampSigner()
 
     try:
-        user_id = signer.unsign(token)
-
+        user_id = signer.unsign(token, max_age=86400)  # Valid for 24 hours
         user = CustomUser.objects.get(id=user_id)
 
         if user.is_email_verified:
             messages.success(request, "Email already verified.")
-            return redirect("edit_profile")
+            return redirect("home")
 
         user.is_email_verified = True
-        user.save()
-
+        user.save(update_fields=['is_email_verified'])
         messages.success(request, "Email verified successfully.")
-
         return redirect("home")
 
-    except BadSignature:
-        return HttpResponse("Invalid or expired link")
+    except SignatureExpired:
+        messages.error(request, "This verification link has expired (valid for 24 hours). Please request a new one.")
+        return redirect("resend_verification")
 
-    except CustomUser.DoesNotExist:
-        return HttpResponse("User not found")
+    except (BadSignature, CustomUser.DoesNotExist):
+        messages.error(request, "Invalid or unrecognized verification link.")
+        return redirect("home")
     
 @login_required
 def resend_verification_email(request):

@@ -98,14 +98,35 @@ def send_request(request, user_id):
             return redirect(request.META.get("HTTP_REFERER", "profile_list"))
 
         today = timezone.now().date()
-        daily_attempts = RequestAttempt.objects.filter(
+        total_daily_attempts = RequestAttempt.objects.filter(
+            sender=request.user,
+            created_at__date=today
+        ).count()
+
+        receiver_daily_attempts = RequestAttempt.objects.filter(
             sender=request.user,
             receiver=receiver,
             created_at__date=today
         ).count()
 
-        if not request.user.is_premium and daily_attempts >= 3:
-            messages.error(request, "Daily request limit reached for this user. Upgrade to Premium for unlimited requests.")
+        if receiver_daily_attempts >= 3:
+            messages.error(request, f"You have reached the daily limit of 3 contact attempts for this member.")
+            return redirect('profile_list')
+
+        tier = (request.user.membership_tier or '').lower()
+        if not request.user.is_premium:
+            daily_limit = 3
+        elif tier == 'silver':
+            daily_limit = 10
+        else:
+            daily_limit = 999999
+
+        if total_daily_attempts >= daily_limit:
+            tier_name = "Silver" if tier == "silver" else "Free"
+            messages.error(
+                request,
+                f"Daily contact request limit of {daily_limit} reached for your {tier_name} plan. Upgrade to Gold for unlimited requests."
+            )
             return redirect('profile_list')
 
         RequestAttempt.objects.create(
@@ -116,7 +137,7 @@ def send_request(request, user_id):
         ContactRequest.objects.update_or_create(
             sender=request.user,
             receiver=receiver,
-            defaults={'status': 'pending', 'attempt_count': daily_attempts + 1}
+            defaults={'status': 'pending', 'attempt_count': receiver_daily_attempts + 1}
         )
 
         ActivityLog.objects.create(

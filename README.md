@@ -1,74 +1,79 @@
 # Siwan Matrimony
 
-[![Django CI/CD Pipeline](https://github.com/aditya081105/matrimony-site/actions/workflows/django.yml/badge.svg)](https://github.com/aditya081105/matrimony-site/actions/workflows/django.yml)
+[![Django CI Pipeline](https://github.com/aditya081105/matrimony-site/actions/workflows/ci.yml/badge.svg)](https://github.com/aditya081105/matrimony-site/actions/workflows/ci.yml)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/)
 [![Django 6.0](https://img.shields.io/badge/Django-6.0-green.svg)](https://www.djangoproject.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon%20Cloud-blue.svg)](https://neon.tech/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
-A high-concurrency, enterprise-grade matrimonial platform engineered with Django 6, PostgreSQL, and Bootstrap 5. Designed for localized community scale with bi-directional relationship matching, dynamic NPCI-compliant UPI QR subscription billing, asynchronous task processing, cache-aside data retrieval, and distributed request tracing.
+A full-stack community matrimonial web platform built with Django 6, PostgreSQL, and Bootstrap 5. Designed for localized community networking with mutual interest matching, privacy controls, manual UPI QR verification flow, transactional email alerts, and cache-aside read optimization.
 
 **Live Production URL:** [https://siwan-matrimony.onrender.com/](https://siwan-matrimony.onrender.com/)
 
 ---
 
-## Architecture & Engineering Highlights
+## Technical Overview & Key Implementations
 
-This platform is engineered to meet Tier-1 production standards, focusing on high availability, database query efficiency, and concurrency safeguards.
+### 1. Database Concurrency Control & Transactions
+- **Atomic State Transitions:** Critical business logic (interest acceptance, mutual auto-matching, subscription activation) is wrapped inside `transaction.atomic()` blocks.
+- **Row-Level Locking:** Uses `select_for_update()` on `ContactRequest` and `Subscription` models to prevent race conditions and duplicate state mutations when concurrent actions occur on the same record.
 
-### 1. ACID Transactions & Concurrency Safeguards
-- **Row-Level Locking:** Uses PostgreSQL `select_for_update()` during contact request state transitions and subscription upgrades to eliminate double-submit and race-condition vulnerabilities.
-- **Atomic Operations:** Critical business logic (request acceptance, wallet/quota consumption, order verification) is strictly encapsulated within `transaction.atomic()` boundaries.
-
-### 2. Decoupled Asynchronous Worker Queue
-- **Non-Blocking HTTP Cycle:** Offloads external I/O (transactional email dispatch via Gmail SMTP / Resend API) to a background `ThreadPoolExecutor` worker pool.
-- **Latency Optimization:** User-facing HTTP requests complete in **~30ms**, completely preventing Gunicorn worker thread starvation during third-party network latency.
-- **Deterministic Testing:** Automatically falls back to synchronous execution during unit test runs to ensure 100% deterministic assertions.
-
-### 3. Database Optimization & Compound B-Tree Indexing
-- **Compound Indexes:** High-frequency filter vectors are indexed using multi-column B-Trees:
+### 2. Query Optimization & Indexing
+- **N+1 Prevention:** Views make extensive use of `select_related()` (for `Profile`, `City`, `Caste`, `Subscription`) and `prefetch_related()` across relational lookups to keep query counts bounded. Unit tests enforce this via `assertNumQueries` and `CaptureQueriesContext`.
+- **Compound B-Tree Indexing:** Multi-column indexes target frequent filter vectors:
   - `user_match_idx`: `(is_active, is_approved, is_suspended, gender)`
   - `user_city_gender_idx`: `(city, gender)`
   - `user_caste_gender_idx`: `(caste, gender)`
   - `req_receiver_status_idx`: `(receiver, status)`
-- **Zero N+1 Queries:** Database queries utilize `select_related()` and `prefetch_related()` across profile relations (`Profile`, `City`, `Caste`, `Subscription`, `Plan`). Bounded query counts are validated through automated `CaptureQueriesContext` assertions.
+- **Search Ordering & Pagination:** Search queries enforce explicit ordering (`-date_joined`) with server-side pagination (12 profiles per page) to prevent unindexed unbounded result sets.
 
-### 4. High-Performance Caching (Cache-Aside Pattern)
-- **Sub-Millisecond Read Paths:** Frequently read metadata (Cities, Castes, Active Membership Plans) are served through a Cache-Aside layer.
-- **Event-Driven Invalidation:** Automated Django `post_save` and `post_delete` signals purge stale cache keys the instant an administrator modifies pricing or taxonomy data.
+### 3. Caching (Cache-Aside Pattern)
+- Frequently read, infrequently modified taxonomy data (Cities, Castes, Active Membership Plans) utilizes a cache-aside pattern with automatic signal-based invalidation (`post_save` and `post_delete` signals) ensuring stale data is evicted immediately upon admin updates.
 
-### 5. Enterprise Observability & Tracing
-- **Request Tracing Middleware:** Injects a unique `X-Request-ID` UUID into every HTTP request and response header.
-- **Latency Tracking:** Logs structured performance telemetry (HTTP method, URI, status code, latency in milliseconds, user identification) for auditability and distributed log correlation.
+### 4. Background Email Processing
+- **Decoupled Delivery:** Transactional emails (welcome messages, contact inquiries, verification links) are offloaded to an in-process `ThreadPoolExecutor` worker pool, preventing third-party SMTP/API latency from degrading user HTTP response times (~30ms response cycle).
+- **Test Fallback:** Automatically switches to synchronous execution during automated test runs to maintain deterministic assertions.
 
-### 6. Automated CI/CD Pipeline
-- **GitHub Actions Integration:** Full test suite execution, Django system checks, and dependency audits trigger on every push and pull request to `main`.
+### 5. Security & Verification
+- **Expiring Email Verification:** Verification links use Django's `TimestampSigner` with a 24-hour expiration window (`max_age=86400`) and rate-limiting cooldown to prevent verification link reuse or flooding.
+- **Payment Reference Integrity:** UPI UTR submissions enforce 12-character alphanumeric format validation and reject duplicate UTR numbers across existing non-rejected orders.
+- **Profile Access Gate:** Public profile viewing verifies that the targeted user has been approved by administrators before revealing details.
+- **Bidirectional Privacy:** Blocking isolates both users symmetrically across searches, recommendations, and messaging paths.
+
+---
+
+## Architecture Trade-offs & Known Bottlenecks
+
+This project was built to address real-world community matrimonial needs with practical trade-offs. Below is an honest engineering evaluation of current design choices and how they would evolve under higher scale:
+
+### 1. In-Process Worker Pool vs. Distributed Task Queue
+- **Current State:** Transactional emails run in an in-memory `ThreadPoolExecutor` (3 workers) inside the web process.
+- **Trade-off:** Minimal infrastructure footprint and zero Redis dependency, but jobs lack persistence across process restarts, retry policies, or centralized queue monitoring.
+- **Scale Path:** For multi-instance deployments or higher traffic, transition to Celery or RQ backed by Redis with exponential backoff and dead-letter queues.
+
+### 2. Django Filter Search vs. Dedicated Search Engine
+- **Current State:** The search view combines multiple field filters using Django `Q()` objects across names, occupations, castes, and cities.
+- **Trade-off:** Works well for thousands of profiles without additional service dependencies, but multi-column `icontains` queries require table scans as dataset sizes grow.
+- **Scale Path:** Adopt PostgreSQL Full-Text Search (`SearchVector`, trigram indexing via `pg_trgm`) or an external search engine (Meilisearch or Elasticsearch) for fuzzy matching and relevance scoring.
+
+### 3. Offline UPI QR Flow vs. Payment Gateway Webhooks
+- **Current State:** NPCI-compliant UPI QR codes are rendered dynamically with encoded order tags; users submit their bank UTR for manual admin verification.
+- **Trade-off:** Completely eliminates 2-3% payment gateway transaction fees and merchant onboarding friction for a non-profit community platform, but requires human review.
+- **Scale Path:** Implement automated payment gateway webhooks (Razorpay / Cashfree) backed by an idempotency key and a strict payment status state machine.
+
+### 4. Cache Backend Scope
+- **Current State:** Cache-aside operates using Django's default cache framework backend.
+- **Trade-off:** Zero external service configuration required for local development and single-dyno hosting.
+- **Scale Path:** In multi-container environments, swap the backend to shared Redis/Memcached so cache invalidations are synchronized across all web instances.
 
 ---
 
 ## Core Platform Features
 
-### Authentication & Profile Trust
-- **Custom User Model:** Built on `CustomUser` (extending `AbstractUser`) with strict phone number validation against authentic Indian telecom series (`^[6-9]\d{9}$`).
-- **Cryptographic Email Verification:** Tokenized, signed verification links with session-level 60-second rate-limiting to prevent quota abuse.
-- **Cloudinary CDN Integration:** Secure photo uploads with automatic face-detection cropping, responsive variants, and WebP delivery.
-- **Open Taxonomy:** Free-text Caste and Sub-Caste (Gotra) fields tailored to local community nuances without rigid drop-down constraints.
-
-### Matchmaking & Discovery
-- **Localized Bilingual UI:** Seamless English and Hindi toggle with custom translation persistence.
-- **Search Engine:** Multi-field search querying across names, occupations, cities, castes, and bio content.
-- **Deterministic Pagination:** Ordered result sets ensuring consistent pagination across all filter combinations.
-
-### Contact Requests & Privacy
-- **Privacy Shield:** Personal contact numbers and sensitive details remain locked until contact requests are mutually approved or unlocked via premium membership.
-- **Anti-Spam Daily Limits:** Free-tier accounts are restricted to 3 contact attempts per day.
-- **Bi-Directional Blocking:** Mutual privacy isolation—blocking prevents both parties from viewing each other in search results, matchmaking, or direct messaging.
-- **Abuse Reporting:** Community moderation queue with automated suspension thresholds.
-
-### UPI QR Payment & Subscription Engine
-- **NPCI UPI QR Code Generation:** Real-time generation of `upi://pay` QR codes with encoded merchant IDs, order reference tags, and precise plan prices for Google Pay, PhonePe, Paytm, and BHIM.
-- **12-Digit UTR Tracking:** Users submit their bank UPI transaction reference (UTR) for administrative verification.
-- **Automated Lifecycle Management:** Multi-tier membership management (**Silver**, **Gold**, **Diamond VIP**) with automated expiration, renewal extensions, and tier badges.
+- **Authentication & Profiles:** Custom user model extending `AbstractUser`, phone number validation against Indian telecom numbering (`^[6-9]\d{9}$`), Cloudinary image management, and time-stamped email verification.
+- **Matchmaking & Discovery:** Filter by age, height, city, and caste. Mutual interest matching automatically detects reciprocal requests and creates match connections.
+- **Privacy & Rate Limiting:** Sensitive contact details are shielded until mutual approval. Free users are throttled to 3 requests/day across profiles, Silver members to 10/day, and Gold members enjoy unlimited requests, with an additional per-target throttle of 3 attempts/day.
+- **UPI Subscriptions:** Tiered plans (Silver, Gold, Diamond VIP) with dynamic QR codes, 12-character UTR submission, duplicate prevention, and row-locked subscription activation.
 
 ---
 
@@ -78,21 +83,20 @@ This platform is engineered to meet Tier-1 production standards, focusing on hig
 | :--- | :--- |
 | **Backend** | Python 3.12 / 3.13, Django 6.0 |
 | **Database** | PostgreSQL (Neon Cloud Serverless), dj-database-url |
-| **Concurrency & Workers** | Python `concurrent.futures`, Django Signals, Database Row Locks |
-| **Caching** | Django Cache Framework (Cache-Aside Pattern) |
-| **Observability** | Custom `RequestIDMiddleware`, Structured Logging |
-| **Media & CDN** | Cloudinary CDN Storage |
-| **Static Delivery** | WhiteNoise |
-| **Email Infrastructure** | Gmail SMTP / Resend API |
-| **CI/CD** | GitHub Actions (`.github/workflows/django.yml`) |
-| **Containerization** | Docker, Docker Compose |
-| **Frontend** | Django Templates, Bootstrap 5.3, Inter & Playfair Display typography |
+| **Concurrency & Workers** | Python `concurrent.futures`, Django `transaction.atomic()`, Row Locks (`select_for_update`) |
+| **Caching** | Django Cache Framework (Cache-Aside with signal-based invalidation) |
+| **Observability** | Custom `RequestIDMiddleware`, structured logging with `X-Request-ID` telemetry |
+| **Media & Assets** | Cloudinary CDN Storage, WhiteNoise |
+| **Email Delivery** | Gmail SMTP / Resend API |
+| **CI/CD** | GitHub Actions (`.github/workflows/ci.yml`) |
+| **Containerization** | Docker (Gunicorn WSGI), Docker Compose |
+| **Frontend** | Django Templates, Bootstrap 5.3 |
 
 ---
 
 ## Quickstart & Local Setup
 
-### Option A: Running with Docker (Recommended)
+### Option A: Running with Docker
 
 ```bash
 # 1. Clone repository
@@ -148,13 +152,14 @@ python manage.py runserver
 
 ## Automated Test Suite
 
-The test suite contains **32 automated tests** covering:
-- Authentication, phone validation, and user model constraints.
-- Email verification cooldown rate-limiting.
-- Concurrency locks, transaction atomicity, and request workflows.
+The test suite contains **36 automated tests** covering:
+- Authentication constraints, phone regex checks, and unapproved profile access security.
+- Expiring token email verification via `TimestampSigner` and rate-limiting cooldown.
+- Mutual request matching, bidirectional blocking, and daily request quota enforcement across membership tiers.
 - Reverse OneToOne `select_related` query bounding (`assertNumQueries` / `CaptureQueriesContext`).
-- Cache-Aside hit/miss lifecycle and signal-based invalidation.
-- Membership order creation, UPI UTR verification, and tier lifecycle transitions.
+- Cache-aside hit/miss lifecycle and signal-driven cache invalidation.
+- Membership order creation, 12-character UTR validation, duplicate UTR rejection, and subscription lifecycle transitions.
+- Concurrency test scaffolding using `TransactionTestCase` and `@skipUnlessDBFeature('has_select_for_update')`.
 
 ```bash
 python manage.py test
@@ -170,8 +175,6 @@ python manage.py test
 
 ---
 
-## License & Commercial Notice
+## License
 
 This project is licensed under the **GNU General Public License v3.0** - see the [LICENSE](LICENSE) file for details.
-
-> **Notice:** Commercial resale, unauthorized repackaging, or redistributing this codebase on digital asset marketplaces (Envato, Codester, Fiverr) without explicit permission is strictly prohibited and subject to DMCA takedown action.

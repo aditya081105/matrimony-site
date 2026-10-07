@@ -184,3 +184,46 @@ class UserModelTest(TestCase):
 
         # Profile queries must be bounded and not suffer from per-row N+1 explosion
         self.assertLessEqual(len(queries), 15)
+
+    def test_view_profile_unapproved_access_blocked(self):
+        from django.urls import reverse
+
+        unapproved = User.objects.create_user(
+            username="unapproved_target",
+            password="TestPass123!",
+            is_approved=False,
+            is_email_verified=True,
+            gender='F'
+        )
+
+        viewer = User.objects.create_user(
+            username="normal_viewer",
+            password="TestPass123!",
+            is_approved=True,
+            is_email_verified=True,
+            gender='M'
+        )
+
+        self.client.login(username="normal_viewer", password="TestPass123!")
+        response = self.client.get(reverse('view_profile', args=[unapproved.id]))
+        # Must redirect back to profile list and not expose details
+        self.assertEqual(response.status_code, 302)
+
+    def test_verify_email_with_timestamp_signer(self):
+        from django.urls import reverse
+        from django.core.signing import TimestampSigner
+
+        unverified = User.objects.create_user(
+            username="signer_test_user",
+            password="TestPass123!",
+            is_approved=True,
+            is_email_verified=False
+        )
+
+        signer = TimestampSigner()
+        valid_token = signer.sign(unverified.id)
+
+        response = self.client.get(reverse('verify_email', args=[valid_token]))
+        self.assertEqual(response.status_code, 302)
+        unverified.refresh_from_db()
+        self.assertTrue(unverified.is_email_verified)

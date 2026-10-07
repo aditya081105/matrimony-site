@@ -40,6 +40,21 @@ class PaymentTests(TestCase):
         self.assertIsNotNone(order)
         self.assertEqual(order.status, 'pending')
 
+    def test_duplicate_utr_rejected(self):
+        self.client.get(reverse('plans'))
+        self.client.post(
+            reverse('checkout', args=['gold']),
+            {'action': 'submit_utr', 'utr_number': '987654321098'},
+            follow=True
+        )
+        # Attempt duplicate
+        self.client.post(
+            reverse('checkout', args=['gold']),
+            {'action': 'submit_utr', 'utr_number': '987654321098'},
+            follow=True
+        )
+        self.assertEqual(PaymentOrder.objects.filter(utr_number='987654321098').count(), 1)
+
     def test_order_activation_updates_subscription(self):
         self.client.get(reverse('plans'))
         plan = Plan.objects.get(code='gold')

@@ -1,6 +1,7 @@
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase, Client, skipUnlessDBFeature
+from django.db import connection
 from django.urls import reverse
-
+import threading
 from users.models import CustomUser, City
 from communications.models import (
     Block,
@@ -171,3 +172,64 @@ class CommunicationTests(TestCase):
         SavedProfile.objects.create(user=self.user2, saved_user=self.user1)
         self.client.get(reverse("block_user", args=[self.user2.id]))
         self.assertEqual(SavedProfile.objects.count(), 0)
+
+
+@skipUnlessDBFeature('has_select_for_update')
+class CommunicationConcurrencyTests(TransactionTestCase):
+    def setUp(self):
+        self.city = City.objects.create(name="Delhi")
+        self.user1 = CustomUser.objects.create_user(
+            username="concurrent_user1",
+            email="concurrent1@test.com",
+            password="Test12345!",
+            full_name="User One",
+            gender="M",
+            phone_number="9999999991",
+            is_approved=True,
+            is_email_verified=True,
+            date_of_birth="2000-01-01",
+            height_cm=170,
+            city=self.city,
+            profile_photo="test.jpg",
+        )
+        self.user2 = CustomUser.objects.create_user(
+            username="concurrent_user2",
+            email="concurrent2@test.com",
+            password="Test12345!",
+            full_name="User Two",
+            gender="F",
+            phone_number="8888888882",
+            is_approved=True,
+            is_email_verified=True,
+            date_of_birth="2000-01-01",
+            height_cm=165,
+            city=self.city,
+            profile_photo="test.jpg",
+        )
+
+    def test_concurrent_send_request_thread_safety(self):
+        errors = []
+        clients = []
+        for _ in range(2):
+            c = Client()
+            c.force_login(self.user1)
+            clients.append(c)
+
+        def attempt_send(c):
+            try:
+                c.post(reverse("send_request", args=[self.user2.id]))
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                errors.append(e)
+            finally:
+                connection.close()
+
+        threads = [threading.Thread(target=attempt_send, args=(clients[i],)) for i in range(2)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        self.assertEqual(errors, [])
+        self.assertEqual(ContactRequest.objects.filter(sender=self.user1, receiver=self.user2).count(), 1)

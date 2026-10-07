@@ -34,7 +34,7 @@ jobs:
         run: |
           python manage.py collectstatic --noinput
 
-      - name: Run Test Suite (24 Tests)
+      - name: Run Automated Test Suite
         env:
           SECRET_KEY: 'ci-secret-key-for-running-tests-safely'
           DEBUG: 'True'

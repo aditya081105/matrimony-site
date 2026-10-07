@@ -75,9 +75,21 @@ def checkout_view(request, plan_code):
         action = request.POST.get('action', 'submit_utr')
         utr_number = request.POST.get('utr_number', '').strip()
 
-        # UPI UTR submission
-        if not utr_number or len(utr_number) < 6:
+        # UPI UTR submission validation (alphanumeric, valid reference length)
+        if not utr_number or len(utr_number) < 8 or len(utr_number) > 22 or not utr_number.isalnum():
             messages.error(request, "Please enter a valid 12-digit UPI reference (UTR) number.")
+            return render(request, 'payments/checkout.html', {
+                'plan': plan,
+                'upi_id': upi_id,
+                'upi_name': upi_name,
+                'upi_uri': upi_uri,
+                'qr_code_url': qr_code_url,
+                'custom_qr_image': custom_qr_image,
+            })
+
+        # Prevent duplicate UTR submission across active/pending orders
+        if PaymentOrder.objects.filter(utr_number=utr_number).exclude(status='rejected').exists():
+            messages.error(request, "This UPI reference (UTR) number has already been submitted for verification.")
             return render(request, 'payments/checkout.html', {
                 'plan': plan,
                 'upi_id': upi_id,
