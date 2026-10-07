@@ -15,7 +15,7 @@ def ensure_default_plans():
             price=199.00,
             duration_days=30,
             badge_label='',
-            features="Send up to 10 requests per day\nDirect profile contact unlock (5 per month)\nVerified Silver badge on profile\nStandard customer support",
+            features="Send up to 10 requests per day\nVerified Silver badge on profile\nHighlighted profile visibility\nStandard customer support",
         )
         Plan.objects.create(
             code='gold',
@@ -23,7 +23,7 @@ def ensure_default_plans():
             price=399.00,
             duration_days=90,
             badge_label='Popular',
-            features="Unlimited contact requests\nDirectly unlock phone & email on all profiles\nVerified Gold badge on profile\nBoosted search & matchmaking visibility\nPriority customer support",
+            features="Unlimited contact requests\nVerified Gold badge on profile\nBoosted search & matchmaking visibility\nPriority customer support",
         )
         Plan.objects.create(
             code='diamond',
@@ -31,7 +31,7 @@ def ensure_default_plans():
             price=699.00,
             duration_days=180,
             badge_label='Best Value',
-            features="All Gold features included\nTop-of-the-list profile placement\nElite Diamond badge on profile\nUnlimited contact views\nRelationship manager profile review",
+            features="All Gold features included\nTop-of-the-list profile placement\nElite Diamond badge on profile\nRelationship manager profile review",
         )
 
 
@@ -73,24 +73,7 @@ def checkout_view(request, plan_code):
         action = request.POST.get('action', 'submit_utr')
         utr_number = request.POST.get('utr_number', '').strip()
 
-        if action == 'instant_demo':
-            # Instant Demo Sandbox Activation for Recruiters & Testers
-            order = PaymentOrder.objects.create(
-                user=request.user,
-                plan=plan,
-                amount=plan.price,
-                utr_number=f"DEMO_{request.user.id}_{plan.code.upper()}",
-                payment_method="Demo Sandbox Instant",
-                admin_notes="Instant activation via Demo Sandbox mode.",
-            )
-            order.activate_subscription()
-            messages.success(
-                request,
-                f"Congratulations! Your {plan.name} has been activated instantly via Demo Sandbox!"
-            )
-            return redirect('payment_history')
-
-        # Regular UPI UTR submission
+        # UPI UTR submission
         if not utr_number or len(utr_number) < 6:
             messages.error(request, "Please enter a valid 12-digit UPI reference (UTR) number.")
             return render(request, 'payments/checkout.html', {
@@ -136,15 +119,3 @@ def payment_history_view(request):
         'orders': orders,
         'user_sub': user_sub,
     })
-
-
-@login_required
-def simulate_instant_activation(request, order_id):
-    """Allows one-click test activation for a pending order (convenient for testing & portfolio demonstrations)."""
-    order = get_object_or_404(PaymentOrder, id=order_id, user=request.user)
-    if order.status != 'completed':
-        order.activate_subscription()
-        messages.success(request, f"Order #{order.id} verified and subscription activated successfully!")
-    else:
-        messages.info(request, "This order is already active.")
-    return redirect('payment_history')

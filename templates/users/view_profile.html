@@ -198,11 +198,6 @@
     <h6 class="fw-semibold mb-3">Contact Details</h6>
 
     {% if is_allowed %}
-    {% if request.user.is_premium %}
-    <div class="alert alert-success py-2 px-3 small rounded-pill d-inline-block mb-3">
-        Direct Contact Access Unlocked (Verified Member Perk)
-    </div>
-    {% endif %}
     <div class="row small mb-4">
 
         <div class="col-md-6 mb-2">
@@ -223,9 +218,7 @@
 
     {% else %}
     <div class="alert alert-warning text-center rounded-3 p-3">
-        Contact details are locked. Send a contact request or 
-        <a href="{% url 'plans' %}" class="fw-bold text-dark text-decoration-underline">Upgrade Membership</a>
-        to view phone numbers directly.
+        Contact details are locked. Send or accept a contact request to view phone number.
     </div>
     {% endif %}
 

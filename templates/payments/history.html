@@ -92,11 +92,7 @@
                         <td class="text-muted">{{ order.created_at|date:"M d, Y" }}</td>
                         <td class="pe-4 text-end">
                             {% if order.status == 'pending' %}
-                                <a href="{% url 'simulate_instant_activation' order.id %}"
-                                   class="btn btn-sm btn-outline-success rounded-pill px-2"
-                                   title="Click to test instant demo activation">
-                                    Test Activate
-                                </a>
+                                <span class="badge bg-light text-muted border rounded-pill">Pending Review</span>
                             {% else %}
                                 <span class="text-muted">—</span>
                             {% endif %}

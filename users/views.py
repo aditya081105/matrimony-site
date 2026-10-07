@@ -287,20 +287,15 @@ def view_profile(request, user_id):
         return redirect("profile_list")
 
     # accepted match
-    # accepted match or active premium membership
-    is_allowed = (
-        request.user.is_premium
-        or ContactRequest.objects.filter(
-            sender=request.user,
-            receiver=profile_user,
-            status="accepted"
-        ).exists()
-        or ContactRequest.objects.filter(
-            sender=profile_user,
-            receiver=request.user,
-            status="accepted"
-        ).exists()
-    )
+    is_allowed = ContactRequest.objects.filter(
+        sender=request.user,
+        receiver=profile_user,
+        status="accepted"
+    ).exists() or ContactRequest.objects.filter(
+        sender=profile_user,
+        receiver=request.user,
+        status="accepted"
+    ).exists()
 
     # pending request object
     pending_request = ContactRequest.objects.filter(

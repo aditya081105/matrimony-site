@@ -58,14 +58,3 @@ class PaymentTests(TestCase):
         self.assertTrue(self.user.is_premium)
         self.assertTrue(self.user.subscription.is_active)
         self.assertEqual(self.user.subscription.plan_type, plan.name)
-
-    def test_demo_instant_activation(self):
-        self.client.get(reverse('plans'))
-        response = self.client.post(
-            reverse('checkout', args=['silver']),
-            {'action': 'instant_demo'},
-            follow=True
-        )
-        self.assertEqual(response.status_code, 200)
-        self.user.refresh_from_db()
-        self.assertTrue(self.user.is_premium)
