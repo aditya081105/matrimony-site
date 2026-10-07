@@ -159,12 +159,26 @@
         /* =========================================================
            CLEAN TRANSLATION INTEGRATION (HIDE BANNER & TOOLTIP)
            ========================================================= */
-        /* Hide Google top banner frame */
+        /* Hide Google modern & legacy top banner frames */
         .goog-te-banner-frame,
-        iframe.goog-te-banner-frame {
+        iframe.goog-te-banner-frame,
+        .VIpgJd-ZVi9od-ORHb-OEVmcd,
+        iframe.VIpgJd-ZVi9od-ORHb-OEVmcd,
+        iframe[id*=":1.container"],
+        iframe[id*=":2.container"],
+        body > .skiptranslate:first-child,
+        body > div.skiptranslate:first-child {
             display: none !important;
             visibility: hidden !important;
             height: 0 !important;
+            width: 0 !important;
+            border: none !important;
+            position: absolute !important;
+            top: -9999px !important;
+            left: -9999px !important;
+            pointer-events: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
 
         body {
@@ -439,12 +453,23 @@
     }
 
     function setSiteLanguage(lang) {
-        var cookieVal = '/en/' + lang;
-        document.cookie = 'googtrans=' + cookieVal + '; path=/;';
-        document.cookie = 'googtrans=' + cookieVal + '; path=/; domain=' + window.location.hostname + ';';
-        var hostParts = window.location.hostname.split('.');
-        if (hostParts.length > 2) {
-            document.cookie = 'googtrans=' + cookieVal + '; path=/; domain=.' + hostParts.slice(-2).join('.') + ';';
+        var host = window.location.hostname;
+        var hostParts = host.split('.');
+        var rootDomain = hostParts.length > 2 ? '.' + hostParts.slice(-2).join('.') : host;
+
+        if (lang === 'en') {
+            document.cookie = 'googtrans=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
+            document.cookie = 'googtrans=; path=/; domain=' + host + '; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
+            document.cookie = 'googtrans=; path=/; domain=' + rootDomain + '; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
+            document.cookie = 'googtrans=/en/en; path=/;';
+            document.cookie = 'googtrans=/en/en; path=/; domain=' + host + ';';
+        } else {
+            var cookieVal = '/en/' + lang;
+            document.cookie = 'googtrans=' + cookieVal + '; path=/;';
+            document.cookie = 'googtrans=' + cookieVal + '; path=/; domain=' + host + ';';
+            if (hostParts.length > 2) {
+                document.cookie = 'googtrans=' + cookieVal + '; path=/; domain=' + rootDomain + ';';
+            }
         }
 
         var combo = document.querySelector('.goog-te-combo');
@@ -454,6 +479,13 @@
         }
         window.location.reload();
     }
+
+    // Keep body firmly at top: 0
+    setInterval(function() {
+        if (document.body && document.body.style.top && document.body.style.top !== '0px') {
+            document.body.style.top = '0px';
+        }
+    }, 300);
 
     document.addEventListener("DOMContentLoaded", function() {
         if (document.cookie.indexOf('googtrans=/en/hi') !== -1) {
