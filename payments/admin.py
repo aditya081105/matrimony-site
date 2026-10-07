@@ -15,7 +15,7 @@ class PaymentOrderAdmin(admin.ModelAdmin):
     list_filter = ('status', 'created_at', 'plan')
     search_fields = ('user__username', 'user__full_name', 'utr_number', 'id')
     readonly_fields = ('created_at', 'verified_at')
-    actions = ['approve_and_activate_subscription', 'reject_payment']
+    actions = ['approve_and_activate_subscription', 'reject_payment_and_revoke']
 
     @admin.action(description="Approve Selected Orders & Activate Subscriptions")
     def approve_and_activate_subscription(self, request, queryset):
@@ -26,7 +26,13 @@ class PaymentOrderAdmin(admin.ModelAdmin):
                 count += 1
         self.message_user(request, f"Successfully approved {count} payment order(s) and activated subscriptions.")
 
-    @admin.action(description="Reject Selected Orders")
-    def reject_payment(self, request, queryset):
-        updated = queryset.update(status='rejected')
-        self.message_user(request, f"Marked {updated} payment order(s) as rejected.")
+    @admin.action(description="Reject Selected Orders & Revoke Subscriptions")
+    def reject_payment_and_revoke(self, request, queryset):
+        count = 0
+        for order in queryset:
+            order.status = 'rejected'
+            order.save()
+            if hasattr(order.user, 'subscription'):
+                order.user.subscription.reset_to_free()
+            count += 1
+        self.message_user(request, f"Marked {count} payment order(s) as rejected and revoked active access.")

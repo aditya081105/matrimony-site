@@ -71,7 +71,8 @@ class PaymentOrder(models.Model):
         now = timezone.now()
         sub, _ = Subscription.objects.get_or_create(user=self.user)
 
-        if sub.is_active and sub.expires_at and sub.expires_at > now:
+        # Extend previous end date only if renewing the exact same plan; otherwise start fresh from today
+        if sub.is_active and sub.plan_type == self.plan.name and sub.expires_at and sub.expires_at > now:
             sub.expires_at = sub.expires_at + timedelta(days=self.plan.duration_days)
         else:
             sub.expires_at = now + timedelta(days=self.plan.duration_days)

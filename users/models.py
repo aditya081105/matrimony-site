@@ -136,8 +136,15 @@ class Subscription(models.Model):
             return False
         if self.expires_at:
             from django.utils import timezone
-            return self.expires_at > timezone.now()
+            if self.expires_at <= timezone.now():
+                return False
         return True
+
+    def reset_to_free(self):
+        self.is_active = False
+        self.plan_type = 'Free'
+        self.expires_at = None
+        self.save()
 
     def __str__(self):
         status = "Active" if self.is_valid else "Inactive"
