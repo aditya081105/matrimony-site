@@ -109,11 +109,8 @@
                                 {% else %}
                                     <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill py-1">Profile: Pending</span>
                                 {% endif %}
-
-                                {% if u.is_phone_verified %}
-                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill py-1">Phone: Verified</span>
-                                {% else %}
-                                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill py-1">Phone: Unverified</span>
+                                {% if u.is_email_verified %}
+                                    <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill py-1">Email: Verified</span>
                                 {% endif %}
                             </div>
                         </td>

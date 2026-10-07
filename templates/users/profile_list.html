@@ -281,11 +281,6 @@
                     <h6 class="fw-semibold mb-1 d-flex align-items-center flex-wrap gap-1">
                         <span>{{ profile.full_name }}</span>
                         {% include 'includes/tier_badge.html' with badge_user=profile %}
-                        {% if profile.is_phone_verified %}
-                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill py-1" style="font-size: 0.62rem;" title="Phone Verified">
-                                ✓ Phone Verified
-                            </span>
-                        {% endif %}
                     </h6>
 
                     <div class="small text-muted">

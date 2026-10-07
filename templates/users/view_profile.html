@@ -84,14 +84,6 @@
         <div class="d-flex align-items-center justify-content-center flex-wrap gap-2 mb-1">
             <h3 class="fw-bold mb-0">{{ profile_user.full_name }}</h3>
             {% include 'includes/tier_badge.html' with badge_user=profile_user size='lg' %}
-            {% if profile_user.is_phone_verified %}
-                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill small px-2 py-1" title="Phone Number Verified">
-                    <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" class="me-1" style="vertical-align: -1px;">
-                        <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022"/>
-                    </svg>
-                    Phone Verified
-                </span>
-            {% endif %}
         </div>
 
         <p class="text-muted">
