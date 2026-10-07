@@ -1,6 +1,6 @@
 # Create your models here.
 
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
 from PIL import Image
@@ -127,6 +127,14 @@ class CustomUser(AbstractUser):
             return f"{c} ({sc})"
         return c or sc or ""
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['is_active', 'is_approved', 'is_suspended', 'gender'], name='user_match_idx'),
+            models.Index(fields=['city', 'gender'], name='user_city_gender_idx'),
+            models.Index(fields=['caste', 'gender'], name='user_caste_gender_idx'),
+            models.Index(fields=['-date_joined'], name='user_date_joined_idx'),
+        ]
+
     def __str__(self):
         return self.username
 
@@ -240,4 +248,16 @@ class Subscription(models.Model):
     def __str__(self):
         status = "Active" if self.is_valid else "Inactive"
         return f"{self.user.username} ({self.plan_type} - {status})"
+
+
+@receiver([post_save, post_delete], sender=City)
+def handle_city_cache_invalidation(sender, **kwargs):
+    from core.caching import invalidate_city_cache
+    invalidate_city_cache()
+
+
+@receiver([post_save, post_delete], sender=Caste)
+def handle_caste_cache_invalidation(sender, **kwargs):
+    from core.caching import invalidate_caste_cache
+    invalidate_caste_cache()
     

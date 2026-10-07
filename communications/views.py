@@ -11,6 +11,7 @@ from .models import ContactRequest, SavedProfile
 from users.models import CustomUser
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+from django.db import transaction
 
 User = get_user_model()
 
@@ -69,92 +70,93 @@ def send_request(request, user_id):
         messages.error(request, "You cannot interact with this user.")
         return redirect('profile_list')
 
-    # Prevent duplicate requests in same direction
-    if ContactRequest.objects.filter(sender=request.user, receiver=receiver, status='pending').exists():
-        messages.info(request, "You have already sent a pending request to this user.")
-        return redirect("profile_list")
+    with transaction.atomic():
+        # Prevent duplicate requests in same direction
+        if ContactRequest.objects.filter(sender=request.user, receiver=receiver, status='pending').exists():
+            messages.info(request, "You have already sent a pending request to this user.")
+            return redirect("profile_list")
 
-    # If receiver already sent a request to request.user, auto-accept and connect both
-    incoming = ContactRequest.objects.filter(sender=receiver, receiver=request.user, status='pending').first()
-    if incoming:
-        incoming.status = 'accepted'
-        incoming.save()
+        # If receiver already sent a request to request.user, auto-accept and connect both
+        incoming = ContactRequest.objects.select_for_update().filter(
+            sender=receiver, receiver=request.user, status='pending'
+        ).first()
+
+        if incoming:
+            incoming.status = 'accepted'
+            incoming.save()
+            ContactRequest.objects.update_or_create(
+                sender=request.user,
+                receiver=receiver,
+                defaults={'status': 'accepted', 'attempt_count': 1}
+            )
+            ActivityLog.objects.create(
+                user=request.user,
+                target_user=receiver,
+                action='accept_request'
+            )
+            messages.success(request, f"It's a match! You and {receiver.full_name} are now connected.")
+            return redirect(request.META.get("HTTP_REFERER", "profile_list"))
+
+        today = timezone.now().date()
+        daily_attempts = RequestAttempt.objects.filter(
+            sender=request.user,
+            receiver=receiver,
+            created_at__date=today
+        ).count()
+
+        if not request.user.is_premium and daily_attempts >= 3:
+            messages.error(request, "Daily request limit reached for this user. Upgrade to Premium for unlimited requests.")
+            return redirect('profile_list')
+
+        RequestAttempt.objects.create(
+            sender=request.user,
+            receiver=receiver
+        )
+
         ContactRequest.objects.update_or_create(
             sender=request.user,
             receiver=receiver,
-            defaults={'status': 'accepted', 'attempt_count': 1}
+            defaults={'status': 'pending', 'attempt_count': daily_attempts + 1}
         )
+
         ActivityLog.objects.create(
             user=request.user,
             target_user=receiver,
-            action='accept_request'
+            action='send_request'
         )
-        messages.success(request, f"It's a match! You and {receiver.full_name} are now connected.")
-        return redirect(request.META.get("HTTP_REFERER", "profile_list"))
 
-    today = timezone.now().date()
-    daily_attempts = RequestAttempt.objects.filter(
-        sender=request.user,
-        receiver=receiver,
-        created_at__date=today
-    ).count()
-
-    if not request.user.is_premium and daily_attempts >= 3:
-        messages.error(request, "Daily request limit reached for this user. Upgrade to Premium for unlimited requests.")
-        return redirect('profile_list')
-
-    RequestAttempt.objects.create(
-        sender=request.user,
-        receiver=receiver
-    )
-
-    ContactRequest.objects.update_or_create(
-        sender=request.user,
-        receiver=receiver,
-        defaults={'status': 'pending', 'attempt_count': daily_attempts + 1}
-    )
-
-    ActivityLog.objects.create(
-        user=request.user,
-        target_user=receiver,
-        action='send_request'
-    )
     messages.success(request, f"Contact request sent to {receiver.full_name}.")
     return redirect(request.META.get("HTTP_REFERER", "profile_list"))
 
 @login_required
 def update_request(request, request_id, action):
-    contact_request = get_object_or_404(
-        ContactRequest,
-        id=request_id,
-        receiver=request.user
-    )
-
-    if action == 'accept':
-        contact_request.status = 'accepted'
-    elif action == 'reject':
-        contact_request.status = 'rejected'
-
-    if action == 'accept':
-        contact_request.status = 'accepted'
-        ContactRequest.objects.filter(
-            sender=request.user,
-            receiver=contact_request.sender
-        ).update(status='accepted')
-        ActivityLog.objects.create(
-            user=request.user,
-            target_user=contact_request.sender,
-            action='accept_request'
-        )
-    elif action == 'reject':
-        contact_request.status = 'rejected'
-        ActivityLog.objects.create(
-            user=request.user,
-            target_user=contact_request.sender,
-            action='reject_request'
+    with transaction.atomic():
+        contact_request = get_object_or_404(
+            ContactRequest.objects.select_for_update(),
+            id=request_id,
+            receiver=request.user
         )
 
-    contact_request.save()
+        if action == 'accept':
+            contact_request.status = 'accepted'
+            ContactRequest.objects.filter(
+                sender=request.user,
+                receiver=contact_request.sender
+            ).update(status='accepted')
+            ActivityLog.objects.create(
+                user=request.user,
+                target_user=contact_request.sender,
+                action='accept_request'
+            )
+        elif action == 'reject':
+            contact_request.status = 'rejected'
+            ActivityLog.objects.create(
+                user=request.user,
+                target_user=contact_request.sender,
+                action='reject_request'
+            )
+
+        contact_request.save()
     return redirect('received_requests')
 
 @login_required

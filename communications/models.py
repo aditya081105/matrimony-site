@@ -30,6 +30,10 @@ class ContactRequest(models.Model):
 
     class Meta:
         unique_together = ('sender', 'receiver')
+        indexes = [
+            models.Index(fields=['receiver', 'status'], name='req_receiver_status_idx'),
+            models.Index(fields=['sender', 'status'], name='req_sender_status_idx'),
+        ]
 
     def __str__(self):
         return f"{self.sender} → {self.receiver} ({self.status})"

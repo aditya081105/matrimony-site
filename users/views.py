@@ -18,62 +18,7 @@ from django.conf import settings
 from django.contrib.admin.views.decorators import staff_member_required
 from .models import CustomUser, Caste, City, Profile
 from .forms import UserRegisterForm, UserUpdateForm
-from django.core.mail import send_mail
-from django.urls import reverse
-import os 
-
-import resend
-
-def send_verification_email(request, user):
-    signer = Signer()
-    token = signer.sign(user.id)
-
-    verify_link = request.build_absolute_uri(
-        reverse("verify_email", args=[token])
-    )
-
-    subject = "Verify your email - Siwan Matrimony"
-    message = f"""Welcome to Siwan Matrimony, {user.full_name or user.username}!
-
-Please verify your email address to unlock matchmaking and contact requests:
-
-{verify_link}
-
-If you did not register for Siwan Matrimony, please ignore this email.
-"""
-
-    # 1. Try standard Django send_mail (Gmail SMTP / Brevo / SendGrid) if configured
-    if getattr(settings, 'EMAIL_HOST_USER', None):
-        try:
-            send_mail(
-                subject=subject,
-                message=message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[user.email],
-                fail_silently=False,
-            )
-            return True
-        except Exception as e:
-            print(f"SMTP send_mail error: {e}")
-
-    # 2. Try Resend if API key is provided
-    if getattr(settings, 'RESEND_API_KEY', None):
-        try:
-            resend.api_key = settings.RESEND_API_KEY
-            from_email = getattr(settings, 'RESEND_FROM_EMAIL', 'onboarding@resend.dev')
-            resend.Emails.send({
-                "from": from_email,
-                "to": user.email,
-                "subject": subject,
-                "text": message
-            })
-            return True
-        except Exception as e:
-            print(f"Resend error: {e}")
-
-    # 3. Always log the verification link for server logs / admin verification
-    print(f"==> VERIFICATION LINK for {user.email}: {verify_link}")
-    return False
+from core.services import send_verification_email
 
 def register(request):
     if request.method == 'POST':
@@ -116,8 +61,9 @@ def profile_list(request):
     if not request.user.is_email_verified:
         return render(request, "users/verify_email_required.html")
 
-    cities = City.objects.all()
-    castes = Caste.objects.all()
+    from core.caching import get_cached_cities, get_cached_castes
+    cities = get_cached_cities()
+    castes = get_cached_castes()
 
     blocked_by_me = Block.objects.filter(
         blocker=request.user
@@ -137,7 +83,7 @@ def profile_list(request):
         id__in=blocked_ids
     ).exclude(
         id=request.user.id
-    ).select_related('city', 'caste_community', 'subscription', 'subscription__plan')
+    ).select_related('profile', 'city', 'caste_community', 'subscription', 'subscription__plan').order_by('-date_joined')
 
     # Opposite gender by default
     if not request.GET.get('gender') and request.user.gender:

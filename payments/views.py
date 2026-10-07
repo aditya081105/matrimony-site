@@ -35,9 +35,11 @@ def ensure_default_plans():
         )
 
 
+from core.caching import get_active_plans
+
 def plans_view(request):
     ensure_default_plans()
-    plans = Plan.objects.filter(is_active=True).order_by('price')
+    plans = get_active_plans()
 
     user_sub = None
     if request.user.is_authenticated:

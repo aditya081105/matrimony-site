@@ -147,3 +147,40 @@ class UserModelTest(TestCase):
         self.assertEqual(response2.status_code, 200)
         messages_list = list(response2.context['messages'])
         self.assertTrue(any('sent recently' in str(m) for m in messages_list))
+
+    def test_profile_list_bounded_queries(self):
+        from users.models import City, Caste
+        from django.urls import reverse
+        from django.test.utils import CaptureQueriesContext
+        from django.db import connection
+
+        city = City.objects.create(name="Siwan N1 City")
+        caste = Caste.objects.create(name="N1 Caste")
+
+        viewer = User.objects.create_user(
+            username="n1viewer",
+            password="TestPass123!",
+            is_approved=True,
+            is_email_verified=True,
+            gender='M'
+        )
+
+        for i in range(5):
+            User.objects.create_user(
+                username=f"n1target_{i}",
+                password="TestPass123!",
+                is_approved=True,
+                is_email_verified=True,
+                gender='F',
+                city=city,
+                caste_community=caste
+            )
+
+        self.client.login(username="n1viewer", password="TestPass123!")
+
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get(reverse('profile_list'))
+            self.assertEqual(response.status_code, 200)
+
+        # Profile queries must be bounded and not suffer from per-row N+1 explosion
+        self.assertLessEqual(len(queries), 15)

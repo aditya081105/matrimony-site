@@ -29,6 +29,7 @@ CSRF_TRUSTED_ORIGINS = [
 
 
 MIDDLEWARE = [
+    'core.middleware.RequestIDMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
