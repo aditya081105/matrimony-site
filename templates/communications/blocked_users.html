@@ -41,10 +41,16 @@ Unblock
 
 <a href="{% url 'view_profile' entry.blocked.id %}">
 
-{% if entry.blocked.profile.profile_photo %}
+{% if entry.blocked.profile_photo %}
+<img src="{{ entry.blocked.profile_photo.url }}"
+class="rounded-circle mb-3"
+style="width:100px;height:100px;object-fit:cover;"
+onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';">
+{% elif entry.blocked.profile.profile_photo %}
 <img src="{{ entry.blocked.profile.profile_photo.url }}"
 class="rounded-circle mb-3"
-style="width:100px;height:100px;object-fit:cover;">
+style="width:100px;height:100px;object-fit:cover;"
+onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';">
 {% else %}
 <img src="{% static 'images/default.jpg' %}"
 class="rounded-circle mb-3"

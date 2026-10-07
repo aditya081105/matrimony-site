@@ -42,10 +42,16 @@ Report
 <!-- PROFILE IMAGE -->
 <a href="{% url 'view_profile' req.sender.id %}">
 
-{% if req.sender.profile.profile_photo %}
+{% if req.sender.profile_photo %}
+<img src="{{ req.sender.profile_photo.url }}"
+class="rounded-circle mb-3"
+style="width:100px;height:100px;object-fit:cover;"
+onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';">
+{% elif req.sender.profile.profile_photo %}
 <img src="{{ req.sender.profile.profile_photo.url }}"
 class="rounded-circle mb-3"
-style="width:100px;height:100px;object-fit:cover;">
+style="width:100px;height:100px;object-fit:cover;"
+onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';">
 {% else %}
 <img src="{% static 'images/default.jpg' %}"
 class="rounded-circle mb-3"

@@ -125,6 +125,8 @@ class UserUpdateForm(forms.ModelForm):
 
     def clean_date_of_birth(self):
         dob = self.cleaned_data.get('date_of_birth')
+        if not dob:
+            return dob
 
         today = date.today()
 
@@ -147,6 +149,8 @@ class UserUpdateForm(forms.ModelForm):
         return height
 
     def clean_profile_photo(self):
+        if self.data.get('profile_photo-clear') or self.data.get('remove_profile_photo'):
+            return False
         photo = self.cleaned_data.get('profile_photo')
         if photo and hasattr(photo, 'content_type'):
             if hasattr(photo, 'size') and photo.size > 5 * 1024 * 1024:
@@ -186,19 +190,38 @@ class UserUpdateForm(forms.ModelForm):
             }),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field_name, field in self.fields.items():
+            if field_name != 'profile_photo':
+                existing_classes = field.widget.attrs.get('class', '')
+                if 'form-control' not in existing_classes and 'form-select' not in existing_classes:
+                    if isinstance(field.widget, forms.Select):
+                        field.widget.attrs['class'] = 'form-select'
+                    else:
+                        field.widget.attrs['class'] = 'form-control'
+        if 'bio' in self.fields:
+            self.fields['bio'].widget.attrs['rows'] = 3
+
     def save(self, commit=True):
+        is_cleared = bool(self.data.get('profile_photo-clear') or self.data.get('remove_profile_photo'))
+        if is_cleared:
+            self.instance.profile_photo = None
         user = super().save(commit=commit)
+        if is_cleared and commit:
+            CustomUser.objects.filter(pk=user.pk).update(profile_photo=None)
         if commit:
             profile, _ = Profile.objects.get_or_create(user=user)
             if user.city:
                 profile.city_hometown = user.city
-            if user.profile_photo:
-                profile.profile_photo = user.profile_photo
+            profile.profile_photo = None if is_cleared else user.profile_photo
             profile.father_name = user.father_name or ''
             profile.mother_name = user.mother_name or ''
             profile.address = user.address or ''
             profile.bio = user.bio or ''
             profile.save()
+            if is_cleared:
+                Profile.objects.filter(pk=profile.pk).update(profile_photo=None)
             user.profile = profile
         return user
 

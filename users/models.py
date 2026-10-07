@@ -149,7 +149,7 @@ def create_or_sync_user_profile(sender, instance, created, **kwargs):
     if instance.bio and profile.bio != instance.bio:
         profile.bio = instance.bio
         needs_save = True
-    if instance.profile_photo and profile.profile_photo != instance.profile_photo:
+    if (instance.profile_photo or profile.profile_photo) and profile.profile_photo != instance.profile_photo:
         profile.profile_photo = instance.profile_photo
         needs_save = True
     if needs_save:

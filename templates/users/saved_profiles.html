@@ -48,10 +48,16 @@
 
                 <!-- PROFILE IMAGE -->
                 <a href="{% url 'view_profile' user.id %}">
-                    {% if user.profile.profile_photo %}
+                    {% if user.profile_photo %}
+                        <img src="{{ user.profile_photo.url }}"
+                             class="rounded-circle mb-3"
+                             style="width:100px;height:100px;object-fit:cover;"
+                             onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';">
+                    {% elif user.profile.profile_photo %}
                         <img src="{{ user.profile.profile_photo.url }}"
                              class="rounded-circle mb-3"
-                             style="width:100px;height:100px;object-fit:cover;">
+                             style="width:100px;height:100px;object-fit:cover;"
+                             onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';">
                     {% else %}
                         <img src="{% static 'images/default.jpg' %}"
                              class="rounded-circle mb-3"

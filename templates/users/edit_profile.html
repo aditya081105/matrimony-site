@@ -1,62 +1,237 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card shadow">
-            <div class="card-header bg-dark text-white text-center">
-                <h4>Complete Your Profile</h4>
+<div class="row justify-content-center py-4">
+    <div class="col-lg-7 col-md-9">
+        <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+            <div class="card-header bg-dark text-white text-center py-3">
+                <h4 class="mb-0 fw-bold">Edit Profile</h4>
             </div>
 
-            <div class="card-body">
+            <div class="card-body p-4">
                 
                 {% if not request.user.is_email_verified %}
-
-                <div class="alert alert-warning rounded-4 shadow-sm">
-
+                <div class="alert alert-warning rounded-4 shadow-sm mb-4">
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-
                         <div>
                             <strong>Email Not Verified</strong><br>
-                            <small>
+                            <small class="text-muted">
                                 Verify your email to unlock matchmaking features.
                             </small>
                         </div>
-
-                        <a href="{% url 'resend_verification' %}"
-                        class="btn btn-dark rounded-pill px-4">
+                        <a href="{% url 'resend_verification' %}" class="btn btn-dark btn-sm rounded-pill px-3">
                             Resend Email
                         </a>
-
                     </div>
-
                 </div>
+                {% endif %}
 
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger rounded-3 mb-4">
+                    {% for error in form.non_field_errors %}
+                        <div>{{ error }}</div>
+                    {% endfor %}
+                </div>
                 {% endif %}
 
                 <!-- Profile Form -->
-                <form method="POST" enctype="multipart/form-data">
+                <form method="POST" enctype="multipart/form-data" id="editProfileForm">
                     {% csrf_token %}
-                    {{ form.as_p }}
-                    <button type="submit" class="btn btn-dark w-100">
-                        Save Changes
-                    </button>
+
+                    <!-- PHOTO SECTION -->
+                    <div class="card bg-light border-0 rounded-4 p-3 mb-4">
+                        <label class="form-label fw-bold text-dark mb-2">Profile Picture</label>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="position-relative flex-shrink-0">
+                                {% if request.user.profile_photo %}
+                                    <img src="{{ request.user.profile_photo.url }}" 
+                                         id="profilePreviewImg" 
+                                         class="rounded-circle border border-2 border-white shadow-sm" 
+                                         style="width: 80px; height: 80px; object-fit: cover;"
+                                         onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';">
+                                {% elif request.user.profile.profile_photo %}
+                                    <img src="{{ request.user.profile.profile_photo.url }}" 
+                                         id="profilePreviewImg" 
+                                         class="rounded-circle border border-2 border-white shadow-sm" 
+                                         style="width: 80px; height: 80px; object-fit: cover;"
+                                         onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';">
+                                {% else %}
+                                    <img src="{% static 'images/default.jpg' %}" 
+                                         id="profilePreviewImg" 
+                                         class="rounded-circle border border-2 border-white shadow-sm" 
+                                         style="width: 80px; height: 80px; object-fit: cover;">
+                                {% endif %}
+                            </div>
+                            <div class="flex-grow-1">
+                                <label for="id_profile_photo" class="form-label small fw-semibold text-muted mb-1">
+                                    Upload New Picture
+                                </label>
+                                <input type="file" 
+                                       name="profile_photo" 
+                                       id="id_profile_photo" 
+                                       class="form-control" 
+                                       accept="image/*">
+                                <div class="form-text small">Accepted formats: JPG, PNG, WEBP (Max 5MB)</div>
+                                {% if form.profile_photo.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.profile_photo.errors|striptags }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {% if request.user.profile_photo or request.user.profile.profile_photo %}
+                        <div class="mt-3 p-3 bg-white border border-danger-subtle rounded-3 shadow-sm" id="clearPhotoWrapper">
+                            <div class="form-check form-switch d-flex align-items-center gap-2 m-0">
+                                <input class="form-check-input flex-shrink-0" 
+                                       type="checkbox" 
+                                       name="profile_photo-clear" 
+                                       id="profile_photo-clear_id" 
+                                       value="on" 
+                                       style="cursor: pointer; width: 2.2em; height: 1.2em;">
+                                <label class="form-check-label text-danger fw-bold" for="profile_photo-clear_id" style="cursor: pointer;">
+                                    Remove current picture &amp; revert to default avatar
+                                </label>
+                            </div>
+                            <div class="small text-muted mt-1 ps-4 ms-2">
+                                Check this switch and click "Save Changes" below to permanently remove your custom photo.
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- OTHER FORM FIELDS -->
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="{{ form.full_name.id_for_label }}" class="form-label fw-semibold">
+                                Full Name <span class="text-danger">*</span>
+                            </label>
+                            {{ form.full_name }}
+                            {% if form.full_name.errors %}
+                                <div class="text-danger small mt-1">{{ form.full_name.errors|striptags }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="{{ form.email.id_for_label }}" class="form-label fw-semibold">
+                                Email Address <span class="text-danger">*</span>
+                            </label>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                                <div class="text-danger small mt-1">{{ form.email.errors|striptags }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="{{ form.gender.id_for_label }}" class="form-label fw-semibold">Gender</label>
+                            {{ form.gender }}
+                            {% if form.gender.errors %}
+                                <div class="text-danger small mt-1">{{ form.gender.errors|striptags }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="{{ form.phone_number.id_for_label }}" class="form-label fw-semibold">
+                                Phone Number <span class="text-danger">*</span>
+                            </label>
+                            {{ form.phone_number }}
+                            {% if form.phone_number.errors %}
+                                <div class="text-danger small mt-1">{{ form.phone_number.errors|striptags }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="{{ form.date_of_birth.id_for_label }}" class="form-label fw-semibold">Date of Birth</label>
+                            {{ form.date_of_birth }}
+                            {% if form.date_of_birth.errors %}
+                                <div class="text-danger small mt-1">{{ form.date_of_birth.errors|striptags }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="{{ form.height_cm.id_for_label }}" class="form-label fw-semibold">Height (cm)</label>
+                            {{ form.height_cm }}
+                            {% if form.height_cm.errors %}
+                                <div class="text-danger small mt-1">{{ form.height_cm.errors|striptags }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="{{ form.caste_community.id_for_label }}" class="form-label fw-semibold">Caste / Community</label>
+                            {{ form.caste_community }}
+                            {% if form.caste_community.errors %}
+                                <div class="text-danger small mt-1">{{ form.caste_community.errors|striptags }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="{{ form.city.id_for_label }}" class="form-label fw-semibold">City</label>
+                            {{ form.city }}
+                            {% if form.city.errors %}
+                                <div class="text-danger small mt-1">{{ form.city.errors|striptags }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-12">
+                            <label for="{{ form.occupation.id_for_label }}" class="form-label fw-semibold">Occupation</label>
+                            {{ form.occupation }}
+                            {% if form.occupation.errors %}
+                                <div class="text-danger small mt-1">{{ form.occupation.errors|striptags }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-12">
+                            <label for="{{ form.bio.id_for_label }}" class="form-label fw-semibold">About Me (Bio)</label>
+                            {{ form.bio }}
+                            {% if form.bio.errors %}
+                                <div class="text-danger small mt-1">{{ form.bio.errors|striptags }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="{{ form.father_name.id_for_label }}" class="form-label fw-semibold">Father's Name</label>
+                            {{ form.father_name }}
+                            {% if form.father_name.errors %}
+                                <div class="text-danger small mt-1">{{ form.father_name.errors|striptags }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="{{ form.mother_name.id_for_label }}" class="form-label fw-semibold">Mother's Name</label>
+                            {{ form.mother_name }}
+                            {% if form.mother_name.errors %}
+                                <div class="text-danger small mt-1">{{ form.mother_name.errors|striptags }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-12">
+                            <label for="{{ form.address.id_for_label }}" class="form-label fw-semibold">Address</label>
+                            {{ form.address }}
+                            {% if form.address.errors %}
+                                <div class="text-danger small mt-1">{{ form.address.errors|striptags }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-2">
+                        <button type="submit" class="btn btn-dark w-100 py-2 fw-semibold rounded-pill shadow-sm">
+                            Save Changes
+                        </button>
+                    </div>
                 </form>
 
-                <!-- Logout Form -->
-                <div class="d-flex justify-content-between mt-4">
-
-                    <!-- Back Button (Left) -->
-                    <a href="{% url 'my_profile' %}"
-                        class="btn btn-dark rounded-pill px-4">
-                        ← Back
+                <!-- Navigation Action Buttons -->
+                <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                    <!-- Back Button -->
+                    <a href="{% url 'my_profile' %}" class="btn btn-outline-secondary rounded-pill px-4">
+                        ← Back to Profile
                     </a>
 
-                    <!-- Logout (Right) -->
-                    <form method="POST" action="{% url 'logout' %}">
+                    <!-- Logout Button -->
+                    <form method="POST" action="{% url 'logout' %}" class="m-0">
                         {% csrf_token %}
-                        <button type="submit"
-                                class="btn btn-outline-danger rounded-pill px-4">
+                        <button type="submit" class="btn btn-outline-danger rounded-pill px-4">
                             Logout
                         </button>
                     </form>
@@ -65,4 +240,51 @@
         </div>
     </div>
 </div>
+
+<script>
+    // Live preview when selecting a new photo
+    const photoInput = document.getElementById('id_profile_photo');
+    const previewImg = document.getElementById('profilePreviewImg');
+    const clearCheckbox = document.getElementById('profile_photo-clear_id');
+    const defaultImgSrc = "{% static 'images/default.jpg' %}";
+    let originalImgSrc = previewImg ? previewImg.src : defaultImgSrc;
+
+    if (photoInput && previewImg) {
+        photoInput.addEventListener('change', function(e) {
+            const file = e.target.files && e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    previewImg.src = evt.target.result;
+                    previewImg.style.opacity = '1';
+                };
+                reader.readAsDataURL(file);
+                if (clearCheckbox) {
+                    clearCheckbox.checked = false;
+                }
+            } else {
+                if (clearCheckbox && clearCheckbox.checked) {
+                    previewImg.src = defaultImgSrc;
+                } else {
+                    previewImg.src = originalImgSrc;
+                }
+            }
+        });
+    }
+
+    if (clearCheckbox && previewImg) {
+        clearCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                previewImg.src = defaultImgSrc;
+                previewImg.style.opacity = '0.7';
+                if (photoInput) {
+                    photoInput.value = '';
+                }
+            } else {
+                previewImg.src = originalImgSrc;
+                previewImg.style.opacity = '1';
+            }
+        });
+    }
+</script>
 {% endblock %}
