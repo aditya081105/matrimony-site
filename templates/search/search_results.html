@@ -53,6 +53,13 @@
                     <div class="text-center pt-4 pb-2">
                         {% if profile.profile_photo %}
                             <img src="{{ profile.profile_photo.url }}"
+                                 onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';"
+                                 alt="{{ profile.full_name }}"
+                                 class="rounded-circle shadow-sm"
+                                 style="width: 120px; height: 120px; object-fit: cover;">
+                        {% elif profile.profile.profile_photo %}
+                            <img src="{{ profile.profile.profile_photo.url }}"
+                                 onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';"
                                  alt="{{ profile.full_name }}"
                                  class="rounded-circle shadow-sm"
                                  style="width: 120px; height: 120px; object-fit: cover;">

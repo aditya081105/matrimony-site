@@ -14,7 +14,7 @@ from django.core.signing import Signer
 from django.conf import settings
 
 from django.contrib.admin.views.decorators import staff_member_required
-from .models import CustomUser, Caste, City
+from .models import CustomUser, Caste, City, Profile
 from .forms import UserRegisterForm, UserUpdateForm
 from django.core.mail import send_mail
 from django.urls import reverse
@@ -229,8 +229,16 @@ def edit_profile(request):
         form = UserUpdateForm(request.POST, request.FILES, instance=request.user)
 
         if form.is_valid():
-            form.save()
-            return redirect('my_profile')
+            try:
+                form.save()
+                messages.success(request, "Profile updated successfully.")
+                return redirect('my_profile')
+            except Exception as e:
+                err_str = str(e).lower()
+                if "permissions" in err_str or "notallowed" in err_str:
+                    messages.error(request, "Image upload failed: Your Cloudinary API key has restricted permissions. Please enable 'create/upload' permission on your Cloudinary Access Key.")
+                else:
+                    messages.error(request, f"Error saving profile: {e}")
     else:
         form = UserUpdateForm(instance=request.user)
 
