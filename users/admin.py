@@ -23,14 +23,25 @@ def verify_users(modeladmin, request, queryset):
     queryset.update(is_email_verified=True)
 
 
+@admin.action(description="Mark selected users as phone verified")
+def verify_phone_users(modeladmin, request, queryset):
+    queryset.update(is_phone_verified=True)
+
+
+@admin.action(description="Fully Approve & Verify (Profile + Phone + Email)")
+def fully_verify_users(modeladmin, request, queryset):
+    queryset.update(is_approved=True, is_phone_verified=True, is_email_verified=True)
+
+
 class CustomUserAdmin(UserAdmin):
     model = CustomUser
-    list_display = ('username', 'full_name', 'is_approved', 'is_staff', 'is_email_verified', 'is_premium')
-    list_filter = ('is_email_verified', 'is_approved', 'is_staff')
-    actions = [approve_users, verify_users]
+    list_display = ('username', 'full_name', 'phone_number', 'is_approved', 'is_phone_verified', 'is_email_verified', 'is_premium', 'is_staff')
+    list_filter = ('is_approved', 'is_phone_verified', 'is_email_verified', 'is_staff')
+    search_fields = ('username', 'full_name', 'email', 'phone_number')
+    actions = [approve_users, verify_phone_users, verify_users, fully_verify_users]
     inlines = [SubscriptionInline]
     fieldsets = UserAdmin.fieldsets + (
-        ("Approval", {"fields": ("is_approved", "is_email_verified")}),
+        ("Approval & Verification", {"fields": ("is_approved", "is_phone_verified", "is_email_verified")}),
     )
 
 

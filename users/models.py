@@ -67,6 +67,7 @@ class CustomUser(AbstractUser):
     is_approved = models.BooleanField(default=False)
     is_suspended = models.BooleanField(default=False)
     is_email_verified = models.BooleanField(default=False)
+    is_phone_verified = models.BooleanField(default=False)
 
     @property
     def age(self):

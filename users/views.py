@@ -30,22 +30,48 @@ def send_verification_email(request, user):
         reverse("verify_email", args=[token])
     )
 
-    resend.api_key = settings.RESEND_API_KEY
+    subject = "Verify your email - Siwan Matrimony"
+    message = f"""Welcome to Siwan Matrimony, {user.full_name or user.username}!
 
-    resend.Emails.send({
-        "from": "onboarding@resend.dev",
-        "to": user.email,
-        "subject": "Verify your email - Siwan Matrimony",
-        "text": f"""
-Welcome to Siwan Matrimony.
-
-Please verify your email by clicking below:
+Please verify your email address to unlock matchmaking and contact requests:
 
 {verify_link}
 
-If you did not create this account, ignore this email.
+If you did not register for Siwan Matrimony, please ignore this email.
 """
-    })
+
+    # 1. Try standard Django send_mail (Gmail SMTP / Brevo / SendGrid) if configured
+    if getattr(settings, 'EMAIL_HOST_USER', None):
+        try:
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
+            return True
+        except Exception as e:
+            print(f"SMTP send_mail error: {e}")
+
+    # 2. Try Resend if API key is provided
+    if getattr(settings, 'RESEND_API_KEY', None):
+        try:
+            resend.api_key = settings.RESEND_API_KEY
+            from_email = getattr(settings, 'RESEND_FROM_EMAIL', 'onboarding@resend.dev')
+            resend.Emails.send({
+                "from": from_email,
+                "to": user.email,
+                "subject": subject,
+                "text": message
+            })
+            return True
+        except Exception as e:
+            print(f"Resend error: {e}")
+
+    # 3. Always log the verification link for server logs / admin verification
+    print(f"==> VERIFICATION LINK for {user.email}: {verify_link}")
+    return False
 
 def register(request):
     if request.method == 'POST':
@@ -377,6 +403,10 @@ def admin_dashboard(request):
         .order_by('-report_count')[:5]
     )
 
+    pending_users = CustomUser.objects.filter(
+        Q(is_approved=False) | Q(is_phone_verified=False)
+    ).order_by('-date_joined')[:30]
+
     context = {
         'total_users': total_users,
         'approved_users': approved_users,
@@ -385,9 +415,33 @@ def admin_dashboard(request):
         'pending_requests': pending_requests,
         'total_reports': total_reports,
         'top_reported': top_reported,
+        'pending_users': pending_users,
     }
 
     return render(request, 'admin_dashboard.html', context)
+
+
+@staff_member_required
+def admin_verify_user(request, user_id):
+    if request.method == 'POST':
+        user = get_object_or_404(CustomUser, id=user_id)
+        user.is_approved = True
+        user.is_phone_verified = True
+        user.is_email_verified = True
+        user.save(update_fields=['is_approved', 'is_phone_verified', 'is_email_verified'])
+        messages.success(request, f"User {user.full_name or user.username} has been fully approved and verified (Phone + Email).")
+    return redirect('admin_dashboard')
+
+
+@staff_member_required
+def admin_reject_user(request, user_id):
+    if request.method == 'POST':
+        user = get_object_or_404(CustomUser, id=user_id)
+        user.is_approved = False
+        user.is_suspended = True
+        user.save(update_fields=['is_approved', 'is_suspended'])
+        messages.warning(request, f"User {user.full_name or user.username} has been suspended/rejected.")
+    return redirect('admin_dashboard')
 
 def contact_view(request):
     if request.method == "POST":

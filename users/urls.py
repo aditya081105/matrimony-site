@@ -15,6 +15,8 @@ urlpatterns = [
     path('profile/<int:user_id>/', views.view_profile, name='view_profile'),
     path('delete-account/', views.delete_account, name='delete_account'),
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
+    path('admin-verify-user/<int:user_id>/', views.admin_verify_user, name='admin_verify_user'),
+    path('admin-reject-user/<int:user_id>/', views.admin_reject_user, name='admin_reject_user'),
     path("verify/<str:token>/", views.verify_email, name="verify_email"),
     path(
         "resend-verification/",

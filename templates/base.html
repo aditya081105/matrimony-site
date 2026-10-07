@@ -155,6 +155,23 @@
             letter-spacing: 0.5px;
             font-weight: 700;
         }
+
+        /* Clean Translation Integration (Hide default Google branding/banners) */
+        .goog-te-banner-frame, iframe.goog-te-banner-frame {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+        }
+        body {
+            top: 0px !important;
+            position: static !important;
+        }
+        .goog-te-gadget {
+            display: none !important;
+        }
+        .skiptranslate {
+            display: inline !important;
+        }
     </style>
 </head>
 
@@ -176,6 +193,36 @@
                     <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
                 </svg>
             </a>
+
+            <!-- Language Selector (Bilingual: English / हिंदी) -->
+            <div class="dropdown me-2">
+                <button class="btn btn-outline-light btn-sm rounded-pill px-2 py-1 dropdown-toggle d-flex align-items-center gap-1"
+                        type="button"
+                        id="langDropdownBtn"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                        style="font-size: 0.8rem; font-weight: 500;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M4.545 6.714 4.11 8H1.5l3.25-9h2.5l3.25 9H8.055l-.435-1.286H4.545zM5.84 2.88 4.88 5.75h1.92l-.96-2.87z"/>
+                        <path d="M11.53 8H14v6.5h-1.5V13h-2.14l-.43 1.5H8.5l3.03-6.5zm.97 3.75v-2.3l-1.07 2.3h1.07z"/>
+                    </svg>
+                    <span id="currentLangText">हिंदी / EN</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="langDropdownBtn" style="min-width: 140px;">
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center justify-content-between" href="javascript:void(0)" onclick="setSiteLanguage('en')">
+                            <span>English</span>
+                            <small class="text-muted">EN</small>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center justify-content-between text-danger fw-semibold" href="javascript:void(0)" onclick="setSiteLanguage('hi')">
+                            <span>हिंदी</span>
+                            <small class="badge bg-danger-subtle text-danger rounded-pill">Hindi</small>
+                        </a>
+                    </li>
+                </ul>
+            </div>
 
             <!-- Upgrade / Membership CTA -->
             <a href="{% url 'plans' %}" class="btn btn-outline-light btn-sm rounded-pill px-3 me-3 fw-medium d-none d-sm-inline-block">
@@ -336,7 +383,12 @@
         </div>
 
         <div class="mt-3 text-muted small">
-            © 2026 Siwan Matrimony. Community Trust Platform.
+            © 2026 Siwan Matrimony (सीवान मैट्रिमोनी). Community Trust Platform.
+        </div>
+        <div class="mt-2 small">
+            <span class="text-white-50">भाषा / Language:</span> 
+            <a href="javascript:void(0)" onclick="setSiteLanguage('en')" class="text-white text-decoration-none px-1">English</a> • 
+            <a href="javascript:void(0)" onclick="setSiteLanguage('hi')" class="text-white text-decoration-none px-1 fw-semibold">हिंदी (Hindi)</a>
         </div>
     </div>
 </footer>
@@ -352,6 +404,30 @@
             navbar.classList.remove("shrink");
         }
     });
+
+    function googleTranslateElementInit() {
+        new google.translate.TranslateElement({
+            pageLanguage: 'en',
+            includedLanguages: 'en,hi',
+            autoDisplay: false
+        }, 'google_translate_element');
+    }
+
+    function setSiteLanguage(lang) {
+        const host = window.location.hostname;
+        document.cookie = "googtrans=/en/" + lang + "; path=/; domain=" + host;
+        document.cookie = "googtrans=/en/" + lang + "; path=/;";
+        window.location.reload();
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        if (document.cookie.indexOf('googtrans=/en/hi') !== -1) {
+            const langEl = document.getElementById('currentLangText');
+            if (langEl) langEl.textContent = 'हिंदी';
+        }
+    });
 </script>
+<div id="google_translate_element" style="display:none;"></div>
+<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
 </html>
