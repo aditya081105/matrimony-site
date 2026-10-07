@@ -74,13 +74,19 @@ class UserRegisterForm(UserCreationForm):
     )
 
     def clean_phone_number(self):
-        phone = self.cleaned_data.get('phone_number')
+        phone = (self.cleaned_data.get('phone_number') or '').strip()
 
         if not phone.isdigit():
             raise forms.ValidationError("Enter digits only.")
 
         if len(phone) != 10:
-            raise forms.ValidationError("Enter exactly 10 digits.")
+            raise forms.ValidationError("Enter a valid 10-digit mobile number.")
+
+        if phone[0] not in ('6', '7', '8', '9'):
+            raise forms.ValidationError("Enter a valid Indian mobile number starting with 6, 7, 8, or 9.")
+
+        if len(set(phone)) == 1 or phone in ('1234567890', '0123456789'):
+            raise forms.ValidationError("Please enter a valid, active mobile number.")
 
         return phone
     
@@ -138,6 +144,23 @@ class UserUpdateForm(forms.ModelForm):
             'placeholder': '10 digit mobile number'
         })
     )
+
+    def clean_phone_number(self):
+        phone = (self.cleaned_data.get('phone_number') or '').strip()
+
+        if not phone.isdigit():
+            raise forms.ValidationError("Enter digits only.")
+
+        if len(phone) != 10:
+            raise forms.ValidationError("Enter a valid 10-digit mobile number.")
+
+        if phone[0] not in ('6', '7', '8', '9'):
+            raise forms.ValidationError("Enter a valid Indian mobile number starting with 6, 7, 8, or 9.")
+
+        if len(set(phone)) == 1 or phone in ('1234567890', '0123456789'):
+            raise forms.ValidationError("Please enter a valid, active mobile number.")
+
+        return phone
 
     def clean_date_of_birth(self):
         dob = self.cleaned_data.get('date_of_birth')

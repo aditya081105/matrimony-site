@@ -109,24 +109,19 @@ class UserModelTest(TestCase):
         self.assertEqual(saved.sub_caste, 'Maurya')
         self.assertEqual(saved.display_caste, 'Kushwaha (Maurya)')
 
-    def test_verify_phone_view_with_otp(self):
-        from django.urls import reverse
-        user = User.objects.create_user(
-            username="phone_test_user",
-            password="TestPassword123!",
-            phone_number="9876543210",
-            is_phone_verified=False,
-        )
-        self.client.login(username="phone_test_user", password="TestPassword123!")
-        
-        # GET request initiates session OTP
-        get_res = self.client.get(reverse('verify_phone'))
-        self.assertEqual(get_res.status_code, 200)
-        self.assertContains(get_res, "Verify Mobile Number")
+    def test_phone_number_legitimacy_validation(self):
+        from users.forms import UserRegisterForm
+        # Invalid start digit (not 6,7,8,9)
+        form1 = UserRegisterForm(data={'phone_number': '1234567890'})
+        self.assertFalse(form1.is_valid())
+        self.assertIn('phone_number', form1.errors)
 
-        # POST with master/demo code 123456
-        post_res = self.client.post(reverse('verify_phone'), {'otp': '123456'})
-        self.assertEqual(post_res.status_code, 302)
-        
-        user.refresh_from_db()
-        self.assertTrue(user.is_phone_verified)
+        # Invalid repetitive dummy numbers (e.g. 0000000000)
+        form2 = UserRegisterForm(data={'phone_number': '0000000000'})
+        self.assertFalse(form2.is_valid())
+        self.assertIn('phone_number', form2.errors)
+
+        # Invalid length
+        form3 = UserRegisterForm(data={'phone_number': '98765'})
+        self.assertFalse(form3.is_valid())
+        self.assertIn('phone_number', form3.errors)

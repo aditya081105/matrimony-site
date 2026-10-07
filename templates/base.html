@@ -157,38 +157,14 @@
         }
 
         /* =========================================================
-           AGGRESSIVELY HIDE ALL GOOGLE TRANSLATE BANNERS & POPUPS
+           CLEAN TRANSLATION INTEGRATION (HIDE BANNER & TOOLTIP)
            ========================================================= */
+        /* Hide Google top banner frame */
         .goog-te-banner-frame,
-        .goog-te-banner-frame.skiptranslate,
-        iframe.goog-te-banner-frame,
-        iframe.skiptranslate,
-        .VIpgJd-ZVi9od-ORHb-OEVmcd,
-        .VIpgJd-ZVi9od-ORHb-OEVmcd.skiptranslate,
-        #goog-gt-tt,
-        #goog-gt-vt,
-        .goog-te-balloon-frame,
-        .goog-tooltip,
-        .goog-tooltip:hover,
-        .VIpgJd-ZVi9od-aZ2wEe-wOHMyf,
-        .VIpgJd-ZVi9od-aZ2wEe-wOHMyf-mEkA1b,
-        .VIpgJd-yAWNEb-VIpgJd-fmcmS-sn54Q,
-        body > .skiptranslate,
-        .VIpgJd-yAWNEb-L7lbkb {
+        iframe.goog-te-banner-frame {
             display: none !important;
             visibility: hidden !important;
-            opacity: 0 !important;
             height: 0 !important;
-            width: 0 !important;
-            max-height: 0 !important;
-            max-width: 0 !important;
-            overflow: hidden !important;
-            pointer-events: none !important;
-            position: absolute !important;
-            top: -9999px !important;
-            left: -9999px !important;
-            border: none !important;
-            z-index: -9999 !important;
         }
 
         body {
@@ -196,13 +172,28 @@
             position: static !important;
         }
 
+        /* Hide the hover tooltip balloon that shows "Rate this translation" / like-dislike */
+        #goog-gt-tt,
+        #goog-gt-vt,
+        .goog-te-balloon-frame {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+        /* Remove highlighting on translated elements */
         .goog-text-highlight {
-            background-color: transparent !important;
+            background: transparent !important;
             box-shadow: none !important;
             border: none !important;
         }
 
+        /* Hide gadget container */
         .goog-te-gadget,
+        #google_translate_element {
+            display: none !important;
+        }
         #google_translate_element {
             display: none !important;
         }
@@ -390,18 +381,6 @@
             {% endfor %}
         {% endif %}
 
-        {% if request.user.is_authenticated and not request.user.is_phone_verified and not request.user.is_staff and request.resolver_match.url_name != 'verify_phone' %}
-        <div class="alert alert-warning border-0 rounded-4 shadow-sm mb-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div>
-                <strong>Phone Not Verified:</strong>
-                <span class="small text-muted ms-1">Verify your registered mobile (+91 {{ request.user.phone_number }}) to activate matchmaking features.</span>
-            </div>
-            <a href="{% url 'verify_phone' %}" class="btn btn-dark btn-sm rounded-pill px-3">
-                Verify Mobile Now
-            </a>
-        </div>
-        {% endif %}
-
         {% block content %}{% endblock %}
     </div>
 </main>
@@ -454,46 +433,31 @@
     function googleTranslateElementInit() {
         new google.translate.TranslateElement({
             pageLanguage: 'en',
-            includedLanguages: 'en,hi',
-            autoDisplay: false,
-            multilanguagePage: true
+            includedLanguages: 'hi,en',
+            autoDisplay: false
         }, 'google_translate_element');
     }
 
     function setSiteLanguage(lang) {
-        const host = window.location.hostname;
-        if (lang === 'en') {
-            document.cookie = "googtrans=; path=/; domain=" + host + "; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
-            document.cookie = "googtrans=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
-            document.cookie = "googtrans=/en/en; path=/; domain=" + host;
-            document.cookie = "googtrans=/en/en; path=/;";
-        } else {
-            document.cookie = "googtrans=/en/" + lang + "; path=/; domain=" + host;
-            document.cookie = "googtrans=/en/" + lang + "; path=/;";
+        var cookieVal = '/en/' + lang;
+        document.cookie = 'googtrans=' + cookieVal + '; path=/;';
+        document.cookie = 'googtrans=' + cookieVal + '; path=/; domain=' + window.location.hostname + ';';
+        var hostParts = window.location.hostname.split('.');
+        if (hostParts.length > 2) {
+            document.cookie = 'googtrans=' + cookieVal + '; path=/; domain=.' + hostParts.slice(-2).join('.') + ';';
+        }
+
+        var combo = document.querySelector('.goog-te-combo');
+        if (combo) {
+            combo.value = lang;
+            combo.dispatchEvent(new Event('change'));
         }
         window.location.reload();
     }
 
-    // Suppress Google Translate feedback popups, banners, and tooltips
-    const cleanGoogleArtifacts = function() {
-        const tooltip = document.getElementById('goog-gt-tt');
-        if (tooltip) tooltip.remove();
-        document.querySelectorAll('.VIpgJd-ZVi9od-ORHb-OEVmcd, .goog-te-banner-frame, iframe[id=":1.container"], .VIpgJd-ZVi9od-aZ2wEe-wOHMyf, .VIpgJd-yAWNEb-L7lbkb').forEach(function(el) {
-            el.remove();
-        });
-        if (document.body && document.body.style.top && document.body.style.top !== '0px') {
-            document.body.style.top = '0px';
-        }
-    };
-
-    if (window.MutationObserver) {
-        new MutationObserver(cleanGoogleArtifacts).observe(document.documentElement, { childList: true, subtree: true });
-    }
-
     document.addEventListener("DOMContentLoaded", function() {
-        cleanGoogleArtifacts();
         if (document.cookie.indexOf('googtrans=/en/hi') !== -1) {
-            const langEl = document.getElementById('currentLangText');
+            var langEl = document.getElementById('currentLangText');
             if (langEl) langEl.textContent = 'हिंदी';
         }
     });

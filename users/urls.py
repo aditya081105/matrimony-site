@@ -23,6 +23,4 @@ urlpatterns = [
         views.resend_verification_email,
         name="resend_verification"
     ),
-    path("verify-phone/", views.verify_phone, name="verify_phone"),
-    path("resend-phone-otp/", views.resend_phone_otp, name="resend_phone_otp"),
 ]
