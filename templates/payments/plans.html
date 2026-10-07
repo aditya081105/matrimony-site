@@ -10,7 +10,7 @@
         </span>
         <h1 class="logo-font fw-bold text-dark mt-2">Choose the Right Plan for You</h1>
         <p class="text-muted mx-auto" style="max-width: 650px;">
-            Upgrade your profile to view verified contact details directly, send unlimited requests, and increase your matchmaking visibility.
+            Upgrade your profile to send unlimited contact requests, receive verified badges, and boost your matchmaking visibility.
         </p>
 
         {% if user_sub and user_sub.is_valid %}
@@ -60,7 +60,7 @@
 
                     <!-- Action Button -->
                     <div class="mt-auto pt-2">
-                        {% if user_sub and user_sub.is_valid and user_sub.plan_type == plan.name %}
+                        {% if user_sub and user_sub.is_valid and user_sub.plan == plan or user_sub and user_sub.is_valid and user_sub.plan_type == plan.name %}
                             <button class="btn btn-secondary w-100 py-2 rounded-pill" disabled>
                                 Currently Active
                             </button>

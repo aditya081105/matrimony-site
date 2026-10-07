@@ -18,7 +18,8 @@ def search_view(request):
         # Search across full name, occupation, city, bio, and caste
         profiles = CustomUser.objects.filter(
             is_active=True,
-            is_approved=True
+            is_approved=True,
+            is_suspended=False
         ).exclude(
             id__in=blocked_ids
         ).exclude(

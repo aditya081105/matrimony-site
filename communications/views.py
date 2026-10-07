@@ -53,10 +53,6 @@ def send_request(request, user_id):
     if receiver == request.user:
         return redirect("profile_list")
 
-    # Prevent duplicate requests
-    if ContactRequest.objects.filter(sender=request.user, receiver=receiver).exists():
-        return redirect("profile_list")
-
     if receiver.is_suspended:
         messages.error(request, "This account is unavailable.")
         return redirect('profile_list')
@@ -72,35 +68,31 @@ def send_request(request, user_id):
     if is_blocked:
         messages.error(request, "You cannot interact with this user.")
         return redirect('profile_list')
-    
-    if Block.objects.filter(blocker=request.user, blocked=receiver).exists():
+
+    # Prevent duplicate requests in same direction
+    if ContactRequest.objects.filter(sender=request.user, receiver=receiver, status='pending').exists():
+        messages.info(request, "You have already sent a pending request to this user.")
         return redirect("profile_list")
 
-    today = date.today()
-
-    # ONLY check requests where current user is sender
-    existing = ContactRequest.objects.filter(
-        sender=request.user,
-        receiver=receiver
-    ).first()
-
-    if existing:
-        # reset daily attempts if new day
-        if existing.created_at.date() != today:
-            existing.attempt_count = 1
-        else:
-            existing.attempt_count += 1
-
-        if not request.user.is_premium and existing.attempt_count > 3:
-            messages.error(request, "Daily request limit reached for this user. Upgrade to Premium for unlimited requests.")
-            return redirect('profile_list')
-
-        existing.status = 'pending'
-        existing.save()
-        return redirect('profile_list')
+    # If receiver already sent a request to request.user, auto-accept and connect both
+    incoming = ContactRequest.objects.filter(sender=receiver, receiver=request.user, status='pending').first()
+    if incoming:
+        incoming.status = 'accepted'
+        incoming.save()
+        ContactRequest.objects.update_or_create(
+            sender=request.user,
+            receiver=receiver,
+            defaults={'status': 'accepted', 'attempt_count': 1}
+        )
+        ActivityLog.objects.create(
+            user=request.user,
+            target_user=receiver,
+            action='accept_request'
+        )
+        messages.success(request, f"It's a match! You and {receiver.full_name} are now connected.")
+        return redirect(request.META.get("HTTP_REFERER", "profile_list"))
 
     today = timezone.now().date()
-
     daily_attempts = RequestAttempt.objects.filter(
         sender=request.user,
         receiver=receiver,
@@ -110,17 +102,16 @@ def send_request(request, user_id):
     if not request.user.is_premium and daily_attempts >= 3:
         messages.error(request, "Daily request limit reached for this user. Upgrade to Premium for unlimited requests.")
         return redirect('profile_list')
-    
+
     RequestAttempt.objects.create(
         sender=request.user,
         receiver=receiver
     )
-    # If no request in THIS direction, create new one
-    ContactRequest.objects.create(
+
+    ContactRequest.objects.update_or_create(
         sender=request.user,
         receiver=receiver,
-        status='pending',
-        attempt_count=1
+        defaults={'status': 'pending', 'attempt_count': daily_attempts + 1}
     )
 
     ActivityLog.objects.create(
@@ -128,7 +119,7 @@ def send_request(request, user_id):
         target_user=receiver,
         action='send_request'
     )
-    
+    messages.success(request, f"Contact request sent to {receiver.full_name}.")
     return redirect(request.META.get("HTTP_REFERER", "profile_list"))
 
 @login_required
@@ -145,13 +136,18 @@ def update_request(request, request_id, action):
         contact_request.status = 'rejected'
 
     if action == 'accept':
+        contact_request.status = 'accepted'
+        ContactRequest.objects.filter(
+            sender=request.user,
+            receiver=contact_request.sender
+        ).update(status='accepted')
         ActivityLog.objects.create(
             user=request.user,
             target_user=contact_request.sender,
             action='accept_request'
         )
-
     elif action == 'reject':
+        contact_request.status = 'rejected'
         ActivityLog.objects.create(
             user=request.user,
             target_user=contact_request.sender,
@@ -173,29 +169,23 @@ def received_requests(request):
 
 @login_required
 def unmatch(request, user_id):
+    target = get_object_or_404(CustomUser, id=user_id)
     ContactRequest.objects.filter(
-        status='accepted'
-    ).filter(
-        sender=request.user,
-        receiver_id=user_id
+        Q(sender=request.user, receiver=target) |
+        Q(sender=target, receiver=request.user)
     ).delete()
 
-    ContactRequest.objects.filter(
-        status='accepted'
-    ).filter(
-        sender_id=user_id,
-        receiver=request.user
-    ).delete()
+    ActivityLog.objects.create(
+        user=request.user,
+        target_user=target,
+        action='unmatch'
+    )
 
     messages.success(request, "Match removed.")
     return redirect('profile_list')
 
-from django.shortcuts import redirect
-from django.contrib import messages
-
 @login_required
 def cancel_request(request, user_id):
-    print("CANCEL VIEW TRIGGERED")
     ContactRequest.objects.filter(
         sender=request.user,
         receiver_id=user_id,
@@ -203,8 +193,6 @@ def cancel_request(request, user_id):
     ).delete()
 
     messages.success(request, "Request cancelled.")
-
-    # Go back to previous page
     return redirect(request.META.get('HTTP_REFERER', 'profile_list'))
 
 @login_required
@@ -226,18 +214,14 @@ def block_user(request, user_id):
 
     # Delete any existing requests in both directions
     ContactRequest.objects.filter(
-        sender=request.user,
-        receiver=target
+        Q(sender=request.user, receiver=target) |
+        Q(sender=target, receiver=request.user)
     ).delete()
 
-    ContactRequest.objects.filter(
-        sender=target,
-        receiver=request.user
-    ).delete()
-
+    # Remove bookmarks in both directions
     SavedProfile.objects.filter(
-        user=request.user,
-        saved_user=target
+        Q(user=request.user, saved_user=target) |
+        Q(user=target, saved_user=request.user)
     ).delete()
 
     messages.success(request, "User blocked.")
@@ -260,7 +244,7 @@ def report_user(request, user_id):
     target = get_object_or_404(CustomUser, id=user_id)
 
     if request.method == "POST":
-        reason = request.POST.get("reason", "")
+        reason = request.POST.get("reason", "").strip()
 
         Report.objects.create(
             reporter=request.user,
@@ -268,22 +252,22 @@ def report_user(request, user_id):
             reason=reason
         )
 
-        messages.success(request, "User reported.")
-        return redirect('profile_list')
-    
-    report_count = Report.objects.filter(
-        reported_user=target
-    ).count()
+        ActivityLog.objects.create(
+            user=request.user,
+            target_user=target,
+            action='report_user'
+        )
 
-    if report_count >= 5:
-        target.is_suspended = True
-        target.save()
-    
-    ActivityLog.objects.create(
-        user=request.user,
-        target_user=target,
-        action='report_user'
-    )
+        report_count = Report.objects.filter(
+            reported_user=target
+        ).count()
+
+        if report_count >= 5:
+            target.is_suspended = True
+            target.save()
+
+        messages.success(request, "User reported to administrators.")
+        return redirect('profile_list')
 
     return render(request, "communications/report_user.html", {
         "target": target

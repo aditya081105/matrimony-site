@@ -58,3 +58,60 @@ class PaymentTests(TestCase):
         self.assertTrue(self.user.is_premium)
         self.assertTrue(self.user.subscription.is_active)
         self.assertEqual(self.user.subscription.plan_type, plan.name)
+
+    def test_supersede_previous_completed_orders(self):
+        self.client.get(reverse('plans'))
+        silver_plan = Plan.objects.get(code='silver')
+        gold_plan = Plan.objects.get(code='gold')
+
+        order1 = PaymentOrder.objects.create(
+            user=self.user,
+            plan=silver_plan,
+            amount=silver_plan.price,
+            utr_number="UTR_ORDER_1",
+            status="pending",
+        )
+        order1.activate_subscription()
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.subscription.plan_type, silver_plan.name)
+        self.assertEqual(order1.status, 'completed')
+
+        # Activate gold plan
+        order2 = PaymentOrder.objects.create(
+            user=self.user,
+            plan=gold_plan,
+            amount=gold_plan.price,
+            utr_number="UTR_ORDER_2",
+            status="pending",
+        )
+        order2.activate_subscription()
+
+        order1.refresh_from_db()
+        order2.refresh_from_db()
+        self.user.refresh_from_db()
+
+        # Previous order superseded, current active
+        self.assertEqual(order1.status, 'superseded')
+        self.assertEqual(order2.status, 'completed')
+        self.assertEqual(self.user.subscription.plan_type, gold_plan.name)
+        self.assertEqual(self.user.subscription.active_order, order2)
+
+    def test_plan_deletion_resets_user_subscription(self):
+        self.client.get(reverse('plans'))
+        silver_plan = Plan.objects.get(code='silver')
+        order = PaymentOrder.objects.create(
+            user=self.user,
+            plan=silver_plan,
+            amount=silver_plan.price,
+            utr_number="UTR_SILVER",
+            status="pending",
+        )
+        order.activate_subscription()
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.subscription.is_active)
+
+        # Delete the order and plan
+        order.delete()
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.subscription.is_active)
+        self.assertEqual(self.user.subscription.plan_type, 'Free')

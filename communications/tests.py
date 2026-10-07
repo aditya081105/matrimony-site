@@ -7,6 +7,7 @@ from communications.models import (
     ContactRequest,
     RequestAttempt,
     SavedProfile,
+    ActivityLog,
 )
 
 
@@ -138,3 +139,35 @@ class CommunicationTests(TestCase):
         self.client.get(reverse("send_request", args=[self.user2.id]))
 
         self.assertEqual(ContactRequest.objects.count(), 0)
+
+    def test_mutual_request_auto_matches(self):
+        # User 2 sends request to User 1
+        ContactRequest.objects.create(
+            sender=self.user2,
+            receiver=self.user1,
+            status='pending',
+            attempt_count=1,
+        )
+        # User 1 sends request to User 2 -> auto match!
+        response = self.client.get(reverse("send_request", args=[self.user2.id]))
+        self.assertEqual(response.status_code, 302)
+
+        # Both requests should now be accepted
+        req_2_to_1 = ContactRequest.objects.get(sender=self.user2, receiver=self.user1)
+        self.assertEqual(req_2_to_1.status, 'accepted')
+
+    def test_unmatch_logs_activity(self):
+        ContactRequest.objects.create(
+            sender=self.user1,
+            receiver=self.user2,
+            status='accepted',
+        )
+        self.client.get(reverse("unmatch", args=[self.user2.id]))
+        self.assertEqual(ContactRequest.objects.count(), 0)
+        self.assertTrue(ActivityLog.objects.filter(user=self.user1, target_user=self.user2, action='unmatch').exists())
+
+    def test_block_removes_saved_profiles_bidirectionally(self):
+        SavedProfile.objects.create(user=self.user1, saved_user=self.user2)
+        SavedProfile.objects.create(user=self.user2, saved_user=self.user1)
+        self.client.get(reverse("block_user", args=[self.user2.id]))
+        self.assertEqual(SavedProfile.objects.count(), 0)

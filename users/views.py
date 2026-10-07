@@ -105,11 +105,12 @@ def profile_list(request):
         blocked=request.user
     ).values_list("blocker_id", flat=True)
 
-    blocked_ids = list(blocked_by_me) + list(blocked_me)
+    blocked_ids = set(blocked_by_me) | set(blocked_me)
 
     profiles = CustomUser.objects.filter(
         is_active=True,
-        is_approved=True
+        is_approved=True,
+        is_suspended=False
     ).exclude(
         id__in=blocked_ids
     ).exclude(
@@ -129,17 +130,39 @@ def profile_list(request):
     if request.GET.get('city'):
         profiles = profiles.filter(city_id=request.GET.get('city'))
     if request.GET.get('min_height'):
-        profiles = profiles.filter(height_cm__gte=request.GET.get('min_height'))
+        try:
+            min_h = int(request.GET.get('min_height'))
+            profiles = profiles.filter(height_cm__gte=min_h)
+        except (ValueError, TypeError):
+            pass
     if request.GET.get('max_height'):
-        profiles = profiles.filter(height_cm__lte=request.GET.get('max_height'))
+        try:
+            max_h = int(request.GET.get('max_height'))
+            profiles = profiles.filter(height_cm__lte=max_h)
+        except (ValueError, TypeError):
+            pass
+
+    today = date.today()
     if request.GET.get('min_age'):
-        min_age = int(request.GET.get('min_age'))
-        max_dob = date.today().replace(year=date.today().year - min_age)
-        profiles = profiles.filter(date_of_birth__lte=max_dob)
+        try:
+            min_age = int(request.GET.get('min_age'))
+            try:
+                max_dob = date(today.year - min_age, today.month, today.day)
+            except ValueError:
+                max_dob = date(today.year - min_age, today.month, 28)
+            profiles = profiles.filter(date_of_birth__lte=max_dob)
+        except (ValueError, TypeError):
+            pass
     if request.GET.get('max_age'):
-        max_age = int(request.GET.get('max_age'))
-        min_dob = date.today().replace(year=date.today().year - max_age)
-        profiles = profiles.filter(date_of_birth__gte=min_dob)
+        try:
+            max_age = int(request.GET.get('max_age'))
+            try:
+                min_dob = date(today.year - max_age, today.month, today.day)
+            except ValueError:
+                min_dob = date(today.year - max_age, today.month, 28)
+            profiles = profiles.filter(date_of_birth__gte=min_dob)
+        except (ValueError, TypeError):
+            pass
 
     # Pagination
     paginator = Paginator(profiles, 9)
@@ -217,7 +240,7 @@ def edit_profile(request):
 
 @login_required
 def my_profile(request):
-    profile = request.user.profile
+    profile, _ = Profile.objects.get_or_create(user=request.user)
     return render(request, 'users/my_profile.html', {
         'profile': profile
     })
@@ -427,24 +450,17 @@ def resend_verification_email(request):
 
     try:
         send_verification_email(request, request.user)
-
         messages.success(
             request,
-            "Verification email sent successfully."
+            f"Verification email sent to {request.user.email}. Please check your inbox or spam folder."
         )
-
     except Exception as e:
         print(f"Error sending verification email: {e}")
         messages.error(
             request,
             "Unable to send verification email right now. Please try again in a moment."
         )
-        return redirect("home")
 
-    messages.success(
-        request,
-        f"Verification email sent to {request.user.email}"
-    )
     return redirect("home")
 
 

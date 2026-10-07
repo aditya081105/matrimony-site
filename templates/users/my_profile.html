@@ -11,7 +11,11 @@
  
 <div class="text-center mb-4">
 
-{% if request.user.profile.profile_photo %}
+{% if request.user.profile_photo %}
+<img src="{{ request.user.profile_photo.url }}"
+class="rounded-circle shadow-sm mb-3"
+style="width:160px;height:160px;object-fit:cover;">
+{% elif request.user.profile.profile_photo %}
 <img src="{{ request.user.profile.profile_photo.url }}"
 class="rounded-circle shadow-sm mb-3"
 style="width:160px;height:160px;object-fit:cover;">
@@ -33,19 +37,19 @@ style="width:160px;height:160px;object-fit:cover;">
 <div class="row small mb-4">
 
 <div class="col-md-6 mb-2">
-<strong>Caste / Community:</strong> {{ request.user.caste_community }}
+<strong>Caste / Community:</strong> {{ request.user.caste_community|default:"Not specified" }}
 </div>
 
 <div class="col-md-6 mb-2">
-<strong>Hometown:</strong> {{ profile.city_hometown }}
+<strong>Hometown:</strong> {{ request.user.city|default:profile.city_hometown|default:"Not specified" }}
 </div>
 
 <div class="col-md-6 mb-2">
-<strong>Father:</strong> {{ profile.father_name|default:"Not specified" }}
+<strong>Father:</strong> {{ request.user.father_name|default:profile.father_name|default:"Not specified" }}
 </div>
 
 <div class="col-md-6 mb-2">
-<strong>Mother:</strong> {{ profile.mother_name|default:"Not specified" }}
+<strong>Mother:</strong> {{ request.user.mother_name|default:profile.mother_name|default:"Not specified" }}
 </div>
 
 </div>
@@ -55,7 +59,7 @@ style="width:160px;height:160px;object-fit:cover;">
 <h6 class="fw-semibold mb-2">About</h6>
 
 <p class="small text-muted">
-{{ profile.bio|default:"No bio added yet." }}
+{{ request.user.bio|default:profile.bio|default:"No bio added yet." }}
 </p>
 
 <hr>

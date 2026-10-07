@@ -7,6 +7,7 @@ from PIL import Image
 from io import BytesIO
 from django.core.files.base import ContentFile
 
+from datetime import date
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
@@ -68,6 +69,15 @@ class CustomUser(AbstractUser):
     is_email_verified = models.BooleanField(default=False)
 
     @property
+    def age(self):
+        if not self.date_of_birth:
+            return None
+        today = date.today()
+        return today.year - self.date_of_birth.year - (
+            (today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day)
+        )
+
+    @property
     def is_premium(self):
         try:
             return bool(hasattr(self, 'subscription') and self.subscription.is_valid)
@@ -109,8 +119,8 @@ class Profile(models.Model):
         return all([
             self.user.date_of_birth,
             self.user.height_cm,
-            self.city_hometown,
-            self.profile_photo
+            (self.city_hometown or self.user.city),
+            (self.profile_photo or self.user.profile_photo)
         ])
 
     def __str__(self):
@@ -118,10 +128,32 @@ class Profile(models.Model):
     
     
 @receiver(post_save, sender=CustomUser)
-def create_user_profile(sender, instance, created, **kwargs):
-    if created:
-        Profile.objects.get_or_create(user=instance)
-        Subscription.objects.get_or_create(user=instance, defaults={'plan_type': 'Free', 'is_active': False})
+def create_or_sync_user_profile(sender, instance, created, **kwargs):
+    profile, _ = Profile.objects.get_or_create(user=instance)
+    Subscription.objects.get_or_create(user=instance, defaults={'plan_type': 'Free', 'is_active': False})
+
+    # Keep profile synced with user fields
+    needs_save = False
+    if instance.city and profile.city_hometown_id != instance.city_id:
+        profile.city_hometown = instance.city
+        needs_save = True
+    if instance.father_name and profile.father_name != instance.father_name:
+        profile.father_name = instance.father_name
+        needs_save = True
+    if instance.mother_name and profile.mother_name != instance.mother_name:
+        profile.mother_name = instance.mother_name
+        needs_save = True
+    if instance.address and profile.address != instance.address:
+        profile.address = instance.address
+        needs_save = True
+    if instance.bio and profile.bio != instance.bio:
+        profile.bio = instance.bio
+        needs_save = True
+    if instance.profile_photo and profile.profile_photo != instance.profile_photo:
+        profile.profile_photo = instance.profile_photo
+        needs_save = True
+    if needs_save:
+        profile.save()
 
 
 class Subscription(models.Model):
@@ -129,6 +161,20 @@ class Subscription(models.Model):
     is_active = models.BooleanField(default=False)
     expires_at = models.DateTimeField(null=True, blank=True)
     plan_type = models.CharField(max_length=50, default='Free', blank=True)
+    plan = models.ForeignKey(
+        'payments.Plan',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='subscriptions'
+    )
+    active_order = models.ForeignKey(
+        'payments.PaymentOrder',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='subscriptions'
+    )
 
     @property
     def is_valid(self):
@@ -142,6 +188,8 @@ class Subscription(models.Model):
 
     def reset_to_free(self):
         self.is_active = False
+        self.plan = None
+        self.active_order = None
         self.plan_type = 'Free'
         self.expires_at = None
         self.save()

@@ -75,6 +75,7 @@ class ActivityLog(models.Model):
         ('reject_request', 'Rejected Request'),
         ('block_user', 'Blocked User'),
         ('report_user', 'Reported User'),
+        ('unmatch', 'Unmatched User'),
     ]
 
     user = models.ForeignKey(

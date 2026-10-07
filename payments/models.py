@@ -32,7 +32,8 @@ class Plan(models.Model):
 class PaymentOrder(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending Verification'),
-        ('completed', 'Verified & Active'),
+        ('completed', 'Active'),
+        ('superseded', 'Superseded'),
         ('rejected', 'Rejected'),
     ]
 
@@ -71,16 +72,62 @@ class PaymentOrder(models.Model):
         now = timezone.now()
         sub, _ = Subscription.objects.get_or_create(user=self.user)
 
+        # Mark all other completed orders for this user as superseded
+        PaymentOrder.objects.filter(
+            user=self.user,
+            status='completed'
+        ).exclude(id=self.id).update(status='superseded')
+
         # Extend previous end date only if renewing the exact same plan; otherwise start fresh from today
-        if sub.is_active and sub.plan_type == self.plan.name and sub.expires_at and sub.expires_at > now:
+        if sub.is_active and (sub.plan == self.plan or sub.plan_type == self.plan.name) and sub.expires_at and sub.expires_at > now:
             sub.expires_at = sub.expires_at + timedelta(days=self.plan.duration_days)
         else:
             sub.expires_at = now + timedelta(days=self.plan.duration_days)
 
         sub.is_active = True
+        sub.plan = self.plan
         sub.plan_type = self.plan.name
+        sub.active_order = self
         sub.save()
 
         self.status = 'completed'
         self.verified_at = now
         self.save()
+
+
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
+
+
+@receiver(post_delete, sender=PaymentOrder)
+def handle_payment_order_deleted(sender, instance, **kwargs):
+    if hasattr(instance.user, 'subscription'):
+        sub = instance.user.subscription
+        if sub.active_order_id == instance.id or sub.active_order == instance:
+            latest_completed = PaymentOrder.objects.filter(
+                user=instance.user,
+                status='completed'
+            ).order_by('-verified_at', '-created_at').first()
+            if latest_completed:
+                latest_completed.activate_subscription()
+            else:
+                sub.reset_to_free()
+
+
+@receiver(post_delete, sender=Plan)
+def handle_plan_deleted(sender, instance, **kwargs):
+    from users.models import Subscription
+    subs = Subscription.objects.filter(
+        models.Q(plan=instance) | models.Q(plan_type=instance.name)
+    )
+    for sub in subs:
+        latest_completed = PaymentOrder.objects.filter(
+            user=sub.user,
+            status='completed',
+            plan__isnull=False
+        ).exclude(plan=instance).order_by('-verified_at', '-created_at').first()
+        if latest_completed:
+            latest_completed.activate_subscription()
+        else:
+            sub.reset_to_free()
+

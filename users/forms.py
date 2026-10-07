@@ -138,6 +138,8 @@ class UserUpdateForm(forms.ModelForm):
         if age < 18:
             raise forms.ValidationError("You must be at least 18 years old.")
 
+        return dob
+
     def clean_height_cm(self):
         height = self.cleaned_data.get("height_cm")
         if height is not None and height <= 0:
@@ -183,6 +185,22 @@ class UserUpdateForm(forms.ModelForm):
                 'type': 'date'
             }),
         }
+
+    def save(self, commit=True):
+        user = super().save(commit=commit)
+        if commit:
+            profile, _ = Profile.objects.get_or_create(user=user)
+            if user.city:
+                profile.city_hometown = user.city
+            if user.profile_photo:
+                profile.profile_photo = user.profile_photo
+            profile.father_name = user.father_name or ''
+            profile.mother_name = user.mother_name or ''
+            profile.address = user.address or ''
+            profile.bio = user.bio or ''
+            profile.save()
+            user.profile = profile
+        return user
 
 
 # =========================

@@ -38,7 +38,7 @@
                             Lifetime active membership.
                         {% endif %}
                     {% else %}
-                        Upgrade to unlock phone numbers, get unlimited daily requests, and priority search ranking.
+                        Upgrade to send unlimited contact requests, get verified profile badges, and boost your matchmaking visibility.
                     {% endif %}
                 </p>
             </div>
@@ -65,7 +65,7 @@
                         <th>Method / UTR</th>
                         <th>Status</th>
                         <th>Date</th>
-                        <th class="pe-4 text-end">Action</th>
+                        <th class="pe-4 text-end">Plan State</th>
                     </tr>
                 </thead>
                 <tbody class="small">
@@ -82,7 +82,9 @@
                         </td>
                         <td>
                             {% if order.status == 'completed' %}
-                                <span class="badge bg-success rounded-pill px-3 py-1">Completed</span>
+                                <span class="badge bg-success rounded-pill px-3 py-1">Active</span>
+                            {% elif order.status == 'superseded' %}
+                                <span class="badge bg-secondary rounded-pill px-3 py-1">Superseded</span>
                             {% elif order.status == 'pending' %}
                                 <span class="badge bg-warning text-dark rounded-pill px-3 py-1">Pending Verification</span>
                             {% else %}
@@ -91,7 +93,9 @@
                         </td>
                         <td class="text-muted">{{ order.created_at|date:"M d, Y" }}</td>
                         <td class="pe-4 text-end">
-                            {% if order.status == 'pending' %}
+                            {% if order.status == 'completed' %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1">Current Plan</span>
+                            {% elif order.status == 'pending' %}
                                 <span class="badge bg-light text-muted border rounded-pill">Pending Review</span>
                             {% else %}
                                 <span class="text-muted">—</span>

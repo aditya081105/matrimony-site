@@ -268,8 +268,8 @@
 
                     <div class="small text-muted">
 
-                        {% if profile.date_of_birth %}
-                        {{ profile.date_of_birth|timesince|slice:":2" }} yrs
+                        {% if profile.age %}
+                        {{ profile.age }} yrs
                         {% endif %}
 
                         {% if profile.height_cm %}

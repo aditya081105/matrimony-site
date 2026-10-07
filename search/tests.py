@@ -41,3 +41,10 @@ class SearchTests(TestCase):
         response = self.client.get(reverse('search_profiles'), {'q': 'NonExistentPerson'})
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "No profiles matched")
+
+    def test_search_excludes_suspended(self):
+        self.user2.is_suspended = True
+        self.user2.save()
+        response = self.client.get(reverse('search_profiles'), {'q': 'Doctor'})
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Pooja Verma")

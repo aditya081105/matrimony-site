@@ -65,7 +65,11 @@
     <!-- Profile Header -->
     <div class="text-center mb-4">
 
-        {% if profile_user.profile.profile_photo %}
+        {% if profile_user.profile_photo %}
+        <img src="{{ profile_user.profile_photo.url }}"
+             class="rounded-circle mb-3 shadow-sm"
+             style="width:160px;height:160px;object-fit:cover;">
+        {% elif profile_user.profile.profile_photo %}
         <img src="{{ profile_user.profile.profile_photo.url }}"
              class="rounded-circle mb-3 shadow-sm"
              style="width:160px;height:160px;object-fit:cover;">
@@ -140,6 +144,7 @@
         <div class="col-md-6 mb-2">
             <strong>Date of Birth:</strong>
             {{ profile_user.date_of_birth|default:"Not specified" }}
+            {% if profile_user.age %}({{ profile_user.age }} yrs old){% endif %}
         </div>
 
         <div class="col-md-6 mb-2">
@@ -162,8 +167,8 @@
         </div>
 
         <div class="col-md-6 mb-2">
-            <strong>Gotra:</strong>
-            {{ profile_user.gotra|default:"Not specified" }}
+            <strong>Occupation:</strong>
+            {{ profile_user.occupation|default:"Not specified" }}
         </div>
 
     </div>
@@ -177,17 +182,17 @@
 
         <div class="col-md-6 mb-2">
             <strong>Father's Name:</strong>
-            {{ profile_user.profile.father_name|default:"Not specified" }}
+            {{ profile_user.father_name|default:profile_user.profile.father_name|default:"Not specified" }}
         </div>
 
         <div class="col-md-6 mb-2">
             <strong>Mother's Name:</strong>
-            {{ profile_user.profile.mother_name|default:"Not specified" }}
+            {{ profile_user.mother_name|default:profile_user.profile.mother_name|default:"Not specified" }}
         </div>
 
         <div class="col-md-6 mb-2">
-            <strong>Hometown:</strong>
-            {{ profile_user.profile.city_hometown|default:"Not specified" }}
+            <strong>Hometown / City:</strong>
+            {{ profile_user.city|default:profile_user.profile.city_hometown|default:"Not specified" }}
         </div>
 
     </div>
@@ -205,13 +210,12 @@
         </div>
 
         <div class="col-md-6 mb-2">
-            <strong>Annual Income:</strong>
-            {{ profile_user.annual_income|default:"Not specified" }}
+            <strong>Email:</strong> {{ profile_user.email }}
         </div>
 
         <div class="col-md-12 mb-2">
             <strong>Address:</strong>
-            {{ profile_user.profile.address|default:"Not specified" }}
+            {{ profile_user.address|default:profile_user.profile.address|default:"Not specified" }}
         </div>
 
     </div>
@@ -228,7 +232,7 @@
     <h6 class="fw-semibold mb-2">About</h6>
 
     <p class="small text-muted">
-        {{ profile_user.profile.bio|default:"No bio added yet." }}
+        {{ profile_user.bio|default:profile_user.profile.bio|default:"No bio added yet." }}
     </p>
 
 </div>

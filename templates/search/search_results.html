@@ -81,6 +81,11 @@
                                     {{ profile.caste_community.name }}
                                 </span>
                             {% endif %}
+                            {% if profile.age %}
+                                <span class="badge bg-light text-dark rounded-pill border px-2 py-1 small">
+                                    {{ profile.age }} yrs
+                                </span>
+                            {% endif %}
                             {% if profile.height_cm %}
                                 <span class="badge bg-light text-dark rounded-pill border px-2 py-1 small">
                                     {{ profile.height_cm }} cm
