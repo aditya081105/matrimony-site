@@ -18,17 +18,19 @@ A full-stack community matrimonial web platform built with Django 6, PostgreSQL,
 - **Atomic State Transitions:** Critical business logic (interest acceptance, mutual auto-matching, subscription activation) is wrapped inside `transaction.atomic()` blocks.
 - **Row-Level Locking:** Uses `select_for_update()` on sender user rows during request creation and on `Subscription` models during payment activation to eliminate race conditions, duplicate state mutations, and quota-bypassing races.
 
-### 2. Query Optimization & Indexing
+### 2. Query Optimization & PostgreSQL Full-Text Search
 - **N+1 Prevention:** Views make extensive use of `select_related()` (for `Profile`, `City`, `Caste`, `Subscription`) across relational lookups to keep query counts bounded. Unit tests enforce this via `assertNumQueries` and `CaptureQueriesContext`.
+- **PostgreSQL Full-Text Search (FTS):** Search queries leverage PostgreSQL `SearchVector`, `SearchQuery`, and `SearchRank` with weighted relevance across full name, occupation, caste, and bio, falling back to multi-column filters on SQLite.
 - **Compound B-Tree Indexing:** Multi-column indexes target frequent filter vectors:
   - `user_match_idx`: `(is_active, is_approved, is_suspended, gender)`
   - `user_city_gender_idx`: `(city, gender)`
   - `user_caste_gender_idx`: `(caste, gender)`
   - `req_receiver_status_idx`: `(receiver, status)`
-- **Search Ordering & Pagination:** Search queries enforce explicit ordering (`-date_joined`) with server-side pagination (12 profiles per page) to prevent unindexed unbounded result sets.
+- **Search Ordering & Pagination:** Search queries enforce explicit ordering (`-rank`, `-date_joined`) with server-side pagination (12 profiles per page) to prevent unindexed unbounded result sets.
 
-### 3. Caching (Cache-Aside Pattern)
-- Frequently read, infrequently modified taxonomy data (Cities, Castes, Active Membership Plans) utilizes a cache-aside pattern with automatic signal-based invalidation (`post_save` and `post_delete` signals) ensuring stale data is evicted immediately upon admin updates.
+### 3. Caching & Multi-Worker State
+- **Redis Cache Backend:** Configured with `django-redis` when `REDIS_URL` is provided, ensuring cache invalidations are synchronized across multi-worker Gunicorn processes, with automatic fallback to `LocMemCache` in local development.
+- **Cache-Aside Pattern:** Frequently read, infrequently modified taxonomy data (Cities, Castes, Active Membership Plans) utilizes a cache-aside pattern with automatic signal-based invalidation (`post_save` and `post_delete` signals) ensuring stale data is evicted immediately upon admin updates.
 
 ### 4. Background Email Processing
 - **Decoupled Delivery:** Transactional email dispatch (email verification tokens and contact form inquiries) is offloaded to a background `ThreadPoolExecutor` worker pool, preventing third-party SMTP/API network latency from blocking web worker request cycles.
@@ -165,6 +167,17 @@ The test suite contains **39 automated tests** covering:
 
 ```bash
 python manage.py test
+```
+
+---
+
+## Load Testing & Performance Benchmarking
+
+A Locust load-testing suite (`locustfile.py`) is included to benchmark concurrency, p50/p95 latency, and cache hit performance under simulated traffic.
+
+```bash
+# Run headless load test with 50 concurrent users spawning at 10 users/sec for 1 minute:
+locust -f locustfile.py --headless -u 50 -r 10 --run-time 1m --host http://127.0.0.1:8000
 ```
 
 ---

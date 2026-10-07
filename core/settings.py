@@ -200,6 +200,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.postgres',
     'cloudinary',
     'cloudinary_storage',
     # Your Apps
@@ -238,6 +239,31 @@ LOGGING = {
 }
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Cache Configuration: Redis Cache for multi-worker synchronization with LocMem fallback
+REDIS_URL = os.getenv("REDIS_URL")
+
+if REDIS_URL and not TESTING:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                "IGNORE_EXCEPTIONS": True,
+            },
+            "KEY_PREFIX": "siwan_matrimony",
+            "TIMEOUT": 3600,
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "siwan-matrimony-locmem",
+            "TIMEOUT": 3600,
+        }
+    }
 
 
 # Email Configuration (Supports Gmail SMTP, Brevo, SendGrid, or Resend)

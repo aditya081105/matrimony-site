@@ -7,10 +7,10 @@ logger = logging.getLogger('core.requests')
 
 class RequestIDMiddleware:
     """
-    Tier-1 Enterprise Observability Middleware:
-    1. Injects a unique X-Request-ID (UUID4) into every request and response header.
-    2. Measures request-to-response latency in milliseconds.
-    3. Logs structured observability metadata for auditability and distributed tracing.
+    Request Telemetry Middleware:
+    1. Injects or propagates an X-Request-ID (UUID4) header on every request/response cycle.
+    2. Measures request-to-response duration in milliseconds.
+    3. Logs structured request telemetry (path, status, duration, user) for monitoring.
     """
     def __init__(self, get_response):
         self.get_response = get_response

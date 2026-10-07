@@ -21,6 +21,10 @@ class Tier1ArchitectureTests(TestCase):
         self.assertEqual(request.request_id, response.headers['X-Request-ID'])
 
     def test_cache_aside_active_plans(self):
+        # Clear any pre-existing seeded plans for isolated test
+        Plan.objects.all().delete()
+        cache.clear()
+
         # Create a test plan
         plan = Plan.objects.create(
             code="test_gold",

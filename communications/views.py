@@ -13,7 +13,17 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.db import transaction
 
+from django.utils.http import url_has_allowed_host_and_scheme
+
 User = get_user_model()
+
+
+def safe_redirect(request, fallback="profile_list"):
+    referer = request.META.get("HTTP_REFERER")
+    if referer and url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}):
+        return redirect(referer)
+    return redirect(fallback)
+
 
 @login_required
 @require_POST
@@ -59,21 +69,22 @@ def send_request(request, user_id):
         messages.error(request, "This account is unavailable.")
         return redirect('profile_list')
 
-    is_blocked = Block.objects.filter(
-        blocker=request.user,
-        blocked=receiver
-    ).exists() or Block.objects.filter(
-        blocker=receiver,
-        blocked=request.user
-    ).exists()
-
-    if is_blocked:
-        messages.error(request, "You cannot interact with this user.")
-        return redirect('profile_list')
-
     with transaction.atomic():
         # Acquire row-level lock on sender to serialize concurrent requests and prevent quota races
         CustomUser.objects.select_for_update().get(id=request.user.id)
+
+        # Check block status inside transaction to prevent concurrency races
+        is_blocked = Block.objects.filter(
+            blocker=request.user,
+            blocked=receiver
+        ).exists() or Block.objects.filter(
+            blocker=receiver,
+            blocked=request.user
+        ).exists()
+
+        if is_blocked:
+            messages.error(request, "You cannot interact with this user.")
+            return redirect('profile_list')
 
         # Prevent duplicate requests in same direction
         if ContactRequest.objects.filter(sender=request.user, receiver=receiver, status='pending').exists():
@@ -99,7 +110,7 @@ def send_request(request, user_id):
                 action='accept_request'
             )
             messages.success(request, f"It's a match! You and {receiver.full_name} are now connected.")
-            return redirect(request.META.get("HTTP_REFERER", "profile_list"))
+            return safe_redirect(request, "profile_list")
 
         today = timezone.now().date()
         total_daily_attempts = RequestAttempt.objects.filter(
@@ -151,7 +162,7 @@ def send_request(request, user_id):
         )
 
     messages.success(request, f"Contact request sent to {receiver.full_name}.")
-    return redirect(request.META.get("HTTP_REFERER", "profile_list"))
+    return safe_redirect(request, "profile_list")
 
 @login_required
 @require_POST
@@ -162,6 +173,10 @@ def update_request(request, request_id, action):
             id=request_id,
             receiver=request.user
         )
+
+        if contact_request.status != 'pending':
+            messages.info(request, "This request has already been processed.")
+            return redirect('received_requests')
 
         if action == 'accept':
             contact_request.status = 'accepted'
@@ -223,7 +238,7 @@ def cancel_request(request, user_id):
     ).delete()
 
     messages.success(request, "Request cancelled.")
-    return redirect(request.META.get('HTTP_REFERER', 'profile_list'))
+    return safe_redirect(request, 'profile_list')
 
 @login_required
 @require_POST
@@ -344,7 +359,7 @@ def toggle_save(request, user_id):
     if not created:
         obj.delete()
 
-    return redirect(request.META.get("HTTP_REFERER", "profile_list"))
+    return safe_redirect(request, "profile_list")
 
 
 @login_required

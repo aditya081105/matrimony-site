@@ -1,3 +1,6 @@
+import io
+import base64
+import qrcode
 import re
 from django.db import transaction, IntegrityError
 from django.shortcuts import render, redirect, get_object_or_404
@@ -6,6 +9,23 @@ from django.contrib import messages
 from django.conf import settings
 from urllib.parse import quote_plus
 from .models import Plan, PaymentOrder
+
+
+def generate_upi_qr_data_uri(upi_uri):
+    """Generates an in-memory PNG QR code Data URI with zero external API dependencies."""
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=8,
+        border=2,
+    )
+    qr.add_data(upi_uri)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    b64_data = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    return f"data:image/png;base64,{b64_data}"
 
 
 def ensure_default_plans():
@@ -40,7 +60,6 @@ def ensure_default_plans():
 from core.caching import get_active_plans
 
 def plans_view(request):
-    ensure_default_plans()
     plans = get_active_plans()
 
     user_sub = None
@@ -55,7 +74,6 @@ def plans_view(request):
 
 @login_required
 def checkout_view(request, plan_code):
-    ensure_default_plans()
     plan = get_object_or_404(Plan, code=plan_code, is_active=True)
 
     upi_id = getattr(settings, 'UPI_ID', 'payments@siwanmatrimony')
@@ -69,9 +87,9 @@ def checkout_view(request, plan_code):
     elif (settings.BASE_DIR / 'static' / 'images' / 'upi_qr.jpg').exists():
         custom_qr_image = 'images/upi_qr.jpg'
 
-    # UPI URI format according to NPCI specifications
+    # In-memory QR code generation (zero external API dependency)
     upi_uri = f"upi://pay?pa={upi_id}&pn={quote_plus(upi_name)}&am={plan.price:.2f}&cu=INR&tn={quote_plus(transaction_note)}"
-    qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data={quote_plus(upi_uri)}"
+    qr_code_url = generate_upi_qr_data_uri(upi_uri)
 
     if request.method == 'POST':
         action = request.POST.get('action', 'submit_utr')
