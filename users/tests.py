@@ -125,3 +125,25 @@ class UserModelTest(TestCase):
         form3 = UserRegisterForm(data={'phone_number': '98765'})
         self.assertFalse(form3.is_valid())
         self.assertIn('phone_number', form3.errors)
+
+    def test_resend_verification_email_rate_limited(self):
+        from django.urls import reverse
+        import time
+
+        user = User.objects.create_user(
+            username="verifyrateuser",
+            password="TestPass123!",
+            email="rateuser@example.com",
+            is_email_verified=False
+        )
+        self.client.login(username="verifyrateuser", password="TestPass123!")
+
+        # First request sends email and sets session timestamp
+        response1 = self.client.get(reverse('resend_verification'))
+        self.assertEqual(response1.status_code, 302)
+
+        # Immediate second request should be blocked by 60s cooldown
+        response2 = self.client.get(reverse('resend_verification'), follow=True)
+        self.assertEqual(response2.status_code, 200)
+        messages_list = list(response2.context['messages'])
+        self.assertTrue(any('sent recently' in str(m) for m in messages_list))

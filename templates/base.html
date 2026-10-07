@@ -214,10 +214,26 @@
     </style>
 </head>
 
-<body class="d-flex flex-column min-vh-100"  style="padding-top: 90px;">
+<body class="d-flex flex-column min-vh-100" style="padding-top: {% if user.is_authenticated and not user.is_email_verified %}125px{% else %}90px{% endif %};">
 
-<nav id="mainNavbar"
-     class="navbar navbar-expand-lg navbar-dark brand-red shadow-sm py-3 fixed-top">
+<header id="topHeader" class="fixed-top shadow-sm">
+    {% if user.is_authenticated and not user.is_email_verified %}
+    <div id="emailVerifyNotice" class="py-2 px-3 text-white text-center d-flex align-items-center justify-content-center flex-wrap gap-2 gap-sm-3" style="background-color: #0f172a; font-size: 0.83rem; border-bottom: 1px solid rgba(255,255,255,0.12); letter-spacing: 0.2px;">
+        <div class="d-inline-flex align-items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="text-warning flex-shrink-0" viewBox="0 0 16 16">
+                <path d="M2 2a2 2 0 0 0-2 2v8.01A2 2 0 0 0 2 14h5.5a.5.5 0 0 0 0-1H2a1 1 0 0 1-.966-.741l5.64-3.471L8 9.583l7-4.2V8.5a.5.5 0 0 0 1 0V4a2 2 0 0 0-2-2zm3.708 6.208L1 11.105V5.383zM1 4.217V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v.217l-7 4.2z"/>
+                <path d="M12.5 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7m.5-5v1.5a.5.5 0 0 1-1 0V11a.5.5 0 0 1 1 0m0 3a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0"/>
+            </svg>
+            <span>Please verify your email address (<strong>{{ user.email }}</strong>) to unlock matchmaking.</span>
+        </div>
+        <a href="{% url 'resend_verification' %}" class="btn btn-warning btn-sm rounded-pill px-3 py-0 fw-semibold text-dark shadow-sm" style="font-size: 0.75rem; line-height: 1.7;">
+            Resend Email
+        </a>
+    </div>
+    {% endif %}
+
+    <nav id="mainNavbar"
+         class="navbar navbar-expand-lg navbar-dark brand-red py-3">
     <div class="container">
 
         <a class="navbar-brand logo-font fs-3" href="{% url 'home' %}">
@@ -309,15 +325,6 @@
 
                     <li><a class="dropdown-item" href="{% url 'my_profile' %}">My Profile</a></li>
                     <li><a class="dropdown-item" href="{% url 'payment_history' %}">Membership & Billing</a></li>
-
-                    {% if not user.is_email_verified %}
-                    <li>
-                        <a class="dropdown-item text-warning"
-                        href="{% url 'resend_verification' %}">
-                        Verify Email
-                        </a>
-                    </li>
-                    {% endif %}
                     
                     <li>
                         <a class="dropdown-item d-flex justify-content-between"
@@ -383,13 +390,14 @@
         </div>
     </div>
 </nav>
+</header>
 
 <main class="flex-fill py-5">
     <div class="container" style="max-width: 1100px;">
 
         {% if messages %}
             {% for message in messages %}
-                <div class="alert alert-success text-center rounded-3 shadow-sm">
+                <div class="alert alert-{% if 'error' in message.tags or 'danger' in message.tags %}danger{% elif 'warning' in message.tags %}warning{% elif 'info' in message.tags %}info{% else %}success{% endif %} text-center rounded-3 shadow-sm">
                     {{ message }}
                 </div>
             {% endfor %}
@@ -434,6 +442,16 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    function updateTopOffset() {
+        const topHeader = document.getElementById("topHeader");
+        if (topHeader) {
+            document.body.style.paddingTop = topHeader.offsetHeight + "px";
+        }
+    }
+    window.addEventListener("DOMContentLoaded", updateTopOffset);
+    window.addEventListener("resize", updateTopOffset);
+    window.addEventListener("load", updateTopOffset);
+
     const navbar = document.getElementById("mainNavbar");
 
     window.addEventListener("scroll", function () {

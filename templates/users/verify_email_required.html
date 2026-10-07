@@ -1,16 +1,39 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container text-center py-5">
+<div class="row justify-content-center py-5">
+    <div class="col-lg-6 col-md-8">
+        <div class="card shadow-sm border-0 rounded-4 text-center p-4 p-md-5">
+            <div class="mb-4">
+                <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-warning-subtle text-warning p-3" style="width: 72px; height: 72px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="currentColor" class="bi bi-envelope-check" viewBox="0 0 16 16">
+                        <path d="M2 2a2 2 0 0 0-2 2v8.01A2 2 0 0 0 2 14h5.5a.5.5 0 0 0 0-1H2a1 1 0 0 1-.966-.741l5.64-3.471L8 9.583l7-4.2V8.5a.5.5 0 0 0 1 0V4a2 2 0 0 0-2-2zm3.708 6.208L1 11.105V5.383zM1 4.217V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v.217l-7 4.2z"/>
+                        <path d="M15.854 10.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 0 1 .708-.708l1.146 1.147 2.646-2.647a.5.5 0 0 1 .708 0"/>
+                    </svg>
+                </div>
+            </div>
 
-    <div class="d-flex justify-content-center gap-3 flex-wrap">
+            <h3 class="fw-bold mb-2">Verify Your Email</h3>
+            
+            <p class="text-muted mb-4">
+                To protect privacy and ensure real profiles for our community, matchmaking results are visible only after verifying your email address:
+                <br>
+                <strong class="text-dark">{{ request.user.email }}</strong>
+            </p>
 
-        <a href="{% url 'resend_verification' %}"
-        class="btn btn-dark rounded-pill px-4">
-            Resend Email
-        </a>
+            <p class="small text-muted mb-4">
+                Please click the verification link sent to your email. If you cannot find it, please check your spam or junk folder.
+            </p>
 
+            <div class="d-flex justify-content-center gap-3 flex-wrap">
+                <a href="{% url 'resend_verification' %}" class="btn btn-dark rounded-pill px-4">
+                    Resend Verification Email
+                </a>
+                <a href="{% url 'home' %}" class="btn btn-outline-secondary rounded-pill px-4">
+                    Back to Home
+                </a>
+            </div>
+        </div>
     </div>
-
 </div>
 {% endblock %}

@@ -1,5 +1,6 @@
 from datetime import date
 import random
+import time
 from django.db.models import Q, Count
 from django.db import models
 from django.shortcuts import render, redirect
@@ -89,6 +90,7 @@ def register(request):
                 print(f"Email error: {e}") # Log it to Render logs, don't crash
 
             login(request, user)
+            request.session['last_email_verification_sent'] = time.time()
 
             messages.success(
                 request,
@@ -513,11 +515,27 @@ def verify_email(request, token):
 def resend_verification_email(request):
 
     if request.user.is_email_verified:
-        messages.success(request, "Email already verified.")
+        messages.success(request, "Your email is already verified.")
+        return redirect("home")
+
+    last_sent = request.session.get('last_email_verification_sent', 0)
+    now = time.time()
+    cooldown = 60  # 60-second cooldown to protect free tier quota
+
+    if (now - last_sent) < cooldown:
+        wait_seconds = int(cooldown - (now - last_sent))
+        messages.warning(
+            request,
+            f"A verification email was sent recently to {request.user.email}. Please check your inbox and spam folder. You can request another email in {wait_seconds} seconds."
+        )
+        referer = request.META.get('HTTP_REFERER')
+        if referer and request.get_host() in referer:
+            return redirect(referer)
         return redirect("home")
 
     try:
         send_verification_email(request, request.user)
+        request.session['last_email_verification_sent'] = now
         messages.success(
             request,
             f"Verification email sent to {request.user.email}. Please check your inbox or spam folder."
@@ -529,6 +547,9 @@ def resend_verification_email(request):
             "Unable to send verification email right now. Please try again in a moment."
         )
 
+    referer = request.META.get('HTTP_REFERER')
+    if referer and request.get_host() in referer:
+        return redirect(referer)
     return redirect("home")
 
 
