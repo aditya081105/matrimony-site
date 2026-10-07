@@ -155,9 +155,11 @@ import sys
 
 TESTING = "test" in sys.argv
 
-SESSION_COOKIE_SECURE = not TESTING
-CSRF_COOKIE_SECURE = not TESTING
-SECURE_SSL_REDIRECT = not TESTING
+RUNNING_DEV_SERVER = "runserver" in sys.argv
+
+SESSION_COOKIE_SECURE = not TESTING and not RUNNING_DEV_SERVER
+CSRF_COOKIE_SECURE = not TESTING and not RUNNING_DEV_SERVER
+SECURE_SSL_REDIRECT = not TESTING and not RUNNING_DEV_SERVER
 
 if TESTING:
     ci_db_url = os.getenv('DATABASE_URL') if (os.getenv('CI') or os.getenv('USE_POSTGRES_TEST')) else None

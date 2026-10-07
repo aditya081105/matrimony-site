@@ -27,39 +27,22 @@ def search_view(request):
             id=request.user.id
         )
 
-        # On PostgreSQL: Leverage Full-Text Search with SearchVector and SearchRank
         if connection.vendor == 'postgresql':
-            try:
-                from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
-                vector = (
-                    SearchVector('full_name', weight='A') +
-                    SearchVector('occupation', weight='B') +
-                    SearchVector('caste', weight='B') +
-                    SearchVector('sub_caste', weight='C') +
-                    SearchVector('bio', weight='D')
-                )
-                search_query = SearchQuery(query)
-                profiles = base_qs.annotate(
-                    rank=SearchRank(vector, search_query)
-                ).filter(
-                    Q(rank__gte=0.05) |
-                    Q(full_name__icontains=query) |
-                    Q(city__name__icontains=query)
-                ).select_related(
-                    'profile', 'city', 'caste_community', 'subscription', 'subscription__plan'
-                ).order_by('-rank', '-date_joined').distinct()
-            except Exception:
-                profiles = base_qs.filter(
-                    Q(full_name__icontains=query) |
-                    Q(occupation__icontains=query) |
-                    Q(city__name__icontains=query) |
-                    Q(caste__icontains=query) |
-                    Q(sub_caste__icontains=query) |
-                    Q(caste_community__name__icontains=query) |
-                    Q(bio__icontains=query)
-                ).select_related(
-                    'profile', 'city', 'caste_community', 'subscription', 'subscription__plan'
-                ).order_by('-date_joined').distinct()
+            from django.contrib.postgres.search import TrigramSimilarity
+            profiles = base_qs.annotate(
+                similarity=TrigramSimilarity('full_name', query)
+            ).filter(
+                Q(full_name__trigram_similar=query) |
+                Q(occupation__trigram_similar=query) |
+                Q(full_name__icontains=query) |
+                Q(occupation__icontains=query) |
+                Q(city__name__icontains=query) |
+                Q(caste__icontains=query) |
+                Q(sub_caste__icontains=query) |
+                Q(bio__icontains=query)
+            ).select_related(
+                'profile', 'city', 'caste_community', 'subscription', 'subscription__plan'
+            ).order_by('-similarity', '-date_joined').distinct()
         else:
             profiles = base_qs.filter(
                 Q(full_name__icontains=query) |

@@ -17,6 +17,11 @@ def _is_testing():
     return 'test' in sys.argv or getattr(settings, 'TESTING', False)
 
 
+import time
+
+MAX_RETRIES = 3
+
+
 def _dispatch_email_job(user_email, user_name, verify_link):
     subject = "Verify your email - Siwan Matrimony"
     message = f"""Welcome to Siwan Matrimony, {user_name}!
@@ -28,40 +33,48 @@ Please verify your email address to unlock matchmaking and contact requests:
 If you did not register for Siwan Matrimony, please ignore this email.
 """
 
-    # 1. Try standard Django send_mail (Gmail SMTP / Brevo) if configured
-    if getattr(settings, 'EMAIL_HOST_USER', None):
-        try:
-            send_mail(
-                subject=subject,
-                message=message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[user_email],
-                fail_silently=False,
-            )
-            logger.info(f"Verification email sent via SMTP to {user_email}")
-            print(f"==> Verification email sent via SMTP to {user_email}")
-            return True
-        except Exception as e:
-            logger.error(f"SMTP send_mail error for {user_email}: {e}")
-            print(f"SMTP send_mail error: {e}")
+    for attempt in range(1, MAX_RETRIES + 1):
+        # 1. Try standard Django send_mail (Gmail SMTP / Brevo) if configured
+        if getattr(settings, 'EMAIL_HOST_USER', None):
+            try:
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[user_email],
+                    fail_silently=False,
+                )
+                logger.info(f"Verification email sent via SMTP to {user_email}")
+                print(f"==> Verification email sent via SMTP to {user_email}")
+                return True
+            except Exception as e:
+                logger.warning(f"SMTP send_mail attempt {attempt}/{MAX_RETRIES} failed for {user_email}: {e}")
+                if attempt < MAX_RETRIES and not _is_testing():
+                    time.sleep(1.5 * attempt)
+                continue
 
-    # 2. Try Resend if configured
-    if getattr(settings, 'RESEND_API_KEY', None):
-        try:
-            resend.api_key = settings.RESEND_API_KEY
-            from_email = getattr(settings, 'RESEND_FROM_EMAIL', 'onboarding@resend.dev')
-            resend.Emails.send({
-                "from": from_email,
-                "to": user_email,
-                "subject": subject,
-                "text": message
-            })
-            logger.info(f"Verification email sent via Resend to {user_email}")
-            print(f"==> Verification email sent via Resend to {user_email}")
-            return True
-        except Exception as e:
-            logger.error(f"Resend error for {user_email}: {e}")
-            print(f"Resend error: {e}")
+        # 2. Try Resend if configured
+        if getattr(settings, 'RESEND_API_KEY', None):
+            try:
+                resend.api_key = settings.RESEND_API_KEY
+                from_email = getattr(settings, 'RESEND_FROM_EMAIL', 'onboarding@resend.dev')
+                resend.Emails.send({
+                    "from": from_email,
+                    "to": user_email,
+                    "subject": subject,
+                    "text": message
+                })
+                logger.info(f"Verification email sent via Resend to {user_email}")
+                print(f"==> Verification email sent via Resend to {user_email}")
+                return True
+            except Exception as e:
+                logger.warning(f"Resend attempt {attempt}/{MAX_RETRIES} failed for {user_email}: {e}")
+                if attempt < MAX_RETRIES and not _is_testing():
+                    time.sleep(1.5 * attempt)
+                continue
+
+        # If neither provider is configured, break out to dev fallback
+        break
 
     # 3. Development / Server log fallback
     print(f"==> VERIFICATION LINK for {user_email}: {verify_link}")
@@ -94,34 +107,43 @@ def _dispatch_contact_email_job(name, sender_email, message_content):
     body = f"Name: {name}\nEmail: {sender_email}\n\nMessage:\n{message_content}"
     admin_email = getattr(settings, 'CONTACT_ADMIN_EMAIL', None) or getattr(settings, 'DEFAULT_FROM_EMAIL', 'admin@siwan-matrimony.com')
 
-    if getattr(settings, 'EMAIL_HOST_USER', None):
-        try:
-            send_mail(
-                subject=subject,
-                message=body,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[admin_email],
-                fail_silently=False,
-            )
-            logger.info(f"Contact email sent via SMTP to {admin_email}")
-            return True
-        except Exception as e:
-            logger.error(f"SMTP contact error: {e}")
+    for attempt in range(1, MAX_RETRIES + 1):
+        if getattr(settings, 'EMAIL_HOST_USER', None):
+            try:
+                send_mail(
+                    subject=subject,
+                    message=body,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[admin_email],
+                    fail_silently=False,
+                )
+                logger.info(f"Contact email sent via SMTP to {admin_email}")
+                return True
+            except Exception as e:
+                logger.warning(f"SMTP contact attempt {attempt}/{MAX_RETRIES} failed: {e}")
+                if attempt < MAX_RETRIES and not _is_testing():
+                    time.sleep(1.5 * attempt)
+                continue
 
-    if getattr(settings, 'RESEND_API_KEY', None):
-        try:
-            resend.api_key = settings.RESEND_API_KEY
-            from_email = getattr(settings, 'RESEND_FROM_EMAIL', 'onboarding@resend.dev')
-            resend.Emails.send({
-                "from": from_email,
-                "to": admin_email,
-                "subject": subject,
-                "text": body,
-            })
-            logger.info(f"Contact email sent via Resend to {admin_email}")
-            return True
-        except Exception as e:
-            logger.error(f"Resend contact error: {e}")
+        if getattr(settings, 'RESEND_API_KEY', None):
+            try:
+                resend.api_key = settings.RESEND_API_KEY
+                from_email = getattr(settings, 'RESEND_FROM_EMAIL', 'onboarding@resend.dev')
+                resend.Emails.send({
+                    "from": from_email,
+                    "to": admin_email,
+                    "subject": subject,
+                    "text": body,
+                })
+                logger.info(f"Contact email sent via Resend to {admin_email}")
+                return True
+            except Exception as e:
+                logger.warning(f"Resend contact attempt {attempt}/{MAX_RETRIES} failed: {e}")
+                if attempt < MAX_RETRIES and not _is_testing():
+                    time.sleep(1.5 * attempt)
+                continue
+
+        break
 
     logger.info(f"==> CONTACT INQUIRY logged: From {sender_email} ({name}): {message_content}")
     return True
