@@ -61,3 +61,50 @@ class UserModelTest(TestCase):
         self.assertEqual(saved_user.profile.mother_name, 'Mother Test')
         self.assertEqual(saved_user.profile.city_hometown, city)
         self.assertEqual(saved_user.profile.bio, 'Test bio here')
+
+    def test_caste_and_sub_caste_properties(self):
+        from users.models import Caste
+        user1 = User.objects.create_user(
+            username="casteuser1",
+            password="TestPass123!",
+            caste="Rajput",
+            sub_caste="Chauhan"
+        )
+        self.assertEqual(user1.display_caste, "Rajput (Chauhan)")
+
+        user2 = User.objects.create_user(
+            username="casteuser2",
+            password="TestPass123!",
+            caste="Brahmin"
+        )
+        self.assertEqual(user2.display_caste, "Brahmin")
+
+        legacy_caste = Caste.objects.create(name="Yadav")
+        user3 = User.objects.create_user(
+            username="casteuser3",
+            password="TestPass123!",
+            caste_community=legacy_caste
+        )
+        self.assertEqual(user3.display_caste, "Yadav")
+
+    def test_user_update_form_open_caste_fields(self):
+        from users.forms import UserUpdateForm
+        user = User.objects.create_user(
+            username="updatecaste",
+            password="TestPass123!",
+            phone_number="9123456789",
+        )
+        form_data = {
+            'full_name': 'Caste Tester',
+            'email': 'caste@test.com',
+            'gender': 'M',
+            'phone_number': '9123456789',
+            'caste': 'Kushwaha',
+            'sub_caste': 'Maurya',
+        }
+        form = UserUpdateForm(data=form_data, instance=user)
+        self.assertTrue(form.is_valid(), form.errors)
+        saved = form.save()
+        self.assertEqual(saved.caste, 'Kushwaha')
+        self.assertEqual(saved.sub_caste, 'Maurya')
+        self.assertEqual(saved.display_caste, 'Kushwaha (Maurya)')

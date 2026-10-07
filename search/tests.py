@@ -48,3 +48,18 @@ class SearchTests(TestCase):
         response = self.client.get(reverse('search_profiles'), {'q': 'Doctor'})
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "Pooja Verma")
+
+    def test_search_matches_open_caste_and_sub_caste(self):
+        self.user2.caste = "Brahmin"
+        self.user2.sub_caste = "Mishra"
+        self.user2.save()
+
+        # Search by caste
+        response = self.client.get(reverse('search_profiles'), {'q': 'Brahmin'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Pooja Verma")
+
+        # Search by sub-caste
+        response2 = self.client.get(reverse('search_profiles'), {'q': 'Mishra'})
+        self.assertEqual(response2.status_code, 200)
+        self.assertContains(response2, "Pooja Verma")

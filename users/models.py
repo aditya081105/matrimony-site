@@ -45,6 +45,18 @@ class CustomUser(AbstractUser):
         on_delete=models.SET_NULL
     )
 
+    caste = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="Caste / Community"
+    )
+
+    sub_caste = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="Sub-Caste / Gotra"
+    )
+
     # Replaces Profile
     profile_photo = models.ImageField(
         upload_to="profile_pics/",
@@ -104,6 +116,16 @@ class CustomUser(AbstractUser):
         except Exception:
             pass
         return None
+
+    @property
+    def display_caste(self):
+        c = (self.caste or '').strip()
+        sc = (self.sub_caste or '').strip()
+        if not c and self.caste_community:
+            c = str(self.caste_community.name).strip()
+        if c and sc:
+            return f"{c} ({sc})"
+        return c or sc or ""
 
     def __str__(self):
         return self.username

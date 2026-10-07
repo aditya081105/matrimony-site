@@ -28,6 +28,8 @@ def search_view(request):
             Q(full_name__icontains=query) |
             Q(occupation__icontains=query) |
             Q(city__name__icontains=query) |
+            Q(caste__icontains=query) |
+            Q(sub_caste__icontains=query) |
             Q(caste_community__name__icontains=query) |
             Q(bio__icontains=query)
         ).select_related('city', 'caste_community', 'subscription', 'subscription__plan').distinct()

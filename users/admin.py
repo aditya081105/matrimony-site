@@ -35,13 +35,14 @@ def fully_verify_users(modeladmin, request, queryset):
 
 class CustomUserAdmin(UserAdmin):
     model = CustomUser
-    list_display = ('username', 'full_name', 'phone_number', 'is_approved', 'is_phone_verified', 'is_email_verified', 'is_premium', 'is_staff')
+    list_display = ('username', 'full_name', 'phone_number', 'caste', 'sub_caste', 'is_approved', 'is_phone_verified', 'is_email_verified', 'is_premium', 'is_staff')
     list_filter = ('is_approved', 'is_phone_verified', 'is_email_verified', 'is_staff')
-    search_fields = ('username', 'full_name', 'email', 'phone_number')
+    search_fields = ('username', 'full_name', 'email', 'phone_number', 'caste', 'sub_caste')
     actions = [approve_users, verify_phone_users, verify_users, fully_verify_users]
     inlines = [SubscriptionInline]
     fieldsets = UserAdmin.fieldsets + (
         ("Approval & Verification", {"fields": ("is_approved", "is_phone_verified", "is_email_verified")}),
+        ("Community & Profile Details", {"fields": ("caste", "sub_caste", "caste_community", "city", "occupation", "height_cm", "date_of_birth")}),
     )
 
 

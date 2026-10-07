@@ -15,6 +15,30 @@ Join Siwan Matrimony
 
 <form method="POST">
 {% csrf_token %}
+<datalist id="caste-suggestions">
+    <option value="Rajput">
+    <option value="Brahmin">
+    <option value="Bhumihar">
+    <option value="Yadav">
+    <option value="Kushwaha">
+    <option value="Kurmi">
+    <option value="Bania / Gupta">
+    <option value="Kayastha">
+    <option value="Paswan">
+    <option value="Ravidas">
+    <option value="Nishad / Mallah">
+    <option value="Teli">
+    <option value="Kanu / Halwai">
+    <option value="Prajapati / Kumhar">
+    <option value="Vishwakarma / Badhai">
+    <option value="Nai / Thakur">
+    <option value="Lohar">
+    <option value="Ansari">
+    <option value="Syed">
+    <option value="Sheikh">
+    <option value="Pathan">
+    <option value="Siddiqui">
+</datalist>
 
 {% for field in form %}
 

@@ -85,7 +85,11 @@
                                     {{ profile.city.name }}
                                 </span>
                             {% endif %}
-                            {% if profile.caste_community %}
+                            {% if profile.display_caste %}
+                                <span class="badge bg-light text-dark rounded-pill border px-2 py-1 small">
+                                    {{ profile.display_caste }}
+                                </span>
+                            {% elif profile.caste_community %}
                                 <span class="badge bg-light text-dark rounded-pill border px-2 py-1 small">
                                     {{ profile.caste_community.name }}
                                 </span>

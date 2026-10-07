@@ -151,8 +151,20 @@ def profile_list(request):
     # Apply filters
     if request.GET.get('gender'):
         profiles = profiles.filter(gender=request.GET.get('gender'))
-    if request.GET.get('caste'):
-        profiles = profiles.filter(caste_community_id=request.GET.get('caste'))
+    caste_query = request.GET.get('caste', '').strip()
+    if caste_query:
+        if caste_query.isdigit():
+            profiles = profiles.filter(
+                Q(caste_community_id=int(caste_query)) |
+                Q(caste__icontains=caste_query) |
+                Q(sub_caste__icontains=caste_query)
+            )
+        else:
+            profiles = profiles.filter(
+                Q(caste__icontains=caste_query) |
+                Q(sub_caste__icontains=caste_query) |
+                Q(caste_community__name__icontains=caste_query)
+            )
     if request.GET.get('city'):
         profiles = profiles.filter(city_id=request.GET.get('city'))
     if request.GET.get('min_height'):

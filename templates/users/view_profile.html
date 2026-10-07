@@ -171,7 +171,12 @@
 
         <div class="col-md-6 mb-2">
             <strong>Caste / Community:</strong>
-            {{ profile_user.caste_community|default:"Not specified" }}
+            {{ profile_user.caste|default:profile_user.caste_community|default:"Not specified" }}
+        </div>
+
+        <div class="col-md-6 mb-2">
+            <strong>Sub-Caste / Gotra:</strong>
+            {{ profile_user.sub_caste|default:"Not specified" }}
         </div>
 
         <div class="col-md-6 mb-2">

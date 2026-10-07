@@ -93,18 +93,35 @@
 
         <!-- Caste -->
         <div class="col-md-3">
-            <label class="form-label small text-muted">Caste</label>
-            <select name="caste" class="form-select">
-                <option value="">Any</option>
-                {% for caste in castes %}
-                    <option value="{{ caste.id }}"
-                        {% if request.GET.caste == caste.id|stringformat:"s" %}
-                            selected
-                        {% endif %}>
-                        {{ caste.name }}
-                    </option>
-                {% endfor %}
-            </select>
+            <label class="form-label small text-muted">Caste / Sub-Caste</label>
+            <input type="text"
+                   name="caste"
+                   class="form-control"
+                   placeholder="Any Caste or Sub-Caste"
+                   value="{{ request.GET.caste }}"
+                   list="caste-filter-suggestions">
+            <datalist id="caste-filter-suggestions">
+                <option value="Rajput">
+                <option value="Brahmin">
+                <option value="Bhumihar">
+                <option value="Yadav">
+                <option value="Kushwaha">
+                <option value="Kurmi">
+                <option value="Bania / Gupta">
+                <option value="Kayastha">
+                <option value="Paswan">
+                <option value="Ravidas">
+                <option value="Nishad / Mallah">
+                <option value="Teli">
+                <option value="Kanu / Halwai">
+                <option value="Prajapati / Kumhar">
+                <option value="Vishwakarma / Badhai">
+                <option value="Nai / Thakur">
+                <option value="Ansari">
+                <option value="Syed">
+                <option value="Sheikh">
+                <option value="Pathan">
+            </datalist>
         </div>
 
         <!-- Buttons -->
@@ -172,7 +189,7 @@
 
         {% if request.GET.caste %}
             <span class="badge bg-secondary rounded-pill px-3 py-2">
-                Caste Selected
+                Caste: {{ request.GET.caste }}
             </span>
         {% endif %}
 
@@ -298,7 +315,7 @@
 
                 <br>
 
-                {{ profile.caste_community|default:"Community not specified" }}
+                {{ profile.display_caste|default:profile.caste_community|default:"Community not specified" }}
 
             </div>
 

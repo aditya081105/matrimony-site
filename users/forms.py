@@ -33,10 +33,25 @@ class UserRegisterForm(UserCreationForm):
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
 
-    caste_community = forms.ModelChoiceField(
-        queryset=Caste.objects.all(),
+    caste = forms.CharField(
+        max_length=100,
         required=False,
-        widget=forms.Select(attrs={'class': 'form-control'})
+        label="Caste / Community",
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter your caste / community',
+            'list': 'caste-suggestions'
+        })
+    )
+
+    sub_caste = forms.CharField(
+        max_length=100,
+        required=False,
+        label="Sub-Caste / Gotra",
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter sub-caste or gotra (optional)'
+        })
     )
 
     phone_number = forms.CharField(
@@ -96,7 +111,8 @@ class UserRegisterForm(UserCreationForm):
             'phone_number',
             'date_of_birth',
             'occupation',
-            'caste_community',
+            'caste',
+            'sub_caste',
         )
 
     def __init__(self, *args, **kwargs):
@@ -169,7 +185,8 @@ class UserUpdateForm(forms.ModelForm):
             'date_of_birth',
             'occupation',
             'height_cm',
-            'caste_community',
+            'caste',
+            'sub_caste',
             'profile_photo',
             'city',
             'bio',
@@ -183,7 +200,15 @@ class UserUpdateForm(forms.ModelForm):
             'phone_number': forms.TextInput(attrs={'class': 'form-control'}),
             'occupation': forms.TextInput(attrs={'class': 'form-control'}),
             'height_cm': forms.NumberInput(attrs={'class': 'form-control'}),
-            'caste_community': forms.Select(attrs={'class': 'form-control'}),
+            'caste': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g. Rajput, Yadav, Brahmin, etc.',
+                'list': 'caste-suggestions'
+            }),
+            'sub_caste': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g. Chauhan, Gautam, Kashyap, etc.'
+            }),
             'date_of_birth': forms.DateInput(attrs={
                 'class': 'form-control',
                 'type': 'date'

@@ -59,7 +59,11 @@ style="width:160px;height:160px;object-fit:cover;">
 <div class="row small mb-4">
 
 <div class="col-md-6 mb-2">
-<strong>Caste / Community:</strong> {{ request.user.caste_community|default:"Not specified" }}
+<strong>Caste / Community:</strong> {{ request.user.caste|default:request.user.caste_community|default:"Not specified" }}
+</div>
+
+<div class="col-md-6 mb-2">
+<strong>Sub-Caste / Gotra:</strong> {{ request.user.sub_caste|default:"Not specified" }}
 </div>
 
 <div class="col-md-6 mb-2">

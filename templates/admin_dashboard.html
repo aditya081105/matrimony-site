@@ -100,7 +100,7 @@
                         </td>
                         <td>
                             <div class="small">{{ u.email }}</div>
-                            <small class="text-muted">{{ u.city|default:"No city" }} • {{ u.caste_community|default:"No caste" }}</small>
+                            <small class="text-muted">{{ u.city|default:"No city" }} • {{ u.display_caste|default:u.caste_community|default:"No caste" }}</small>
                         </td>
                         <td>
                             <div class="d-flex flex-column gap-1">
