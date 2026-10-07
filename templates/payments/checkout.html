@@ -11,7 +11,7 @@
                     ← Back to Membership Plans
                 </a>
                 <h2 class="fw-bold mt-2">Complete Your Upgrade</h2>
-                <p class="text-muted small">Scan the UPI QR code below using any UPI app (GPay, PhonePe, Paytm, BHIM) to activate your subscription.</p>
+                <p class="text-muted small">Scan the UPI QR code below using any UPI app (Google Pay, PhonePe, Paytm, or BHIM) to activate your subscription.</p>
             </div>
 
             <!-- Order Summary Card -->
@@ -36,46 +36,53 @@
                     <!-- QR Code Column -->
                     <div class="col-md-5 text-center border-end-md">
                         <div class="p-3 bg-light rounded-4 d-inline-block border shadow-xs mb-3">
-                            <img src="{{ qr_code_url }}"
-                                 alt="UPI QR Code"
-                                 class="img-fluid rounded-3"
-                                 style="max-width: 220px; height: auto;">
+                            {% if custom_qr_image %}
+                                <img src="{% static custom_qr_image %}"
+                                     alt="Kotak Bank UPI QR Code"
+                                     class="img-fluid rounded-3"
+                                     style="max-width: 220px; height: auto;">
+                            {% else %}
+                                <img src="{{ qr_code_url }}"
+                                     alt="UPI QR Code"
+                                     class="img-fluid rounded-3"
+                                     style="max-width: 220px; height: auto;">
+                            {% endif %}
                         </div>
                         <div class="small text-muted fw-semibold mb-2">Scan & Pay ₹{{ plan.price|floatformat:0 }}</div>
                         
                         <!-- Mobile Deep Link Button -->
                         <div class="d-md-none mt-2">
                             <a href="{{ upi_uri }}" class="btn btn-outline-danger btn-sm rounded-pill px-3 w-100">
-                                📱 Tap to Pay in UPI App
+                                Pay via UPI App
                             </a>
                         </div>
                     </div>
 
                     <!-- Payment Steps Column -->
                     <div class="col-md-7">
-                        <h5 class="fw-bold mb-3">How to complete payment:</h5>
+                        <h5 class="fw-bold mb-3">Payment Instructions:</h5>
                         
                         <ol class="small text-muted ps-3 mb-4">
-                            <li class="mb-2">Open <strong>Google Pay, PhonePe, Paytm</strong> or any UPI app.</li>
+                            <li class="mb-2">Open <strong>Google Pay, PhonePe, Paytm, Kotak 811</strong>, or any UPI app.</li>
                             <li class="mb-2">Scan the QR code, or transfer directly to our official UPI ID:</li>
                             
                             <!-- Copyable UPI ID Box -->
                             <div class="input-group my-2">
                                 <input type="text"
                                        id="upiIdInput"
-                                       class="form-control form-control-sm bg-light"
+                                       class="form-control form-control-sm bg-light font-monospace"
                                        value="{{ upi_id }}"
                                        readonly>
                                 <button class="btn btn-outline-secondary btn-sm"
                                         type="button"
                                         onclick="copyUpiId()">
-                                    📋 Copy
+                                    Copy
                                 </button>
                             </div>
-                            <span id="copiedNotice" class="text-success small d-none">✓ Copied to clipboard!</span>
+                            <span id="copiedNotice" class="text-success small d-none">Copied to clipboard.</span>
 
-                            <li class="mb-2">Once paid, copy the <strong>12-digit UTR / UPI Reference ID</strong> from your transaction receipt.</li>
-                            <li>Enter the UTR number below and submit for instant verification.</li>
+                            <li class="mb-2">After paying, copy the <strong>12-digit UTR / UPI Reference ID</strong> from your receipt.</li>
+                            <li>Enter the UTR number below and submit for verification.</li>
                         </ol>
 
                         <!-- UTR Submission Form -->
@@ -107,11 +114,11 @@
                                 {% csrf_token %}
                                 <input type="hidden" name="action" value="instant_demo">
                                 <button type="submit" class="btn btn-outline-success btn-sm rounded-pill px-4">
-                                    ⚡ Instant Test Activation (Demo Mode)
+                                    Instant Test Activation (Demo Mode)
                                 </button>
                             </form>
                             <span class="text-muted" style="font-size: 0.75rem;">
-                                Use for immediate evaluation without real payment transfer.
+                                For immediate evaluation without real bank transfer.
                             </span>
                         </div>
 

@@ -6,7 +6,7 @@
     <!-- Search Bar Section -->
     <div class="text-center mb-5">
         <h2 class="fw-bold logo-font">Search Community Profiles</h2>
-        <p class="text-muted small">Find compatible matches by name, profession, city, or community.</p>
+        <p class="text-muted small">Find compatible matches by name, profession, city, or caste community.</p>
 
         <div class="row justify-content-center mt-4">
             <div class="col-lg-7 col-md-9">
@@ -19,7 +19,7 @@
                                value="{{ query }}"
                                required>
                         <button class="btn btn-danger rounded-pill px-4 fw-semibold" type="submit">
-                            🔍 Search
+                            Search
                         </button>
                     </div>
                 </form>
@@ -44,8 +44,8 @@
                 <div class="card shadow-sm border-0 rounded-4 overflow-hidden matchmaking-card bg-white position-relative">
                     {% if profile.is_premium %}
                         <div class="position-absolute top-0 start-0 m-3 z-1">
-                            <span class="badge bg-warning text-dark rounded-pill px-3 py-1 fw-bold shadow-sm">
-                                ⭐ Verified Premium
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1 fw-semibold small">
+                                Verified Member
                             </span>
                         </div>
                     {% endif %}
@@ -73,17 +73,17 @@
                         <div class="d-flex justify-content-center gap-2 flex-wrap mb-3">
                             {% if profile.city %}
                                 <span class="badge bg-light text-dark rounded-pill border px-2 py-1 small">
-                                    📍 {{ profile.city.name }}
+                                    {{ profile.city.name }}
                                 </span>
                             {% endif %}
                             {% if profile.caste_community %}
                                 <span class="badge bg-light text-dark rounded-pill border px-2 py-1 small">
-                                    👥 {{ profile.caste_community.name }}
+                                    {{ profile.caste_community.name }}
                                 </span>
                             {% endif %}
                             {% if profile.height_cm %}
                                 <span class="badge bg-light text-dark rounded-pill border px-2 py-1 small">
-                                    📏 {{ profile.height_cm }} cm
+                                    {{ profile.height_cm }} cm
                                 </span>
                             {% endif %}
                         </div>
@@ -97,7 +97,6 @@
             </div>
             {% empty %}
             <div class="col-12 text-center py-5">
-                <div class="display-6 text-muted mb-3">🔍</div>
                 <h5 class="fw-bold">No profiles matched your search</h5>
                 <p class="text-muted small">Try searching with a broader keyword, like a city or caste name.</p>
                 <a href="{% url 'profile_list' %}" class="btn btn-outline-secondary rounded-pill px-4">

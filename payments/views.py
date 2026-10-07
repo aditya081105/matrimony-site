@@ -15,15 +15,15 @@ def ensure_default_plans():
             price=199.00,
             duration_days=30,
             badge_label='',
-            features="Send up to 10 requests per day\nDirect profile contact unlock (5/month)\nVerified Silver badge on profile\nStandard customer support",
+            features="Send up to 10 requests per day\nDirect profile contact unlock (5 per month)\nVerified Silver badge on profile\nStandard customer support",
         )
         Plan.objects.create(
             code='gold',
             name='Gold Plan',
             price=399.00,
             duration_days=90,
-            badge_label='Most Popular',
-            features="Unlimited contact requests\nDirectly unlock phone & email on all profiles\nGold VIP badge on profile ⭐\nBoosted search & matchmaking visibility\nPriority customer support",
+            badge_label='Popular',
+            features="Unlimited contact requests\nDirectly unlock phone & email on all profiles\nVerified Gold badge on profile\nBoosted search & matchmaking visibility\nPriority customer support",
         )
         Plan.objects.create(
             code='diamond',
@@ -31,7 +31,7 @@ def ensure_default_plans():
             price=699.00,
             duration_days=180,
             badge_label='Best Value',
-            features="All Gold features included\nTop-of-the-list profile placement\nDiamond VIP badge 💎\nUnlimited contact views\nRelationship manager profile review",
+            features="All Gold features included\nTop-of-the-list profile placement\nElite Diamond badge on profile\nUnlimited contact views\nRelationship manager profile review",
         )
 
 
@@ -58,6 +58,13 @@ def checkout_view(request, plan_code):
     upi_name = getattr(settings, 'UPI_NAME', 'Siwan Matrimony')
     transaction_note = f"SiwanMatrimony_{plan.code}_{request.user.id}"
 
+    # Check if a custom uploaded QR code exists in static/images
+    custom_qr_image = None
+    if (settings.BASE_DIR / 'static' / 'images' / 'upi_qr.png').exists():
+        custom_qr_image = 'images/upi_qr.png'
+    elif (settings.BASE_DIR / 'static' / 'images' / 'upi_qr.jpg').exists():
+        custom_qr_image = 'images/upi_qr.jpg'
+
     # UPI URI format according to NPCI specifications
     upi_uri = f"upi://pay?pa={upi_id}&pn={quote_plus(upi_name)}&am={plan.price:.2f}&cu=INR&tn={quote_plus(transaction_note)}"
     qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data={quote_plus(upi_uri)}"
@@ -79,7 +86,7 @@ def checkout_view(request, plan_code):
             order.activate_subscription()
             messages.success(
                 request,
-                f"🎉 Congratulations! Your {plan.name} has been activated instantly via Demo Sandbox!"
+                f"Congratulations! Your {plan.name} has been activated instantly via Demo Sandbox!"
             )
             return redirect('payment_history')
 
@@ -92,6 +99,7 @@ def checkout_view(request, plan_code):
                 'upi_name': upi_name,
                 'upi_uri': upi_uri,
                 'qr_code_url': qr_code_url,
+                'custom_qr_image': custom_qr_image,
             })
 
         order = PaymentOrder.objects.create(
@@ -115,6 +123,7 @@ def checkout_view(request, plan_code):
         'upi_name': upi_name,
         'upi_uri': upi_uri,
         'qr_code_url': qr_code_url,
+        'custom_qr_image': custom_qr_image,
     })
 
 

@@ -44,7 +44,7 @@ class CustomUser(AbstractUser):
         on_delete=models.SET_NULL
     )
 
-    # 🔥 NEW (replaces Profile)
+    # Replaces Profile
     profile_photo = models.ImageField(
         upload_to="profile_pics/",
         null=True,
