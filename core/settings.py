@@ -21,7 +21,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['192.168.29.48', '127.0.0.1', "siwan-matrimony.onrender.com"]
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.29.48', "siwan-matrimony.onrender.com"]
 CSRF_TRUSTED_ORIGINS = [
     "https://siwan-matrimony.onrender.com",
 ]
@@ -154,6 +154,14 @@ SESSION_COOKIE_SECURE = not TESTING
 CSRF_COOKIE_SECURE = not TESTING
 SECURE_SSL_REDIRECT = not TESTING
 
+if TESTING:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': ':memory:',
+        }
+    }
+
 AUTH_USER_MODEL = 'users.CustomUser'
 
 
@@ -199,3 +207,7 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+
+# Payment & UPI Configurations
+UPI_ID = os.getenv("UPI_ID", "payments@siwanmatrimony")
+UPI_NAME = os.getenv("UPI_NAME", "Siwan Matrimony")

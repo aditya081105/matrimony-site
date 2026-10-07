@@ -138,8 +138,21 @@ class UserUpdateForm(forms.ModelForm):
         if age < 18:
             raise forms.ValidationError("You must be at least 18 years old.")
 
-        return dob
-    
+    def clean_height_cm(self):
+        height = self.cleaned_data.get("height_cm")
+        if height is not None and height <= 0:
+            raise forms.ValidationError("Height must be a positive number.")
+        return height
+
+    def clean_profile_photo(self):
+        photo = self.cleaned_data.get('profile_photo')
+        if photo and hasattr(photo, 'content_type'):
+            if hasattr(photo, 'size') and photo.size > 5 * 1024 * 1024:
+                raise forms.ValidationError("Image must be under 5MB.")
+            if not photo.content_type.startswith('image/'):
+                raise forms.ValidationError("File must be an image.")
+        return photo
+
     class Meta:
         model = CustomUser
         fields = [
@@ -165,8 +178,6 @@ class UserUpdateForm(forms.ModelForm):
             'occupation': forms.TextInput(attrs={'class': 'form-control'}),
             'height_cm': forms.NumberInput(attrs={'class': 'form-control'}),
             'caste_community': forms.Select(attrs={'class': 'form-control'}),
-            'gotra': forms.TextInput(attrs={'class': 'form-control'}),
-            'annual_income': forms.NumberInput(attrs={'class': 'form-control'}),
             'date_of_birth': forms.DateInput(attrs={
                 'class': 'form-control',
                 'type': 'date'
@@ -212,9 +223,3 @@ class ProfileForm(forms.ModelForm):
                 raise forms.ValidationError("File must be an image")
 
         return photo
-    
-def clean_height_cm(self):
-    height = self.cleaned_data.get("height_cm")
-    if height and height <= 0:
-        raise forms.ValidationError("Height must be positive")
-    return height

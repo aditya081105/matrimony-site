@@ -119,7 +119,23 @@
 
         <div class="ms-auto d-flex align-items-center">
 
+            <!-- Search Quick Link -->
+            <a href="{% url 'search_profiles' %}" class="btn text-white me-2 fs-5" title="Search Profiles">
+                🔍
+            </a>
+
+            <!-- Upgrade / Membership CTA -->
+            <a href="{% url 'plans' %}" class="btn btn-warning btn-sm rounded-pill fw-bold me-3 px-3 shadow-sm text-dark d-none d-sm-inline-block">
+                ⭐ Premium
+            </a>
+
             {% if user.is_authenticated %}
+
+            {% if user.is_premium %}
+                <span class="badge bg-warning text-dark rounded-pill me-2 px-2 py-1 small fw-bold d-none d-md-inline-block">
+                    ⭐ VIP
+                </span>
+            {% endif %}
 
             <!-- Profile Dropdown -->
             <div class="dropdown me-3">
@@ -147,6 +163,7 @@
                 <ul class="dropdown-menu dropdown-menu-end shadow border-0">
 
                     <li><a class="dropdown-item" href="{% url 'my_profile' %}">My Profile</a></li>
+                    <li><a class="dropdown-item" href="{% url 'payment_history' %}">💳 Membership & Billing</a></li>
 
                     {% if not user.is_email_verified %}
                     <li>
@@ -213,6 +230,8 @@
                 <ul class="dropdown-menu dropdown-menu-end shadow border-0">
                     <li><a class="dropdown-item" href="{% url 'home' %}">Home</a></li>
                     <li><a class="dropdown-item" href="{% url 'profile_list' %}">Matchmaking</a></li>
+                    <li><a class="dropdown-item" href="{% url 'search_profiles' %}">🔍 Search Profiles</a></li>
+                    <li><a class="dropdown-item text-danger fw-semibold" href="{% url 'plans' %}">⭐ Membership Plans</a></li>
                 </ul>
             </div>
 

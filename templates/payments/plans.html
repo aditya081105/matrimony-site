@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="py-4">
+    <!-- Header -->
+    <div class="text-center mb-5">
+        <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-semibold mb-2">
+            ⭐ Premium Membership
+        </span>
+        <h1 class="logo-font fw-bold text-dark mt-2">Choose the Perfect Plan for You</h1>
+        <p class="text-muted mx-auto" style="max-width: 650px;">
+            Upgrade your Siwan Matrimony experience to unlock direct contact numbers, get unlimited connection requests, and highlight your profile to top matches.
+        </p>
+
+        {% if user_sub and user_sub.is_valid %}
+            <div class="alert alert-success d-inline-block px-4 py-2 rounded-pill mt-2">
+                <strong>Active Membership:</strong> {{ user_sub.plan_type }} 
+                {% if user_sub.expires_at %}
+                    (Valid until {{ user_sub.expires_at|date:"M d, Y" }})
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Pricing Cards Grid -->
+    <div class="row g-4 justify-content-center align-items-stretch mb-5">
+        {% for plan in plans %}
+        <div class="col-lg-4 col-md-6 d-flex">
+            <div class="card w-100 shadow-sm border-0 rounded-4 overflow-hidden position-relative d-flex flex-column transition-hover {% if plan.code == 'gold' %}border border-2 border-danger shadow{% endif %}">
+                
+                {% if plan.badge_label %}
+                <div class="position-absolute top-0 end-0 bg-danger text-white text-uppercase px-3 py-1 rounded-bottom-start small fw-bold" style="letter-spacing: 0.5px; font-size: 0.75rem;">
+                    {{ plan.badge_label }}
+                </div>
+                {% endif %}
+
+                <div class="card-body p-4 p-xl-5 d-flex flex-column">
+                    <div class="mb-3">
+                        <h4 class="fw-bold mb-1">{{ plan.name }}</h4>
+                        <span class="text-muted small">{{ plan.duration_days }} Days Validity</span>
+                    </div>
+
+                    <div class="my-3">
+                        <span class="display-5 fw-bold text-dark">₹{{ plan.price|floatformat:0 }}</span>
+                        <span class="text-muted">/ {{ plan.duration_days }} days</span>
+                    </div>
+
+                    <hr class="my-3 text-muted opacity-25">
+
+                    <!-- Features List -->
+                    <ul class="list-unstyled mb-4 flex-grow-1">
+                        {% for feature in plan.get_features_list %}
+                        <li class="d-flex align-items-start mb-2">
+                            <span class="text-success me-2 fw-bold">✓</span>
+                            <span class="text-secondary small">{{ feature }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+
+                    <!-- Action Button -->
+                    <div class="mt-auto pt-2">
+                        {% if user_sub and user_sub.is_valid and user_sub.plan_type == plan.name %}
+                            <button class="btn btn-secondary w-100 py-2 rounded-pill" disabled>
+                                Currently Active
+                            </button>
+                        {% else %}
+                            <a href="{% url 'checkout' plan.code %}"
+                               class="btn {% if plan.code == 'gold' %}btn-danger{% else %}btn-dark{% endif %} w-100 py-2 rounded-pill fw-semibold shadow-sm">
+                                Upgrade to {{ plan.name }}
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Trust & FAQ Section -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5 bg-white text-center">
+        <h5 class="fw-bold mb-3">100% Safe & Direct UPI Payments</h5>
+        <div class="row g-4 justify-content-center text-muted small">
+            <div class="col-md-4">
+                <div class="fs-3 mb-2">🔒</div>
+                <div class="fw-semibold text-dark">Zero Hidden Fees</div>
+                <div>Pay directly through Google Pay, PhonePe, Paytm, or any BHIM UPI app.</div>
+            </div>
+            <div class="col-md-4">
+                <div class="fs-3 mb-2">⚡</div>
+                <div class="fw-semibold text-dark">Instant Profile Unlock</div>
+                <div>View contact information of accepted and prospective matches immediately.</div>
+            </div>
+            <div class="col-md-4">
+                <div class="fs-3 mb-2">🛡️</div>
+                <div class="fw-semibold text-dark">Community Trust</div>
+                <div>Admin verification ensures genuine profiles and protects user safety.</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

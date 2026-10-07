@@ -257,6 +257,9 @@
 
                     <h6 class="fw-semibold mb-1">
                         {{ profile.full_name }}
+                        {% if profile.is_premium %}
+                            <span class="badge bg-warning text-dark rounded-pill ms-1" style="font-size: 0.65rem;">⭐ VIP</span>
+                        {% endif %}
                     </h6>
 
                     <div class="small text-muted">

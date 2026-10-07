@@ -114,7 +114,7 @@ def profile_list(request):
         id__in=blocked_ids
     ).exclude(
         id=request.user.id
-    )
+    ).select_related('city', 'caste_community', 'subscription')
 
     # Opposite gender by default
     if not request.GET.get('gender') and request.user.gender:
@@ -287,15 +287,20 @@ def view_profile(request, user_id):
         return redirect("profile_list")
 
     # accepted match
-    is_allowed = ContactRequest.objects.filter(
-        sender=request.user,
-        receiver=profile_user,
-        status="accepted"
-    ).exists() or ContactRequest.objects.filter(
-        sender=profile_user,
-        receiver=request.user,
-        status="accepted"
-    ).exists()
+    # accepted match or active premium membership
+    is_allowed = (
+        request.user.is_premium
+        or ContactRequest.objects.filter(
+            sender=request.user,
+            receiver=profile_user,
+            status="accepted"
+        ).exists()
+        or ContactRequest.objects.filter(
+            sender=profile_user,
+            receiver=request.user,
+            status="accepted"
+        ).exists()
+    )
 
     # pending request object
     pending_request = ContactRequest.objects.filter(
@@ -434,14 +439,12 @@ def resend_verification_email(request):
         )
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise e
-
+        print(f"Error sending verification email: {e}")
         messages.error(
             request,
-            "Unable to send verification email."
+            "Unable to send verification email right now. Please try again in a moment."
         )
+        return redirect("home")
 
     messages.success(
         request,

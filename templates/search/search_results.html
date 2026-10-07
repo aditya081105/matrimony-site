@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="py-4">
+    <!-- Search Bar Section -->
+    <div class="text-center mb-5">
+        <h2 class="fw-bold logo-font">Search Community Profiles</h2>
+        <p class="text-muted small">Find compatible matches by name, profession, city, or community.</p>
+
+        <div class="row justify-content-center mt-4">
+            <div class="col-lg-7 col-md-9">
+                <form method="GET" action="{% url 'search_profiles' %}" class="card shadow-sm border-0 rounded-pill p-2 bg-white">
+                    <div class="input-group">
+                        <input type="text"
+                               name="q"
+                               class="form-control border-0 bg-transparent ps-4"
+                               placeholder="Search by name, occupation, city, or caste..."
+                               value="{{ query }}"
+                               required>
+                        <button class="btn btn-danger rounded-pill px-4 fw-semibold" type="submit">
+                            🔍 Search
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Results Section -->
+    {% if query %}
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h5 class="fw-bold mb-0 text-dark">
+                Results for "<span class="text-danger">{{ query }}</span>"
+            </h5>
+            <span class="badge bg-secondary rounded-pill px-3 py-2">
+                {{ profiles|length }} Profile{% if profiles|length != 1 %}s{% endif %} Found
+            </span>
+        </div>
+
+        <div class="row g-4 mb-4">
+            {% for profile in profiles %}
+            <div class="col-lg-4 col-md-6">
+                <div class="card shadow-sm border-0 rounded-4 overflow-hidden matchmaking-card bg-white position-relative">
+                    {% if profile.is_premium %}
+                        <div class="position-absolute top-0 start-0 m-3 z-1">
+                            <span class="badge bg-warning text-dark rounded-pill px-3 py-1 fw-bold shadow-sm">
+                                ⭐ Verified Premium
+                            </span>
+                        </div>
+                    {% endif %}
+
+                    <div class="text-center pt-4 pb-2">
+                        {% if profile.profile_photo %}
+                            <img src="{{ profile.profile_photo.url }}"
+                                 alt="{{ profile.full_name }}"
+                                 class="rounded-circle shadow-sm"
+                                 style="width: 120px; height: 120px; object-fit: cover;">
+                        {% else %}
+                            <img src="{% static 'images/default.jpg' %}"
+                                 alt="{{ profile.full_name }}"
+                                 class="rounded-circle shadow-sm"
+                                 style="width: 120px; height: 120px; object-fit: cover;">
+                        {% endif %}
+                    </div>
+
+                    <div class="card-body text-center p-4">
+                        <h5 class="fw-bold mb-1">{{ profile.full_name }}</h5>
+                        <p class="text-muted small mb-2">
+                            {% if profile.occupation %}{{ profile.occupation }}{% else %}Profile{% endif %}
+                        </p>
+
+                        <div class="d-flex justify-content-center gap-2 flex-wrap mb-3">
+                            {% if profile.city %}
+                                <span class="badge bg-light text-dark rounded-pill border px-2 py-1 small">
+                                    📍 {{ profile.city.name }}
+                                </span>
+                            {% endif %}
+                            {% if profile.caste_community %}
+                                <span class="badge bg-light text-dark rounded-pill border px-2 py-1 small">
+                                    👥 {{ profile.caste_community.name }}
+                                </span>
+                            {% endif %}
+                            {% if profile.height_cm %}
+                                <span class="badge bg-light text-dark rounded-pill border px-2 py-1 small">
+                                    📏 {{ profile.height_cm }} cm
+                                </span>
+                            {% endif %}
+                        </div>
+
+                        <a href="{% url 'view_profile' profile.id %}"
+                           class="btn btn-outline-dark btn-sm rounded-pill w-100 py-2 fw-semibold">
+                            View Full Profile →
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center py-5">
+                <div class="display-6 text-muted mb-3">🔍</div>
+                <h5 class="fw-bold">No profiles matched your search</h5>
+                <p class="text-muted small">Try searching with a broader keyword, like a city or caste name.</p>
+                <a href="{% url 'profile_list' %}" class="btn btn-outline-secondary rounded-pill px-4">
+                    Browse All Profiles
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

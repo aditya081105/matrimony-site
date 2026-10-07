@@ -91,8 +91,8 @@ def send_request(request, user_id):
         else:
             existing.attempt_count += 1
 
-        if existing.attempt_count > 3:
-            messages.error(request, "Daily request limit reached for this user.")
+        if not request.user.is_premium and existing.attempt_count > 3:
+            messages.error(request, "Daily request limit reached for this user. Upgrade to Premium for unlimited requests.")
             return redirect('profile_list')
 
         existing.status = 'pending'
@@ -107,8 +107,8 @@ def send_request(request, user_id):
         created_at__date=today
     ).count()
 
-    if daily_attempts >= 3:
-        messages.error(request, "Daily request limit reached for this user.")
+    if not request.user.is_premium and daily_attempts >= 3:
+        messages.error(request, "Daily request limit reached for this user. Upgrade to Premium for unlimited requests.")
         return redirect('profile_list')
     
     RequestAttempt.objects.create(

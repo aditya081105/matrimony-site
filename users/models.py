@@ -67,6 +67,13 @@ class CustomUser(AbstractUser):
     is_suspended = models.BooleanField(default=False)
     is_email_verified = models.BooleanField(default=False)
 
+    @property
+    def is_premium(self):
+        try:
+            return bool(hasattr(self, 'subscription') and self.subscription.is_valid)
+        except Exception:
+            return False
+
     def __str__(self):
         return self.username
 
@@ -113,15 +120,26 @@ class Profile(models.Model):
 @receiver(post_save, sender=CustomUser)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
-        Profile.objects.create(user=instance)
+        Profile.objects.get_or_create(user=instance)
+        Subscription.objects.get_or_create(user=instance, defaults={'plan_type': 'Free', 'is_active': False})
 
 
 class Subscription(models.Model):
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='subscription')
     is_active = models.BooleanField(default=False)
     expires_at = models.DateTimeField(null=True, blank=True)
-    plan_type = models.CharField(max_length=50, blank=True)
+    plan_type = models.CharField(max_length=50, default='Free', blank=True)
+
+    @property
+    def is_valid(self):
+        if not self.is_active:
+            return False
+        if self.expires_at:
+            from django.utils import timezone
+            return self.expires_at > timezone.now()
+        return True
 
     def __str__(self):
-        return f"{self.user.username} Subscription"
+        status = "Active" if self.is_valid else "Inactive"
+        return f"{self.user.username} ({self.plan_type} - {status})"
     

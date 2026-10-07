@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h2 class="fw-bold mb-1">Billing & Membership</h2>
+            <p class="text-muted small mb-0">View your active subscription and past transactions.</p>
+        </div>
+        <div>
+            <a href="{% url 'plans' %}" class="btn btn-danger rounded-pill px-4 fw-semibold shadow-sm">
+                ⭐ Upgrade Plan
+            </a>
+        </div>
+    </div>
+
+    <!-- Active Subscription Banner -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <span class="text-muted small text-uppercase fw-bold">Current Status</span>
+                <div class="d-flex align-items-center gap-2 mt-1">
+                    {% if user_sub and user_sub.is_valid %}
+                        <h4 class="fw-bold mb-0 text-success">Active Member ({{ user_sub.plan_type }})</h4>
+                        <span class="badge bg-success rounded-pill px-3 py-1">Active</span>
+                    {% else %}
+                        <h4 class="fw-bold mb-0 text-secondary">Free Tier Account</h4>
+                        <span class="badge bg-secondary rounded-pill px-3 py-1">Free</span>
+                    {% endif %}
+                </div>
+                
+                <p class="text-muted small mt-2 mb-0">
+                    {% if user_sub and user_sub.is_valid %}
+                        {% if user_sub.expires_at %}
+                            Your membership benefits expire on <strong>{{ user_sub.expires_at|date:"F d, Y" }}</strong>.
+                        {% else %}
+                            Lifetime active membership.
+                        {% endif %}
+                    {% else %}
+                        Upgrade to unlock phone numbers, get unlimited daily requests, and priority search ranking.
+                    {% endif %}
+                </p>
+            </div>
+            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                <a href="{% url 'profile_list' %}" class="btn btn-outline-dark rounded-pill px-3">
+                    Explore Matches →
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order History Table -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+        <div class="card-header bg-white py-3 border-bottom">
+            <h5 class="fw-bold mb-0">Payment History</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small text-muted">
+                    <tr>
+                        <th class="ps-4">Order ID</th>
+                        <th>Plan</th>
+                        <th>Amount</th>
+                        <th>Method / UTR</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th class="pe-4 text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="small">
+                    {% for order in orders %}
+                    <tr>
+                        <td class="ps-4 fw-semibold">#{{ order.id }}</td>
+                        <td>{{ order.plan.name }}</td>
+                        <td class="fw-bold">₹{{ order.amount|floatformat:0 }}</td>
+                        <td>
+                            <div>{{ order.payment_method }}</div>
+                            {% if order.utr_number %}
+                                <div class="text-muted" style="font-size: 0.75rem;">UTR: {{ order.utr_number }}</div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if order.status == 'completed' %}
+                                <span class="badge bg-success rounded-pill px-3 py-1">Completed</span>
+                            {% elif order.status == 'pending' %}
+                                <span class="badge bg-warning text-dark rounded-pill px-3 py-1">Pending Verification</span>
+                            {% else %}
+                                <span class="badge bg-danger rounded-pill px-3 py-1">Rejected</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted">{{ order.created_at|date:"M d, Y" }}</td>
+                        <td class="pe-4 text-end">
+                            {% if order.status == 'pending' %}
+                                <a href="{% url 'simulate_instant_activation' order.id %}"
+                                   class="btn btn-sm btn-outline-success rounded-pill px-2"
+                                   title="Click to test instant demo activation">
+                                    ⚡ Test Activate
+                                </a>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            No payment history yet. <a href="{% url 'plans' %}" class="text-danger fw-semibold">View Plans</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

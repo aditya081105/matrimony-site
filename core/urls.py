@@ -19,6 +19,8 @@ urlpatterns = [
     path('profiles/', include('users.urls')),
     path('', include('users.urls')),
     path('interests/', include('communications.urls')),
+    path('payments/', include('payments.urls')),
+    path('search/', include('search.urls')),
 ]
 
 if settings.DEBUG:

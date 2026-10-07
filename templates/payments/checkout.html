@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            
+            <div class="mb-4">
+                <a href="{% url 'plans' %}" class="text-decoration-none text-muted small">
+                    ← Back to Membership Plans
+                </a>
+                <h2 class="fw-bold mt-2">Complete Your Upgrade</h2>
+                <p class="text-muted small">Scan the UPI QR code below using any UPI app (GPay, PhonePe, Paytm, BHIM) to activate your subscription.</p>
+            </div>
+
+            <!-- Order Summary Card -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="badge bg-danger rounded-pill px-3 py-1 mb-1">Selected Plan</span>
+                        <h4 class="fw-bold mb-0 text-dark">{{ plan.name }}</h4>
+                        <span class="text-muted small">Validity: {{ plan.duration_days }} Days</span>
+                    </div>
+                    <div class="text-end">
+                        <span class="text-muted small d-block">Amount Due</span>
+                        <span class="fs-2 fw-bold text-dark">₹{{ plan.price|floatformat:0 }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Instructions & QR Section -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5 mb-4 bg-white">
+                <div class="row align-items-center g-4">
+                    
+                    <!-- QR Code Column -->
+                    <div class="col-md-5 text-center border-end-md">
+                        <div class="p-3 bg-light rounded-4 d-inline-block border shadow-xs mb-3">
+                            <img src="{{ qr_code_url }}"
+                                 alt="UPI QR Code"
+                                 class="img-fluid rounded-3"
+                                 style="max-width: 220px; height: auto;">
+                        </div>
+                        <div class="small text-muted fw-semibold mb-2">Scan & Pay ₹{{ plan.price|floatformat:0 }}</div>
+                        
+                        <!-- Mobile Deep Link Button -->
+                        <div class="d-md-none mt-2">
+                            <a href="{{ upi_uri }}" class="btn btn-outline-danger btn-sm rounded-pill px-3 w-100">
+                                📱 Tap to Pay in UPI App
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Payment Steps Column -->
+                    <div class="col-md-7">
+                        <h5 class="fw-bold mb-3">How to complete payment:</h5>
+                        
+                        <ol class="small text-muted ps-3 mb-4">
+                            <li class="mb-2">Open <strong>Google Pay, PhonePe, Paytm</strong> or any UPI app.</li>
+                            <li class="mb-2">Scan the QR code, or transfer directly to our official UPI ID:</li>
+                            
+                            <!-- Copyable UPI ID Box -->
+                            <div class="input-group my-2">
+                                <input type="text"
+                                       id="upiIdInput"
+                                       class="form-control form-control-sm bg-light"
+                                       value="{{ upi_id }}"
+                                       readonly>
+                                <button class="btn btn-outline-secondary btn-sm"
+                                        type="button"
+                                        onclick="copyUpiId()">
+                                    📋 Copy
+                                </button>
+                            </div>
+                            <span id="copiedNotice" class="text-success small d-none">✓ Copied to clipboard!</span>
+
+                            <li class="mb-2">Once paid, copy the <strong>12-digit UTR / UPI Reference ID</strong> from your transaction receipt.</li>
+                            <li>Enter the UTR number below and submit for instant verification.</li>
+                        </ol>
+
+                        <!-- UTR Submission Form -->
+                        <form method="POST" class="mt-4">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="submit_utr">
+                            
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-dark">
+                                    12-Digit UPI Reference (UTR) Number <span class="text-danger">*</span>
+                                </label>
+                                <input type="text"
+                                       name="utr_number"
+                                       class="form-control rounded-3"
+                                       placeholder="e.g. 428912345678"
+                                       maxlength="30"
+                                       required>
+                                <div class="form-text small">Found under transaction details in your UPI app.</div>
+                            </div>
+
+                            <button type="submit" class="btn btn-dark w-100 py-2 rounded-pill fw-semibold shadow-sm">
+                                Submit Payment for Verification
+                            </button>
+                        </form>
+
+                        <!-- Instant Sandbox Demo Button -->
+                        <div class="mt-4 pt-3 border-top text-center">
+                            <form method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="instant_demo">
+                                <button type="submit" class="btn btn-outline-success btn-sm rounded-pill px-4">
+                                    ⚡ Instant Test Activation (Demo Mode)
+                                </button>
+                            </form>
+                            <span class="text-muted" style="font-size: 0.75rem;">
+                                Use for immediate evaluation without real payment transfer.
+                            </span>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+function copyUpiId() {
+    const copyText = document.getElementById("upiIdInput");
+    copyText.select();
+    copyText.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(copyText.value);
+    const notice = document.getElementById("copiedNotice");
+    notice.classList.remove("d-none");
+    setTimeout(() => {
+        notice.classList.add("d-none");
+    }, 3000);
+}
+</script>
+{% endblock %}
