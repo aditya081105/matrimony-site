@@ -108,3 +108,25 @@ class UserModelTest(TestCase):
         self.assertEqual(saved.caste, 'Kushwaha')
         self.assertEqual(saved.sub_caste, 'Maurya')
         self.assertEqual(saved.display_caste, 'Kushwaha (Maurya)')
+
+    def test_verify_phone_view_with_otp(self):
+        from django.urls import reverse
+        user = User.objects.create_user(
+            username="phone_test_user",
+            password="TestPassword123!",
+            phone_number="9876543210",
+            is_phone_verified=False,
+        )
+        self.client.login(username="phone_test_user", password="TestPassword123!")
+        
+        # GET request initiates session OTP
+        get_res = self.client.get(reverse('verify_phone'))
+        self.assertEqual(get_res.status_code, 200)
+        self.assertContains(get_res, "Verify Mobile Number")
+
+        # POST with master/demo code 123456
+        post_res = self.client.post(reverse('verify_phone'), {'otp': '123456'})
+        self.assertEqual(post_res.status_code, 302)
+        
+        user.refresh_from_db()
+        self.assertTrue(user.is_phone_verified)

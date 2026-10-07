@@ -1,4 +1,5 @@
 from datetime import date
+import random
 from django.db.models import Q, Count
 from django.db import models
 from django.shortcuts import render, redirect
@@ -91,17 +92,10 @@ def register(request):
 
             messages.success(
                 request,
-                f"""
-                Account created successfully.
-
-                A verification email has been sent to:
-                {user.email}
-
-                Please verify your email to unlock matchmaking.
-                """
+                f"Welcome, {user.full_name or user.username}! Please verify your phone number to complete profile setup."
             )
 
-            return redirect("home")
+            return redirect("verify_phone")
     else:
         form = UserRegisterForm()
     return render(request, 'users/register.html', {'form': form})
@@ -119,6 +113,9 @@ def profile_list(request):
 
     if not request.user.is_email_verified:
         return render(request, "users/verify_email_required.html")
+
+    if not request.user.is_phone_verified and not request.user.is_staff:
+        return redirect("verify_phone")
 
     cities = City.objects.all()
     castes = Caste.objects.all()
@@ -536,5 +533,44 @@ def resend_verification_email(request):
         )
 
     return redirect("home")
+
+
+@login_required(login_url='login')
+def verify_phone(request):
+    user = request.user
+    if user.is_phone_verified:
+        return redirect('home')
+
+    current_otp = request.session.get('phone_otp')
+    if not current_otp:
+        current_otp = f"{random.randint(100000, 999999)}"
+        request.session['phone_otp'] = current_otp
+
+    print(f"==> VERIFICATION PHONE OTP for {user.phone_number}: {current_otp}")
+
+    if request.method == 'POST':
+        entered_otp = request.POST.get('otp', '').strip()
+        # Accepts the generated session OTP or master demo code 123456
+        if entered_otp and (entered_otp == current_otp or entered_otp == '123456'):
+            user.is_phone_verified = True
+            user.save()
+            request.session.pop('phone_otp', None)
+            messages.success(request, "Mobile number verified successfully! Welcome to Siwan Matrimony.")
+            return redirect('home')
+        else:
+            messages.error(request, "Invalid OTP code. Please enter the 6-digit code shown or request a new code.")
+
+    return render(request, 'users/verify_phone.html', {
+        'phone_number': user.phone_number,
+        'current_otp': current_otp,
+    })
+
+
+@login_required(login_url='login')
+def resend_phone_otp(request):
+    new_otp = f"{random.randint(100000, 999999)}"
+    request.session['phone_otp'] = new_otp
+    messages.info(request, "A new 6-digit verification code has been generated.")
+    return redirect('verify_phone')
 
 

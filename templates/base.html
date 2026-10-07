@@ -156,21 +156,55 @@
             font-weight: 700;
         }
 
-        /* Clean Translation Integration (Hide default Google branding/banners) */
-        .goog-te-banner-frame, iframe.goog-te-banner-frame {
+        /* =========================================================
+           AGGRESSIVELY HIDE ALL GOOGLE TRANSLATE BANNERS & POPUPS
+           ========================================================= */
+        .goog-te-banner-frame,
+        .goog-te-banner-frame.skiptranslate,
+        iframe.goog-te-banner-frame,
+        iframe.skiptranslate,
+        .VIpgJd-ZVi9od-ORHb-OEVmcd,
+        .VIpgJd-ZVi9od-ORHb-OEVmcd.skiptranslate,
+        #goog-gt-tt,
+        #goog-gt-vt,
+        .goog-te-balloon-frame,
+        .goog-tooltip,
+        .goog-tooltip:hover,
+        .VIpgJd-ZVi9od-aZ2wEe-wOHMyf,
+        .VIpgJd-ZVi9od-aZ2wEe-wOHMyf-mEkA1b,
+        .VIpgJd-yAWNEb-VIpgJd-fmcmS-sn54Q,
+        body > .skiptranslate,
+        .VIpgJd-yAWNEb-L7lbkb {
             display: none !important;
             visibility: hidden !important;
+            opacity: 0 !important;
             height: 0 !important;
+            width: 0 !important;
+            max-height: 0 !important;
+            max-width: 0 !important;
+            overflow: hidden !important;
+            pointer-events: none !important;
+            position: absolute !important;
+            top: -9999px !important;
+            left: -9999px !important;
+            border: none !important;
+            z-index: -9999 !important;
         }
+
         body {
             top: 0px !important;
             position: static !important;
         }
-        .goog-te-gadget {
-            display: none !important;
+
+        .goog-text-highlight {
+            background-color: transparent !important;
+            box-shadow: none !important;
+            border: none !important;
         }
-        .skiptranslate {
-            display: inline !important;
+
+        .goog-te-gadget,
+        #google_translate_element {
+            display: none !important;
         }
     </style>
 </head>
@@ -356,6 +390,18 @@
             {% endfor %}
         {% endif %}
 
+        {% if request.user.is_authenticated and not request.user.is_phone_verified and not request.user.is_staff and request.resolver_match.url_name != 'verify_phone' %}
+        <div class="alert alert-warning border-0 rounded-4 shadow-sm mb-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <strong>Phone Not Verified:</strong>
+                <span class="small text-muted ms-1">Verify your registered mobile (+91 {{ request.user.phone_number }}) to activate matchmaking features.</span>
+            </div>
+            <a href="{% url 'verify_phone' %}" class="btn btn-dark btn-sm rounded-pill px-3">
+                Verify Mobile Now
+            </a>
+        </div>
+        {% endif %}
+
         {% block content %}{% endblock %}
     </div>
 </main>
@@ -409,18 +455,43 @@
         new google.translate.TranslateElement({
             pageLanguage: 'en',
             includedLanguages: 'en,hi',
-            autoDisplay: false
+            autoDisplay: false,
+            multilanguagePage: true
         }, 'google_translate_element');
     }
 
     function setSiteLanguage(lang) {
         const host = window.location.hostname;
-        document.cookie = "googtrans=/en/" + lang + "; path=/; domain=" + host;
-        document.cookie = "googtrans=/en/" + lang + "; path=/;";
+        if (lang === 'en') {
+            document.cookie = "googtrans=; path=/; domain=" + host + "; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+            document.cookie = "googtrans=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+            document.cookie = "googtrans=/en/en; path=/; domain=" + host;
+            document.cookie = "googtrans=/en/en; path=/;";
+        } else {
+            document.cookie = "googtrans=/en/" + lang + "; path=/; domain=" + host;
+            document.cookie = "googtrans=/en/" + lang + "; path=/;";
+        }
         window.location.reload();
     }
 
+    // Suppress Google Translate feedback popups, banners, and tooltips
+    const cleanGoogleArtifacts = function() {
+        const tooltip = document.getElementById('goog-gt-tt');
+        if (tooltip) tooltip.remove();
+        document.querySelectorAll('.VIpgJd-ZVi9od-ORHb-OEVmcd, .goog-te-banner-frame, iframe[id=":1.container"], .VIpgJd-ZVi9od-aZ2wEe-wOHMyf, .VIpgJd-yAWNEb-L7lbkb').forEach(function(el) {
+            el.remove();
+        });
+        if (document.body && document.body.style.top && document.body.style.top !== '0px') {
+            document.body.style.top = '0px';
+        }
+    };
+
+    if (window.MutationObserver) {
+        new MutationObserver(cleanGoogleArtifacts).observe(document.documentElement, { childList: true, subtree: true });
+    }
+
     document.addEventListener("DOMContentLoaded", function() {
+        cleanGoogleArtifacts();
         if (document.cookie.indexOf('googtrans=/en/hi') !== -1) {
             const langEl = document.getElementById('currentLangText');
             if (langEl) langEl.textContent = 'हिंदी';
