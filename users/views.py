@@ -85,14 +85,21 @@ def profile_list(request):
         id=request.user.id
     ).select_related('profile', 'city', 'caste_community', 'subscription', 'subscription__plan').order_by('-date_joined')
 
-    # Opposite gender by default
-    if not request.GET.get('gender') and request.user.gender:
-        opposite = 'F' if request.user.gender == 'M' else 'M'
-        profiles = profiles.filter(gender=opposite)
+    # Gender filter handling
+    user_gender = getattr(request.user, 'gender', None)
+    opposite_gender = 'F' if user_gender == 'M' else ('M' if user_gender == 'F' else '')
 
-    # Apply filters
-    if request.GET.get('gender'):
-        profiles = profiles.filter(gender=request.GET.get('gender'))
+    if 'gender' not in request.GET:
+        selected_gender = opposite_gender if opposite_gender else 'any'
+    else:
+        raw_gender = request.GET.get('gender', '').strip()
+        if raw_gender in ['M', 'F']:
+            selected_gender = raw_gender
+        else:
+            selected_gender = 'any'
+
+    if selected_gender in ['M', 'F']:
+        profiles = profiles.filter(gender=selected_gender)
     caste_query = request.GET.get('caste', '').strip()
     if caste_query:
         if caste_query.isdigit():
@@ -180,6 +187,7 @@ def profile_list(request):
         'saved_ids': saved_ids,
         'accepted_user_ids': accepted_user_ids,
         'pending_user_ids': pending_user_ids,
+        'selected_gender': selected_gender,
     }
 
     return render(request, 'users/profile_list.html', context)

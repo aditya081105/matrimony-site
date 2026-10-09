@@ -237,3 +237,69 @@ class UserModelTest(TestCase):
         })
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Your message has been sent successfully.")
+
+    def test_profile_list_gender_filter_defaults_and_explicit(self):
+        from django.urls import reverse
+
+        male_user = User.objects.create_user(
+            username="male_viewer",
+            password="TestPass123!",
+            is_approved=True,
+            is_email_verified=True,
+            gender='M'
+        )
+        female_user = User.objects.create_user(
+            username="female_viewer",
+            password="TestPass123!",
+            is_approved=True,
+            is_email_verified=True,
+            gender='F'
+        )
+        target_m = User.objects.create_user(
+            username="target_male",
+            password="TestPass123!",
+            is_approved=True,
+            is_email_verified=True,
+            gender='M'
+        )
+        target_f = User.objects.create_user(
+            username="target_female",
+            password="TestPass123!",
+            is_approved=True,
+            is_email_verified=True,
+            gender='F'
+        )
+
+        # 1. Male user visits without GET params -> defaults to Female ('F')
+        self.client.login(username="male_viewer", password="TestPass123!")
+        res = self.client.get(reverse('profile_list'))
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.context['selected_gender'], 'F')
+        profile_ids = [p.id for p in res.context['page_obj']]
+        self.assertIn(target_f.id, profile_ids)
+        self.assertNotIn(target_m.id, profile_ids)
+
+        # 2. Female user visits without GET params -> defaults to Male ('M')
+        self.client.login(username="female_viewer", password="TestPass123!")
+        res = self.client.get(reverse('profile_list'))
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.context['selected_gender'], 'M')
+        profile_ids = [p.id for p in res.context['page_obj']]
+        self.assertIn(target_m.id, profile_ids)
+        self.assertNotIn(target_f.id, profile_ids)
+
+        # 3. Explicit 'any' filter -> shows both genders
+        res_any = self.client.get(reverse('profile_list'), {'gender': 'any'})
+        self.assertEqual(res_any.status_code, 200)
+        self.assertEqual(res_any.context['selected_gender'], 'any')
+        profile_ids_any = [p.id for p in res_any.context['page_obj']]
+        self.assertIn(target_m.id, profile_ids_any)
+        self.assertIn(target_f.id, profile_ids_any)
+
+        # 4. Explicit 'F' filter for female user
+        res_f = self.client.get(reverse('profile_list'), {'gender': 'F'})
+        self.assertEqual(res_f.status_code, 200)
+        self.assertEqual(res_f.context['selected_gender'], 'F')
+        profile_ids_f = [p.id for p in res_f.context['page_obj']]
+        self.assertIn(target_f.id, profile_ids_f)
+        self.assertNotIn(target_m.id, profile_ids_f)
