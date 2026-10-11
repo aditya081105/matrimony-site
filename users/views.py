@@ -1,7 +1,8 @@
 from datetime import date
 import random
 import time
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Case, When, Value, IntegerField
+from django.utils import timezone
 from django.db import models
 from django.shortcuts import render, redirect
 from django.contrib import messages
@@ -77,6 +78,11 @@ def profile_list(request):
 
     blocked_ids = set(blocked_by_me) | set(blocked_me)
 
+    now = timezone.now()
+    active_sub_filter = Q(subscription__is_active=True) & (
+        Q(subscription__expires_at__isnull=True) | Q(subscription__expires_at__gt=now)
+    )
+
     profiles = CustomUser.objects.filter(
         is_active=True,
         is_approved=True,
@@ -89,7 +95,15 @@ def profile_list(request):
         is_staff=True
     ).exclude(
         is_superuser=True
-    ).select_related('profile', 'city', 'caste_community', 'subscription', 'subscription__plan').order_by('-date_joined')
+    ).annotate(
+        tier_weight=Case(
+            When(active_sub_filter, subscription__plan__code='diamond', then=Value(3)),
+            When(active_sub_filter, subscription__plan__code='gold', then=Value(2)),
+            When(active_sub_filter, subscription__plan__code='silver', then=Value(1)),
+            default=Value(0),
+            output_field=IntegerField()
+        )
+    ).select_related('profile', 'city', 'caste_community', 'subscription', 'subscription__plan').order_by('-tier_weight', '-date_joined')
 
     # Gender filter handling
     user_gender = getattr(request.user, 'gender', None)

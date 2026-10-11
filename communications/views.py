@@ -128,12 +128,19 @@ def send_request(request, user_id):
             created_at__date=today
         ).count()
 
-        if receiver_daily_attempts >= 3:
-            messages.error(request, f"You have reached the daily limit of 3 contact attempts for this member.")
+        is_admin = bool(request.user.is_staff or request.user.is_superuser)
+
+        if not is_admin and receiver_daily_attempts >= 3:
+            messages.error(
+                request,
+                f"For member safety and privacy, you can only send up to 3 contact attempts to {receiver.full_name or receiver.username} in a single day. You can still send contact requests to other profiles."
+            )
             return redirect('profile_list')
 
         tier = (request.user.membership_tier or '').lower()
-        if not request.user.is_premium:
+        if is_admin:
+            daily_limit = 999999
+        elif not request.user.is_premium:
             daily_limit = 3
         elif tier == 'silver':
             daily_limit = 10

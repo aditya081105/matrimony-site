@@ -2,7 +2,8 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import connection
-from django.db.models import Q
+from django.db.models import Q, Case, When, Value, IntegerField
+from django.utils import timezone
 from users.models import CustomUser
 from communications.models import Block
 
@@ -42,10 +43,24 @@ def search_view(request):
                 is_superuser=True
             )
 
+        now = timezone.now()
+        active_sub_filter = Q(subscription__is_active=True) & (
+            Q(subscription__expires_at__isnull=True) | Q(subscription__expires_at__gt=now)
+        )
+
+        tier_case = Case(
+            When(active_sub_filter, subscription__plan__code='diamond', then=Value(3)),
+            When(active_sub_filter, subscription__plan__code='gold', then=Value(2)),
+            When(active_sub_filter, subscription__plan__code='silver', then=Value(1)),
+            default=Value(0),
+            output_field=IntegerField()
+        )
+
         if connection.vendor == 'postgresql':
             from django.contrib.postgres.search import TrigramSimilarity
             profiles = base_qs.annotate(
-                similarity=TrigramSimilarity('full_name', query)
+                similarity=TrigramSimilarity('full_name', query),
+                tier_weight=tier_case
             ).filter(
                 Q(full_name__trigram_similar=query) |
                 Q(occupation__trigram_similar=query) |
@@ -57,9 +72,11 @@ def search_view(request):
                 Q(bio__icontains=query)
             ).select_related(
                 'profile', 'city', 'caste_community', 'subscription', 'subscription__plan'
-            ).order_by('-similarity', '-date_joined').distinct()
+            ).order_by('-tier_weight', '-similarity', '-date_joined').distinct()
         else:
-            profiles = base_qs.filter(
+            profiles = base_qs.annotate(
+                tier_weight=tier_case
+            ).filter(
                 Q(full_name__icontains=query) |
                 Q(occupation__icontains=query) |
                 Q(city__name__icontains=query) |
@@ -69,7 +86,7 @@ def search_view(request):
                 Q(bio__icontains=query)
             ).select_related(
                 'profile', 'city', 'caste_community', 'subscription', 'subscription__plan'
-            ).order_by('-date_joined').distinct()
+            ).order_by('-tier_weight', '-date_joined').distinct()
 
     paginator = Paginator(profiles, 12)
     page_obj = paginator.get_page(request.GET.get('page', 1))
