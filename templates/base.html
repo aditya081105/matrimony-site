@@ -22,53 +22,45 @@
         }
 
         #mainNavbar.shrink {
-            padding-top: 0.35rem !important;
-            padding-bottom: 0.35rem !important;
+            padding-top: 0.45rem !important;
+            padding-bottom: 0.45rem !important;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
         .navbar-brand {
-            font-size: 1.15rem;
             letter-spacing: 0.3px;
             white-space: nowrap;
             text-decoration: none;
             transition: font-size 0.3s ease;
         }
 
-        @media (min-width: 576px) {
-            .navbar-brand {
-                font-size: 1.35rem;
-                letter-spacing: 0.5px;
-            }
-        }
-
         @media (min-width: 768px) {
             .navbar-brand {
-                font-size: 1.65rem;
+                font-size: 1.7rem;
                 letter-spacing: 0.6px;
             }
         }
 
         #mainNavbar.shrink .navbar-brand {
-            font-size: 1.12rem;
+            font-size: 1.15rem;
         }
 
         @media (min-width: 768px) {
             #mainNavbar.shrink .navbar-brand {
-                font-size: 1.35rem;
+                font-size: 1.4rem;
             }
         }
 
         .navbar-avatar {
-            width: 32px;
-            height: 32px;
+            width: 38px;
+            height: 38px;
             object-fit: cover;
         }
 
-        @media (min-width: 768px) {
+        @media (min-width: 992px) {
             .navbar-avatar {
-                width: 38px;
-                height: 38px;
+                width: 42px;
+                height: 42px;
             }
         }
 
@@ -291,172 +283,344 @@
     {% endif %}
 
     <nav id="mainNavbar"
-         class="navbar navbar-expand navbar-dark brand-red py-2 py-sm-2.5">
-    <div class="container d-flex align-items-center justify-content-between flex-nowrap px-2 px-sm-3">
+         class="navbar navbar-expand navbar-dark brand-red py-2 py-md-3">
 
-        <a class="navbar-brand logo-font me-1 me-sm-2" href="{% url 'home' %}">
-            Siwan Matrimony®
-        </a>
-
-        <div class="d-flex align-items-center gap-1 gap-sm-2 flex-shrink-0">
-
-            <!-- Search Quick Link -->
-            <a href="{% url 'search_profiles' %}" class="btn text-white p-1 d-flex align-items-center" title="Search Profiles">
-                <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
-                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
-                </svg>
+        <!-- ================= DESKTOP NAVBAR (MD and UP) ================= -->
+        <div class="container d-none d-md-flex align-items-center justify-content-between px-3 px-lg-4">
+            <a class="navbar-brand logo-font fs-3 text-white" href="{% url 'home' %}">
+                Siwan Matrimony®
             </a>
 
-            <!-- Language Selector (Bilingual: ENG / हि) -->
-            <div class="dropdown">
-                <button class="btn btn-outline-light btn-sm rounded-pill px-2 py-0.5 dropdown-toggle d-flex align-items-center gap-1"
-                        type="button"
-                        id="langDropdownBtn"
-                        data-bs-toggle="dropdown"
-                        aria-expanded="false"
-                        style="font-size: 0.75rem; font-weight: 600; line-height: 1.4;">
-                    <span id="currentLangText">ENG</span>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="langDropdownBtn" style="min-width: 130px;">
-                    <li>
-                        <a class="dropdown-item d-flex align-items-center justify-content-between py-2" href="javascript:void(0)" onclick="setSiteLanguage('en')">
-                            <span class="fw-semibold">ENG</span>
-                            <small class="text-muted">English</small>
-                        </a>
-                    </li>
-                    <li>
-                        <a class="dropdown-item d-flex align-items-center justify-content-between py-2 text-danger fw-semibold" href="javascript:void(0)" onclick="setSiteLanguage('hi')">
-                            <span class="fw-bold">हि</span>
-                            <small class="badge bg-danger-subtle text-danger rounded-pill">हिंदी</small>
-                        </a>
-                    </li>
-                </ul>
-            </div>
-
-            <!-- Upgrade / Membership CTA -->
-            <a href="{% url 'plans' %}" class="btn btn-outline-light btn-sm rounded-pill px-3 fw-medium d-none d-md-inline-block">
-                Membership
-            </a>
-
-            {% if user.is_authenticated %}
-
-            {% if user.is_premium %}
-                <span class="nav-tier-badge d-inline-flex align-items-center">
-                    {% include 'includes/tier_badge.html' with badge_user=user %}
-                </span>
-            {% endif %}
-
-            <!-- Profile Dropdown -->
-            <div class="dropdown">
-                <a class="position-relative d-inline-flex align-items-center"
-                   href="#"
-                   data-bs-toggle="dropdown"
-                   aria-label="User profile menu">
-
-                    {% if user.profile_photo %}
-                        <img src="{{ user.profile_photo.url }}"
-                             class="rounded-circle border border-2 border-white navbar-avatar"
-                             onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';">
-                    {% elif user.profile.profile_photo %}
-                        <img src="{{ user.profile.profile_photo.url }}"
-                             class="rounded-circle border border-2 border-white navbar-avatar"
-                             onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';">
-                    {% else %}
-                        <img src="{% static 'images/default.jpg' %}"
-                             class="rounded-circle border border-2 border-white navbar-avatar">
-                    {% endif %}
-
-                    {% if pending_request_count > 0 %}
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.62rem; padding: 0.22em 0.45em;">
-                            {{ pending_request_count }}
-                        </span>
-                    {% endif %}
+            <div class="d-flex align-items-center gap-3">
+                <!-- Search Quick Link -->
+                <a href="{% url 'search_profiles' %}" class="btn text-white p-1 d-flex align-items-center" title="Search Profiles" aria-label="Search">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
+                    </svg>
                 </a>
 
-                <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="min-width: 205px;">
-                    <li class="px-3 py-2 border-bottom bg-light rounded-top d-flex align-items-center justify-content-between">
-                        <span class="small fw-semibold text-truncate me-2" style="max-width: 110px;">{{ user.full_name|default:user.username }}</span>
-                        {% if user.is_premium %}
-                            {% include 'includes/tier_badge.html' with badge_user=user %}
+                <!-- Language Selector (Bilingual: ENG / हि) -->
+                <div class="dropdown">
+                    <button class="btn btn-outline-light btn-sm rounded-pill px-2.5 py-1 dropdown-toggle d-flex align-items-center gap-1"
+                            type="button"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false"
+                            style="font-size: 0.8rem; font-weight: 600;">
+                        <span class="current-lang-text">ENG</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="min-width: 140px;">
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center justify-content-between py-2" href="javascript:void(0)" onclick="setSiteLanguage('en')">
+                                <span class="fw-semibold">ENG</span>
+                                <small class="text-muted">English</small>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center justify-content-between py-2 text-danger fw-semibold" href="javascript:void(0)" onclick="setSiteLanguage('hi')">
+                                <span class="fw-bold">हि</span>
+                                <small class="badge bg-danger-subtle text-danger rounded-pill">हिंदी</small>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Membership CTA -->
+                <a href="{% url 'plans' %}" class="btn btn-outline-light btn-sm rounded-pill px-3 py-1 fw-medium">
+                    Membership
+                </a>
+
+                {% if user.is_authenticated %}
+
+                {% if user.is_premium %}
+                    <span class="d-inline-flex align-items-center">
+                        {% include 'includes/tier_badge.html' with badge_user=user %}
+                    </span>
+                {% endif %}
+
+                <!-- Profile Dropdown -->
+                <div class="dropdown">
+                    <a class="position-relative d-inline-flex align-items-center"
+                       href="#"
+                       data-bs-toggle="dropdown"
+                       aria-label="User profile menu">
+
+                        {% if user.profile_photo %}
+                            <img src="{{ user.profile_photo.url }}"
+                                 class="rounded-circle border border-2 border-white navbar-avatar"
+                                 onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';">
+                        {% elif user.profile.profile_photo %}
+                            <img src="{{ user.profile.profile_photo.url }}"
+                                 class="rounded-circle border border-2 border-white navbar-avatar"
+                                 onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';">
                         {% else %}
-                            <span class="badge bg-secondary-subtle text-secondary rounded-pill" style="font-size: 0.65rem;">Free</span>
+                            <img src="{% static 'images/default.jpg' %}"
+                                 class="rounded-circle border border-2 border-white navbar-avatar">
                         {% endif %}
-                    </li>
-                    <li><a class="dropdown-item" href="{% url 'my_profile' %}">My Profile</a></li>
-                    <li><a class="dropdown-item" href="{% url 'payment_history' %}">Membership & Billing</a></li>
-                    
-                    <li>
-                        <a class="dropdown-item d-flex justify-content-between align-items-center"
-                           href="{% url 'received_requests' %}">
-                            Requests
+
+                        {% if pending_request_count > 0 %}
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem; padding: 0.22em 0.45em;">
+                                {{ pending_request_count }}
+                            </span>
+                        {% endif %}
+                    </a>
+
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="min-width: 210px;">
+                        <li class="px-3 py-2 border-bottom bg-light rounded-top d-flex align-items-center justify-content-between">
+                            <span class="small fw-semibold text-truncate me-2" style="max-width: 110px;">{{ user.full_name|default:user.username }}</span>
+                            {% if user.is_premium %}
+                                {% include 'includes/tier_badge.html' with badge_user=user %}
+                            {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary rounded-pill" style="font-size: 0.65rem;">Free</span>
+                            {% endif %}
+                        </li>
+                        <li><a class="dropdown-item" href="{% url 'my_profile' %}">My Profile</a></li>
+                        <li><a class="dropdown-item" href="{% url 'payment_history' %}">Membership & Billing</a></li>
+                        <li>
+                            <a class="dropdown-item d-flex justify-content-between align-items-center"
+                               href="{% url 'received_requests' %}">
+                                Requests
+                                {% if pending_request_count > 0 %}
+                                    <span class="badge bg-danger rounded-pill">
+                                        {{ pending_request_count }}
+                                    </span>
+                                {% endif %}
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'saved_profiles' %}">
+                                Saved Profiles
+                            </a>
+                        </li>
+                        <li><a class="dropdown-item" href="{% url 'my_matches' %}">My Matches</a></li>
+                        <li><a class="dropdown-item" href="{% url 'blocked_users' %}">Blocked Users</a></li>
+
+                        {% if user.is_staff %}
+                            <li><a class="dropdown-item" href="{% url 'admin_dashboard' %}">Admin</a></li>
+                        {% endif %}
+
+                        <li><hr class="dropdown-divider my-1"></li>
+
+                        <li>
+                            <a class="dropdown-item text-danger"
+                               href="{% url 'delete_account' %}">
+                                Delete Account
+                            </a>
+                        </li>
+
+                        <li>
+                            <form method="POST" action="{% url 'logout' %}">
+                                {% csrf_token %}
+                                <button type="submit"
+                                        class="dropdown-item text-danger">
+                                    Logout
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+                {% endif %}
+
+                <!-- Navigation Dropdown -->
+                <div class="dropdown">
+                    <button class="btn text-white p-1 border-0 d-flex align-items-center"
+                            data-bs-toggle="dropdown"
+                            aria-label="Navigation Menu">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5"/>
+                        </svg>
+                    </button>
+
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="min-width: 180px;">
+                        <li><a class="dropdown-item" href="{% url 'home' %}">Home</a></li>
+                        <li><a class="dropdown-item" href="{% url 'profile_list' %}">Matchmaking</a></li>
+                        <li><a class="dropdown-item" href="{% url 'search_profiles' %}">Search Profiles</a></li>
+                        <li><a class="dropdown-item text-danger fw-semibold" href="{% url 'plans' %}">Membership Plans</a></li>
+                        {% if not user.is_authenticated %}
+                            <li><hr class="dropdown-divider my-1"></li>
+                            <li><a class="dropdown-item fw-semibold" href="{% url 'login' %}">Login</a></li>
+                            <li><a class="dropdown-item text-primary fw-semibold" href="{% url 'register' %}">Register</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- ================= MOBILE NAVBAR (Phones < 768px) ================= -->
+        <div class="container d-flex d-md-none flex-column px-3 py-1">
+
+            <!-- Mobile Top Row: Site Name on Left, Search & Burger on Right -->
+            <div class="d-flex align-items-center justify-content-between w-100">
+                <a class="navbar-brand logo-font m-0 text-white" href="{% url 'home' %}" style="font-size: 1.28rem; letter-spacing: 0.3px;">
+                    Siwan Matrimony®
+                </a>
+
+                <div class="d-flex align-items-center gap-2">
+                    <!-- Search Quick Link -->
+                    <a href="{% url 'search_profiles' %}" class="btn text-white p-1 d-flex align-items-center" title="Search Profiles" aria-label="Search">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
+                        </svg>
+                    </a>
+
+                    <!-- Navigation Hamburger Dropdown -->
+                    <div class="dropdown">
+                        <button class="btn text-white p-1 border-0 d-flex align-items-center"
+                                data-bs-toggle="dropdown"
+                                aria-label="Navigation Menu">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5"/>
+                            </svg>
+                        </button>
+
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="min-width: 180px;">
+                            <li><a class="dropdown-item" href="{% url 'home' %}">Home</a></li>
+                            <li><a class="dropdown-item" href="{% url 'profile_list' %}">Matchmaking</a></li>
+                            <li><a class="dropdown-item" href="{% url 'search_profiles' %}">Search Profiles</a></li>
+                            <li><a class="dropdown-item text-danger fw-semibold" href="{% url 'plans' %}">Membership Plans</a></li>
+                            {% if not user.is_authenticated %}
+                                <li><hr class="dropdown-divider my-1"></li>
+                                <li><a class="dropdown-item fw-semibold" href="{% url 'login' %}">Login</a></li>
+                                <li><a class="dropdown-item text-primary fw-semibold" href="{% url 'register' %}">Register</a></li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile Sub Row: Lang Switcher on Left, Badge & Profile on Right (Below Search & Burger) -->
+            <div class="d-flex align-items-center justify-content-between w-100 pt-1 mt-1" style="border-top: 1px solid rgba(255,255,255,0.18);">
+                <!-- Language Selector -->
+                <div class="dropdown">
+                    <button class="btn btn-outline-light btn-sm rounded-pill px-2.5 py-0.5 dropdown-toggle d-flex align-items-center gap-1"
+                            type="button"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false"
+                            style="font-size: 0.75rem; font-weight: 600; line-height: 1.4;">
+                        <span class="current-lang-text">ENG</span>
+                    </button>
+                    <ul class="dropdown-menu shadow border-0" style="min-width: 130px;">
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center justify-content-between py-2" href="javascript:void(0)" onclick="setSiteLanguage('en')">
+                                <span class="fw-semibold">ENG</span>
+                                <small class="text-muted">English</small>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center justify-content-between py-2 text-danger fw-semibold" href="javascript:void(0)" onclick="setSiteLanguage('hi')">
+                                <span class="fw-bold">हि</span>
+                                <small class="badge bg-danger-subtle text-danger rounded-pill">हिंदी</small>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Right Controls below Search & Burger -->
+                {% if user.is_authenticated %}
+                <div class="d-flex align-items-center gap-2">
+                    {% if user.is_premium %}
+                        <span class="d-inline-flex align-items-center">
+                            {% include 'includes/tier_badge.html' with badge_user=user %}
+                        </span>
+                    {% endif %}
+
+                    <!-- Mobile Profile Avatar & Dropdown -->
+                    <div class="dropdown">
+                        <a class="position-relative d-inline-flex align-items-center"
+                           href="#"
+                           data-bs-toggle="dropdown"
+                           aria-label="User profile menu">
+
+                            {% if user.profile_photo %}
+                                <img src="{{ user.profile_photo.url }}"
+                                     class="rounded-circle border border-2 border-white"
+                                     style="width: 32px; height: 32px; object-fit: cover;"
+                                     onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';">
+                            {% elif user.profile.profile_photo %}
+                                <img src="{{ user.profile.profile_photo.url }}"
+                                     class="rounded-circle border border-2 border-white"
+                                     style="width: 32px; height: 32px; object-fit: cover;"
+                                     onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';">
+                            {% else %}
+                                <img src="{% static 'images/default.jpg' %}"
+                                     class="rounded-circle border border-2 border-white"
+                                     style="width: 32px; height: 32px; object-fit: cover;">
+                            {% endif %}
+
                             {% if pending_request_count > 0 %}
-                                <span class="badge bg-danger rounded-pill">
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.62rem; padding: 0.2em 0.4em;">
                                     {{ pending_request_count }}
                                 </span>
                             {% endif %}
                         </a>
-                    </li>
-                    <li>
-                        <a class="dropdown-item" href="{% url 'saved_profiles' %}">
-                            Saved Profiles
-                        </a>
-                    </li>
-                    <li><a class="dropdown-item" href="{% url 'my_matches' %}">My Matches</a></li>
-                    <li><a class="dropdown-item" href="{% url 'blocked_users' %}">Blocked Users</a></li>
 
-                    {% if user.is_staff %}
-                        <li><a class="dropdown-item" href="{% url 'admin_dashboard' %}">Admin</a></li>
-                    {% endif %}
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="min-width: 200px;">
+                            <li class="px-3 py-2 border-bottom bg-light rounded-top d-flex align-items-center justify-content-between">
+                                <span class="small fw-semibold text-truncate me-2" style="max-width: 110px;">{{ user.full_name|default:user.username }}</span>
+                                {% if user.is_premium %}
+                                    {% include 'includes/tier_badge.html' with badge_user=user %}
+                                {% else %}
+                                    <span class="badge bg-secondary-subtle text-secondary rounded-pill" style="font-size: 0.65rem;">Free</span>
+                                {% endif %}
+                            </li>
+                            <li><a class="dropdown-item" href="{% url 'my_profile' %}">My Profile</a></li>
+                            <li><a class="dropdown-item" href="{% url 'payment_history' %}">Membership & Billing</a></li>
+                            <li>
+                                <a class="dropdown-item d-flex justify-content-between align-items-center"
+                                   href="{% url 'received_requests' %}">
+                                    Requests
+                                    {% if pending_request_count > 0 %}
+                                        <span class="badge bg-danger rounded-pill">
+                                            {{ pending_request_count }}
+                                        </span>
+                                    {% endif %}
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'saved_profiles' %}">
+                                    Saved Profiles
+                                </a>
+                            </li>
+                            <li><a class="dropdown-item" href="{% url 'my_matches' %}">My Matches</a></li>
+                            <li><a class="dropdown-item" href="{% url 'blocked_users' %}">Blocked Users</a></li>
 
-                    <li><hr class="dropdown-divider my-1"></li>
+                            {% if user.is_staff %}
+                                <li><a class="dropdown-item" href="{% url 'admin_dashboard' %}">Admin</a></li>
+                            {% endif %}
 
-                    <li>
-                        <a class="dropdown-item text-danger"
-                           href="{% url 'delete_account' %}">
-                            Delete Account
-                        </a>
-                    </li>
+                            <li><hr class="dropdown-divider my-1"></li>
 
-                    <li>
-                        <form method="POST" action="{% url 'logout' %}">
-                            {% csrf_token %}
-                            <button type="submit"
-                                    class="dropdown-item text-danger">
-                                Logout
-                            </button>
-                        </form>
-                    </li>
+                            <li>
+                                <a class="dropdown-item text-danger"
+                                   href="{% url 'delete_account' %}">
+                                    Delete Account
+                                </a>
+                            </li>
 
-                </ul>
-            </div>
-            {% endif %}
-
-            <!-- Navigation Dropdown -->
-            <div class="dropdown">
-                <button class="btn text-white p-1 border-0 d-flex align-items-center"
-                        data-bs-toggle="dropdown"
-                        aria-label="Navigation Menu">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16">
-                        <path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5"/>
-                    </svg>
-                </button>
-
-                <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="min-width: 175px;">
-                    <li><a class="dropdown-item" href="{% url 'home' %}">Home</a></li>
-                    <li><a class="dropdown-item" href="{% url 'profile_list' %}">Matchmaking</a></li>
-                    <li><a class="dropdown-item" href="{% url 'search_profiles' %}">Search Profiles</a></li>
-                    <li><a class="dropdown-item text-danger fw-semibold" href="{% url 'plans' %}">Membership Plans</a></li>
-                    {% if not user.is_authenticated %}
-                        <li><hr class="dropdown-divider my-1"></li>
-                        <li><a class="dropdown-item fw-semibold" href="{% url 'login' %}">Login</a></li>
-                        <li><a class="dropdown-item text-primary fw-semibold" href="{% url 'register' %}">Register</a></li>
-                    {% endif %}
-                </ul>
+                            <li>
+                                <form method="POST" action="{% url 'logout' %}">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                            class="dropdown-item text-danger">
+                                        Logout
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                {% else %}
+                <!-- Unauthenticated Mobile Actions -->
+                <div class="d-flex align-items-center gap-2">
+                    <a href="{% url 'login' %}" class="btn btn-outline-light btn-sm rounded-pill px-3 py-0.5" style="font-size: 0.78rem; font-weight: 500;">Login</a>
+                    <a href="{% url 'register' %}" class="btn btn-light btn-sm rounded-pill px-3 py-0.5 text-danger fw-semibold" style="font-size: 0.78rem;">Register</a>
+                </div>
+                {% endif %}
             </div>
 
         </div>
-    </div>
-</nav>
+
+    </nav>
 </header>
 
 <main class="flex-fill py-5">
@@ -574,8 +738,9 @@
 
     document.addEventListener("DOMContentLoaded", function() {
         if (document.cookie.indexOf('googtrans=/en/hi') !== -1) {
-            var langEl = document.getElementById('currentLangText');
-            if (langEl) langEl.textContent = 'हि';
+            document.querySelectorAll('.current-lang-text').forEach(function(el) {
+                el.textContent = 'हि';
+            });
         }
     });
 </script>
