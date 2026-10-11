@@ -54,12 +54,14 @@ from django.db.models import Q
 
 @login_required(login_url='login')
 def profile_list(request):
+    is_admin = bool(request.user.is_staff or request.user.is_superuser)
 
-    if not request.user.is_approved:
-        return render(request, 'users/pending_approval.html')
+    if not is_admin:
+        if not request.user.is_approved:
+            return render(request, 'users/pending_approval.html')
 
-    if not request.user.is_email_verified:
-        return render(request, "users/verify_email_required.html")
+        if not request.user.is_email_verified:
+            return render(request, "users/verify_email_required.html")
 
     from core.caching import get_cached_cities, get_cached_castes
     cities = get_cached_cities()
@@ -83,6 +85,10 @@ def profile_list(request):
         id__in=blocked_ids
     ).exclude(
         id=request.user.id
+    ).exclude(
+        is_staff=True
+    ).exclude(
+        is_superuser=True
     ).select_related('profile', 'city', 'caste_community', 'subscription', 'subscription__plan').order_by('-date_joined')
 
     # Gender filter handling
@@ -90,7 +96,7 @@ def profile_list(request):
     opposite_gender = 'F' if user_gender == 'M' else ('M' if user_gender == 'F' else '')
 
     if 'gender' not in request.GET:
-        selected_gender = opposite_gender if opposite_gender else 'any'
+        selected_gender = 'any' if is_admin else (opposite_gender if opposite_gender else 'any')
     else:
         raw_gender = request.GET.get('gender', '').strip()
         if raw_gender in ['M', 'F']:
@@ -291,26 +297,36 @@ def my_matches(request):
 def view_profile(request, user_id):
 
     profile_user = get_object_or_404(CustomUser, id=user_id)
+    is_viewer_admin = bool(request.user.is_staff or request.user.is_superuser)
+    is_target_admin = bool(profile_user.is_staff or profile_user.is_superuser)
+
+    # Hide admin/staff accounts from non-admin viewers
+    if is_target_admin and not is_viewer_admin:
+        messages.error(request, "Profile unavailable.")
+        return redirect("profile_list")
 
     # Security: unapproved profiles must not be exposed to other non-staff users
-    if not profile_user.is_approved and not request.user.is_staff and profile_user != request.user:
+    if not profile_user.is_approved and not is_viewer_admin and profile_user != request.user:
         messages.error(request, "This profile is pending approval.")
         return redirect("profile_list")
 
-    if profile_user.is_suspended:
+    # Suspended profiles unavailable to regular users (admins can view for moderation)
+    if profile_user.is_suspended and not is_viewer_admin:
         messages.error(request, "Profile unavailable.")
         return redirect("profile_list")
 
-    if (
-        Block.objects.filter(blocker=profile_user, blocked=request.user).exists()
-        or
-        Block.objects.filter(blocker=request.user, blocked=profile_user).exists()
-    ):
-        messages.error(request, "Profile unavailable.")
-        return redirect("profile_list")
+    # Blocked profiles check for non-staff viewers
+    if not is_viewer_admin:
+        if (
+            Block.objects.filter(blocker=profile_user, blocked=request.user).exists()
+            or
+            Block.objects.filter(blocker=request.user, blocked=profile_user).exists()
+        ):
+            messages.error(request, "Profile unavailable.")
+            return redirect("profile_list")
 
     # accepted match
-    is_allowed = ContactRequest.objects.filter(
+    is_matched = ContactRequest.objects.filter(
         sender=request.user,
         receiver=profile_user,
         status="accepted"
@@ -319,6 +335,9 @@ def view_profile(request, user_id):
         receiver=request.user,
         status="accepted"
     ).exists()
+
+    # Contact details allowed for mutual match OR admin viewing
+    is_allowed = is_matched or is_viewer_admin
 
     # pending request object
     pending_request = ContactRequest.objects.filter(
@@ -335,6 +354,8 @@ def view_profile(request, user_id):
     return render(request, "users/view_profile.html", {
         "profile_user": profile_user,
         "is_allowed": is_allowed,
+        "is_matched": is_matched,
+        "is_viewer_admin": is_viewer_admin,
         "pending_request": pending_request,
         "saved_ids": saved_ids
     })

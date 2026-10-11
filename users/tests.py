@@ -303,3 +303,91 @@ class UserModelTest(TestCase):
         profile_ids_f = [p.id for p in res_f.context['page_obj']]
         self.assertIn(target_f.id, profile_ids_f)
         self.assertNotIn(target_m.id, profile_ids_f)
+
+    def test_admin_account_hidden_from_regular_users(self):
+        from django.urls import reverse
+
+        admin_user = User.objects.create_superuser(
+            username="secret_admin",
+            email="admin@test.com",
+            password="AdminPass123!",
+            is_staff=True,
+            is_superuser=True,
+            is_approved=True,
+            is_email_verified=True,
+            gender='M',
+            full_name="Secret Admin"
+        )
+
+        normal_user = User.objects.create_user(
+            username="normal_member",
+            password="MemberPass123!",
+            is_approved=True,
+            is_email_verified=True,
+            gender='F'
+        )
+
+        self.client.login(username="normal_member", password="MemberPass123!")
+
+        # 1. Admin must not appear in profile_list
+        res = self.client.get(reverse('profile_list'), {'gender': 'any'})
+        self.assertEqual(res.status_code, 200)
+        profile_ids = [p.id for p in res.context['page_obj']]
+        self.assertNotIn(admin_user.id, profile_ids)
+
+        # 2. Regular user cannot view admin profile directly
+        view_res = self.client.get(reverse('view_profile', args=[admin_user.id]))
+        self.assertEqual(view_res.status_code, 302)
+
+    def test_admin_viewer_can_view_all_profiles_with_contact_details(self):
+        from django.urls import reverse
+
+        admin_user = User.objects.create_superuser(
+            username="super_viewer_admin",
+            email="superadmin@test.com",
+            password="AdminPass123!",
+            is_staff=True,
+            is_superuser=True,
+            is_approved=False,       # Unapproved admin account
+            is_email_verified=False  # Unverified admin account
+        )
+
+        suspended_target = User.objects.create_user(
+            username="suspended_user",
+            password="Pass123!",
+            full_name="Suspended Person",
+            phone_number="9876543210",
+            email="suspended@example.com",
+            is_approved=True,
+            is_suspended=True,
+            gender='F'
+        )
+
+        unapproved_target = User.objects.create_user(
+            username="unapproved_user",
+            password="Pass123!",
+            full_name="Unapproved Person",
+            phone_number="9123456789",
+            email="unapproved@example.com",
+            is_approved=False,
+            gender='M'
+        )
+
+        self.client.login(username="super_viewer_admin", password="AdminPass123!")
+
+        # 1. Admin can access profile_list without being blocked by unapproved/unverified status
+        res_list = self.client.get(reverse('profile_list'))
+        self.assertEqual(res_list.status_code, 200)
+        self.assertEqual(res_list.context['selected_gender'], 'any')
+
+        # 2. Admin can view suspended profile and see contact details
+        res_suspended = self.client.get(reverse('view_profile', args=[suspended_target.id]))
+        self.assertEqual(res_suspended.status_code, 200)
+        self.assertContains(res_suspended, "9876543210")
+        self.assertContains(res_suspended, "Administrator Moderation View")
+
+        # 3. Admin can view unapproved profile and see contact details
+        res_unapproved = self.client.get(reverse('view_profile', args=[unapproved_target.id]))
+        self.assertEqual(res_unapproved.status_code, 200)
+        self.assertContains(res_unapproved, "9123456789")
+        self.assertContains(res_unapproved, "Administrator Moderation View")

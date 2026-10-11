@@ -52,6 +52,10 @@ def send_request(request, user_id):
 
     receiver = get_object_or_404(CustomUser, id=user_id)
 
+    if receiver.is_staff or receiver.is_superuser:
+        messages.error(request, "This account is unavailable.")
+        return redirect('profile_list')
+
     if ContactRequest.objects.filter(
         status="accepted"
     ).filter(
@@ -250,6 +254,10 @@ def block_user(request, user_id):
     
     target = get_object_or_404(CustomUser, id=user_id)
 
+    if target.is_staff or target.is_superuser:
+        messages.error(request, "This account is unavailable.")
+        return redirect('profile_list')
+
     if target == request.user:
         return redirect('profile_list')
 
@@ -288,6 +296,10 @@ def report_user(request, user_id):
         return redirect("home")
 
     target = get_object_or_404(CustomUser, id=user_id)
+
+    if target.is_staff or target.is_superuser:
+        messages.error(request, "This account is unavailable.")
+        return redirect('profile_list')
 
     if request.method == "POST":
         reason = request.POST.get("reason", "").strip()
@@ -350,6 +362,10 @@ def toggle_save(request, user_id):
         return redirect("home")
 
     target = get_object_or_404(CustomUser, id=user_id)
+
+    if (target.is_staff or target.is_superuser) and not (request.user.is_staff or request.user.is_superuser):
+        messages.error(request, "This account is unavailable.")
+        return redirect('profile_list')
 
     obj, created = SavedProfile.objects.get_or_create(
         user=request.user,

@@ -87,6 +87,25 @@ class CommunicationTests(TestCase):
 
         self.assertEqual(SavedProfile.objects.count(), 0)
 
+    def test_cannot_interact_with_admin_account(self):
+        admin = CustomUser.objects.create_superuser(
+            username="comm_admin",
+            email="commadmin@test.com",
+            password="AdminPassword123!",
+            is_staff=True,
+            is_superuser=True
+        )
+
+        # Cannot send request to admin
+        res_req = self.client.post(reverse("send_request", args=[admin.id]))
+        self.assertEqual(res_req.status_code, 302)
+        self.assertEqual(ContactRequest.objects.filter(receiver=admin).count(), 0)
+
+        # Cannot save admin profile
+        res_save = self.client.post(reverse("toggle_save", args=[admin.id]))
+        self.assertEqual(res_save.status_code, 302)
+        self.assertEqual(SavedProfile.objects.filter(saved_user=admin).count(), 0)
+
     def test_duplicate_request_not_created(self):
         ContactRequest.objects.create(
             sender=self.user1,

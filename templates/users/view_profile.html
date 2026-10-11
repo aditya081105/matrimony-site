@@ -16,7 +16,7 @@
 
         <ul class="dropdown-menu dropdown-menu-end">
 
-            {% if is_allowed %}
+            {% if is_matched %}
                 <li>
                     <form method="POST" action="{% url 'unmatch' profile_user.id %}" class="d-inline w-100">
                         {% csrf_token %}
@@ -67,6 +67,14 @@
                    Report
                 </a>
             </li>
+            {% if is_viewer_admin %}
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item fw-semibold text-primary" href="/admin/users/customuser/{{ profile_user.id }}/change/" target="_blank">
+                        Open in Django Admin
+                    </a>
+                </li>
+            {% endif %}
         </ul>
     </div>
 
@@ -100,53 +108,63 @@
 
     </div>
 
-    {% if not is_allowed %}
-
-        <div class="text-center mt-4">
-
-            {% if pending_request %}
-
-                <button class="btn btn-secondary rounded-pill px-4 mb-2" disabled>
-                    Request Pending
-                </button>
-
-                <br>
-
-                <form method="POST" action="{% url 'cancel_request' profile_user.id %}" class="d-inline">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-outline-danger rounded-pill px-4">
-                        Cancel Request
-                    </button>
-                </form>
-
-            {% else %}
-
-                <form method="POST" action="{% url 'send_request' profile_user.id %}" class="d-inline">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-dark rounded-pill px-4">
-                        Request Contact
-                    </button>
-                </form>
-
+    {% if is_viewer_admin %}
+        <div class="alert alert-secondary text-center rounded-3 py-2 small mb-3">
+            <strong>Administrator Moderation View:</strong> Full profile and contact details unlocked.
+            {% if not profile_user.is_approved %}
+                <span class="badge bg-warning text-dark ms-2">Pending Approval</span>
             {% endif %}
-
+            {% if profile_user.is_suspended %}
+                <span class="badge bg-danger ms-2">Suspended</span>
+            {% endif %}
         </div>
+    {% else %}
+        {% if not is_allowed %}
+
+            <div class="text-center mt-4">
+
+                {% if pending_request %}
+
+                    <button class="btn btn-secondary rounded-pill px-4 mb-2" disabled>
+                        Request Pending
+                    </button>
+
+                    <br>
+
+                    <form method="POST" action="{% url 'cancel_request' profile_user.id %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-danger rounded-pill px-4">
+                            Cancel Request
+                        </button>
+                    </form>
+
+                {% else %}
+
+                    <form method="POST" action="{% url 'send_request' profile_user.id %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-dark rounded-pill px-4">
+                            Request Contact
+                        </button>
+                    </form>
+
+                {% endif %}
+
+            </div>
+
+        {% elif is_matched %}
+
+            <div class="text-center mt-4">
+
+            <form method="POST" action="{% url 'unmatch' profile_user.id %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger rounded-pill px-4">
+                    Remove Match
+                </button>
+            </form>
+
+            </div>
 
         {% endif %}
-
-    {% if is_allowed %}
-
-    <div class="text-center mt-4">
-
-    <form method="POST" action="{% url 'unmatch' profile_user.id %}" class="d-inline">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-outline-danger rounded-pill px-4">
-            Remove Match
-        </button>
-    </form>
-
-    </div>
-
     {% endif %}
 
     <hr>

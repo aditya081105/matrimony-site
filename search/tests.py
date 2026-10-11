@@ -63,3 +63,38 @@ class SearchTests(TestCase):
         response2 = self.client.get(reverse('search_profiles'), {'q': 'Mishra'})
         self.assertEqual(response2.status_code, 200)
         self.assertContains(response2, "Pooja Verma")
+
+    def test_search_excludes_admin_and_staff(self):
+        CustomUser.objects.create_user(
+            username="admin_doctor",
+            email="admindoctor@test.com",
+            password="TestPassword123!",
+            full_name="Dr. Administrator",
+            gender="M",
+            occupation="Doctor",
+            is_staff=True,
+            is_approved=True,
+            is_active=True,
+        )
+
+        response = self.client.get(reverse('search_profiles'), {'q': 'Doctor'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Pooja Verma")
+        self.assertNotContains(response, "Dr. Administrator")
+
+    def test_admin_can_search_all_members(self):
+        admin = CustomUser.objects.create_superuser(
+            username="search_admin",
+            email="searchadmin@test.com",
+            password="AdminPassword123!",
+            is_staff=True,
+            is_superuser=True
+        )
+
+        self.user2.is_suspended = True
+        self.user2.save()
+
+        self.client.login(username="search_admin", password="AdminPassword123!")
+        response = self.client.get(reverse('search_profiles'), {'q': 'Doctor'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Pooja Verma")

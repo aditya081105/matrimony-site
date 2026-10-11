@@ -81,8 +81,10 @@
                     {% for u in pending_users %}
                     <tr>
                         <td>
-                            <div class="fw-bold">{{ u.full_name|default:u.username }}</div>
-                            <small class="text-muted">@{{ u.username }} • Joined {{ u.date_joined|date:"M d, Y" }}</small>
+                            <a href="{% url 'view_profile' u.id %}" target="_blank" class="fw-bold text-decoration-none text-dark">
+                                {{ u.full_name|default:u.username }}
+                            </a>
+                            <small class="text-muted d-block">@{{ u.username }} • Joined {{ u.date_joined|date:"M d, Y" }}</small>
                         </td>
                         <td>
                             <div class="fw-semibold text-dark">{{ u.phone_number }}</div>
