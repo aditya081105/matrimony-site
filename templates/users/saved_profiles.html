@@ -75,9 +75,9 @@
                     {% include 'includes/tier_badge.html' with badge_user=user %}
                 </h6>
 
-                <!-- OCCUPATION -->
+                <!-- USERNAME -->
                 <p class="text-muted small mb-3">
-                    {{ user.occupation|default:"Not specified" }}
+                    @{{ user.username }}
                 </p>
 
                 <!-- VIEW PROFILE BUTTON -->

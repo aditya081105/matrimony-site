@@ -94,12 +94,8 @@
             {% include 'includes/tier_badge.html' with badge_user=profile_user size='lg' %}
         </div>
 
-        <div class="text-muted small mb-1">
-            <span class="badge bg-light text-secondary border rounded-pill px-2.5 py-1">Profile ID: #{{ profile_user.id }}</span>
-        </div>
-
-        <p class="text-muted">
-            {{ profile_user.occupation|default:"Occupation not specified" }}
+        <p class="text-muted small mb-2">
+            @{{ profile_user.username }}
         </p>
 
     </div>

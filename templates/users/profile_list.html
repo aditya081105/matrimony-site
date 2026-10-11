@@ -284,13 +284,13 @@
 
                 <div class="flex-grow-1">
 
-                    <h6 class="fw-semibold mb-1 d-flex align-items-center flex-wrap gap-1">
+                    <h6 class="fw-semibold mb-0 d-flex align-items-center flex-wrap gap-1">
                         <span>{{ profile.full_name }}</span>
                         {% include 'includes/tier_badge.html' with badge_user=profile %}
                     </h6>
 
-                    <div class="small text-muted">
-                        {{ profile.occupation|default:"Occupation not specified" }}
+                    <div class="small text-muted mb-1">
+                        @{{ profile.username }}
                     </div>
 
                     <div class="small text-muted">
