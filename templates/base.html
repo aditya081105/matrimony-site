@@ -22,17 +22,54 @@
         }
 
         #mainNavbar.shrink {
-            padding-top: 0.4rem !important;
-            padding-bottom: 0.4rem !important;
+            padding-top: 0.35rem !important;
+            padding-bottom: 0.35rem !important;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
-        #mainNavbar .navbar-brand {
+        .navbar-brand {
+            font-size: 1.15rem;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+            text-decoration: none;
             transition: font-size 0.3s ease;
         }
 
+        @media (min-width: 576px) {
+            .navbar-brand {
+                font-size: 1.35rem;
+                letter-spacing: 0.5px;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .navbar-brand {
+                font-size: 1.65rem;
+                letter-spacing: 0.6px;
+            }
+        }
+
         #mainNavbar.shrink .navbar-brand {
-            font-size: 1.2rem;
+            font-size: 1.12rem;
+        }
+
+        @media (min-width: 768px) {
+            #mainNavbar.shrink .navbar-brand {
+                font-size: 1.35rem;
+            }
+        }
+
+        .navbar-avatar {
+            width: 32px;
+            height: 32px;
+            object-fit: cover;
+        }
+
+        @media (min-width: 768px) {
+            .navbar-avatar {
+                width: 38px;
+                height: 38px;
+            }
         }
 
         body {
@@ -42,10 +79,6 @@
 
         .brand-red {
             background: linear-gradient(90deg, #ec0f0f, #d11a2a);
-        }
-
-        .navbar-brand {
-            letter-spacing: 0.6px;
         }
 
         .dropdown-menu {
@@ -103,10 +136,10 @@
         .badge-tier {
             display: inline-flex;
             align-items: center;
-            font-size: 0.68rem;
+            font-size: 0.62rem;
             font-weight: 700;
-            letter-spacing: 0.35px;
-            padding: 0.22rem 0.55rem;
+            letter-spacing: 0.25px;
+            padding: 0.18rem 0.45rem;
             border-radius: 50rem;
             line-height: 1.2;
             text-transform: uppercase;
@@ -114,16 +147,41 @@
             white-space: nowrap;
             transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
+        @media (min-width: 768px) {
+            .badge-tier {
+                font-size: 0.68rem;
+                letter-spacing: 0.35px;
+                padding: 0.22rem 0.55rem;
+            }
+        }
         .badge-tier-icon {
             display: inline-block;
-            margin-right: 0.28rem;
+            margin-right: 0.22rem;
             vertical-align: -1px;
             flex-shrink: 0;
         }
         .badge-tier-lg {
-            font-size: 0.8rem;
-            padding: 0.32rem 0.8rem;
-            letter-spacing: 0.4px;
+            font-size: 0.78rem;
+            padding: 0.3rem 0.75rem;
+            letter-spacing: 0.35px;
+        }
+        @media (min-width: 768px) {
+            .badge-tier-lg {
+                font-size: 0.82rem;
+                padding: 0.32rem 0.85rem;
+                letter-spacing: 0.4px;
+            }
+        }
+        @media (max-width: 360px) {
+            .nav-tier-badge .badge-tier span {
+                display: none;
+            }
+            .nav-tier-badge .badge-tier .badge-tier-icon {
+                margin-right: 0;
+            }
+            .nav-tier-badge .badge-tier {
+                padding: 0.25rem 0.35rem;
+            }
         }
         .badge-tier-silver {
             background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
@@ -233,101 +291,102 @@
     {% endif %}
 
     <nav id="mainNavbar"
-         class="navbar navbar-expand-lg navbar-dark brand-red py-3">
-    <div class="container">
+         class="navbar navbar-expand navbar-dark brand-red py-2 py-sm-2.5">
+    <div class="container d-flex align-items-center justify-content-between flex-nowrap px-2 px-sm-3">
 
-        <a class="navbar-brand logo-font fs-3" href="{% url 'home' %}">
+        <a class="navbar-brand logo-font me-1 me-sm-2" href="{% url 'home' %}">
             Siwan Matrimony®
         </a>
 
-        <div class="ms-auto d-flex align-items-center">
+        <div class="d-flex align-items-center gap-1 gap-sm-2 flex-shrink-0">
 
             <!-- Search Quick Link -->
-            <a href="{% url 'search_profiles' %}" class="btn text-white me-2 p-1 d-flex align-items-center" title="Search Profiles">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+            <a href="{% url 'search_profiles' %}" class="btn text-white p-1 d-flex align-items-center" title="Search Profiles">
+                <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
                     <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
                 </svg>
             </a>
 
-            <!-- Language Selector (Bilingual: English / हिंदी) -->
-            <div class="dropdown me-2">
-                <button class="btn btn-outline-light btn-sm rounded-pill px-2 py-1 dropdown-toggle d-flex align-items-center gap-1"
+            <!-- Language Selector (Bilingual: ENG / हि) -->
+            <div class="dropdown">
+                <button class="btn btn-outline-light btn-sm rounded-pill px-2 py-0.5 dropdown-toggle d-flex align-items-center gap-1"
                         type="button"
                         id="langDropdownBtn"
                         data-bs-toggle="dropdown"
                         aria-expanded="false"
-                        style="font-size: 0.8rem; font-weight: 500;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
-                        <path d="M4.545 6.714 4.11 8H1.5l3.25-9h2.5l3.25 9H8.055l-.435-1.286H4.545zM5.84 2.88 4.88 5.75h1.92l-.96-2.87z"/>
-                        <path d="M11.53 8H14v6.5h-1.5V13h-2.14l-.43 1.5H8.5l3.03-6.5zm.97 3.75v-2.3l-1.07 2.3h1.07z"/>
-                    </svg>
-                    <span id="currentLangText">हिंदी / EN</span>
+                        style="font-size: 0.75rem; font-weight: 600; line-height: 1.4;">
+                    <span id="currentLangText">ENG</span>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="langDropdownBtn" style="min-width: 140px;">
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="langDropdownBtn" style="min-width: 130px;">
                     <li>
-                        <a class="dropdown-item d-flex align-items-center justify-content-between" href="javascript:void(0)" onclick="setSiteLanguage('en')">
-                            <span>English</span>
-                            <small class="text-muted">EN</small>
+                        <a class="dropdown-item d-flex align-items-center justify-content-between py-2" href="javascript:void(0)" onclick="setSiteLanguage('en')">
+                            <span class="fw-semibold">ENG</span>
+                            <small class="text-muted">English</small>
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item d-flex align-items-center justify-content-between text-danger fw-semibold" href="javascript:void(0)" onclick="setSiteLanguage('hi')">
-                            <span>हिंदी</span>
-                            <small class="badge bg-danger-subtle text-danger rounded-pill">Hindi</small>
+                        <a class="dropdown-item d-flex align-items-center justify-content-between py-2 text-danger fw-semibold" href="javascript:void(0)" onclick="setSiteLanguage('hi')">
+                            <span class="fw-bold">हि</span>
+                            <small class="badge bg-danger-subtle text-danger rounded-pill">हिंदी</small>
                         </a>
                     </li>
                 </ul>
             </div>
 
             <!-- Upgrade / Membership CTA -->
-            <a href="{% url 'plans' %}" class="btn btn-outline-light btn-sm rounded-pill px-3 me-3 fw-medium d-none d-sm-inline-block">
+            <a href="{% url 'plans' %}" class="btn btn-outline-light btn-sm rounded-pill px-3 fw-medium d-none d-md-inline-block">
                 Membership
             </a>
 
             {% if user.is_authenticated %}
 
             {% if user.is_premium %}
-                <span class="me-2 d-none d-md-inline-block">
+                <span class="nav-tier-badge d-inline-flex align-items-center">
                     {% include 'includes/tier_badge.html' with badge_user=user %}
                 </span>
             {% endif %}
 
             <!-- Profile Dropdown -->
-            <div class="dropdown me-3">
-                <a class="position-relative"
+            <div class="dropdown">
+                <a class="position-relative d-inline-flex align-items-center"
                    href="#"
-                   data-bs-toggle="dropdown">
+                   data-bs-toggle="dropdown"
+                   aria-label="User profile menu">
 
                     {% if user.profile_photo %}
                         <img src="{{ user.profile_photo.url }}"
-                             class="rounded-circle border border-2 border-white"
-                             style="width:42px;height:42px;object-fit:cover;"
+                             class="rounded-circle border border-2 border-white navbar-avatar"
                              onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';">
                     {% elif user.profile.profile_photo %}
                         <img src="{{ user.profile.profile_photo.url }}"
-                             class="rounded-circle border border-2 border-white"
-                             style="width:42px;height:42px;object-fit:cover;"
+                             class="rounded-circle border border-2 border-white navbar-avatar"
                              onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';">
                     {% else %}
                         <img src="{% static 'images/default.jpg' %}"
-                             class="rounded-circle border border-2 border-white"
-                             style="width:42px;height:42px;object-fit:cover;">
+                             class="rounded-circle border border-2 border-white navbar-avatar">
                     {% endif %}
 
                     {% if pending_request_count > 0 %}
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.62rem; padding: 0.22em 0.45em;">
                             {{ pending_request_count }}
                         </span>
                     {% endif %}
                 </a>
 
-                <ul class="dropdown-menu dropdown-menu-end shadow border-0">
-
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="min-width: 205px;">
+                    <li class="px-3 py-2 border-bottom bg-light rounded-top d-flex align-items-center justify-content-between">
+                        <span class="small fw-semibold text-truncate me-2" style="max-width: 110px;">{{ user.full_name|default:user.username }}</span>
+                        {% if user.is_premium %}
+                            {% include 'includes/tier_badge.html' with badge_user=user %}
+                        {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary rounded-pill" style="font-size: 0.65rem;">Free</span>
+                        {% endif %}
+                    </li>
                     <li><a class="dropdown-item" href="{% url 'my_profile' %}">My Profile</a></li>
                     <li><a class="dropdown-item" href="{% url 'payment_history' %}">Membership & Billing</a></li>
                     
                     <li>
-                        <a class="dropdown-item d-flex justify-content-between"
+                        <a class="dropdown-item d-flex justify-content-between align-items-center"
                            href="{% url 'received_requests' %}">
                             Requests
                             {% if pending_request_count > 0 %}
@@ -338,9 +397,9 @@
                         </a>
                     </li>
                     <li>
-                    <a class="dropdown-item" href="{% url 'saved_profiles' %}">
-                    Saved Profiles
-                    </a>
+                        <a class="dropdown-item" href="{% url 'saved_profiles' %}">
+                            Saved Profiles
+                        </a>
                     </li>
                     <li><a class="dropdown-item" href="{% url 'my_matches' %}">My Matches</a></li>
                     <li><a class="dropdown-item" href="{% url 'blocked_users' %}">Blocked Users</a></li>
@@ -349,7 +408,7 @@
                         <li><a class="dropdown-item" href="{% url 'admin_dashboard' %}">Admin</a></li>
                     {% endif %}
 
-                    <li><hr class="dropdown-divider"></li>
+                    <li><hr class="dropdown-divider my-1"></li>
 
                     <li>
                         <a class="dropdown-item text-danger"
@@ -374,16 +433,24 @@
 
             <!-- Navigation Dropdown -->
             <div class="dropdown">
-                <button class="btn text-white fs-4 border-0"
-                        data-bs-toggle="dropdown">
-                    ☰
+                <button class="btn text-white p-1 border-0 d-flex align-items-center"
+                        data-bs-toggle="dropdown"
+                        aria-label="Navigation Menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5"/>
+                    </svg>
                 </button>
 
-                <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="min-width: 175px;">
                     <li><a class="dropdown-item" href="{% url 'home' %}">Home</a></li>
                     <li><a class="dropdown-item" href="{% url 'profile_list' %}">Matchmaking</a></li>
                     <li><a class="dropdown-item" href="{% url 'search_profiles' %}">Search Profiles</a></li>
                     <li><a class="dropdown-item text-danger fw-semibold" href="{% url 'plans' %}">Membership Plans</a></li>
+                    {% if not user.is_authenticated %}
+                        <li><hr class="dropdown-divider my-1"></li>
+                        <li><a class="dropdown-item fw-semibold" href="{% url 'login' %}">Login</a></li>
+                        <li><a class="dropdown-item text-primary fw-semibold" href="{% url 'register' %}">Register</a></li>
+                    {% endif %}
                 </ul>
             </div>
 
@@ -508,7 +575,7 @@
     document.addEventListener("DOMContentLoaded", function() {
         if (document.cookie.indexOf('googtrans=/en/hi') !== -1) {
             var langEl = document.getElementById('currentLangText');
-            if (langEl) langEl.textContent = 'हिंदी';
+            if (langEl) langEl.textContent = 'हि';
         }
     });
 </script>
