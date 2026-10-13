@@ -391,3 +391,56 @@ class UserModelTest(TestCase):
         self.assertEqual(res_unapproved.status_code, 200)
         self.assertContains(res_unapproved, "9123456789")
         self.assertContains(res_unapproved, "Administrator Moderation View")
+
+    def test_unique_email_and_disposable_email_blocked(self):
+        from users.forms import UserRegisterForm, UserUpdateForm
+
+        User.objects.create_user(
+            username="existing_member",
+            email="rahulkumar@gmail.com",
+            password="ValidPassword123!"
+        )
+
+        base_data = {
+            'username': 'new_member',
+            'full_name': 'New Member',
+            'gender': 'M',
+            'phone_number': '9876543210',
+            'date_of_birth': '1998-05-15',
+            'password1': 'ValidPassword123!',
+            'password2': 'ValidPassword123!',
+        }
+
+        # 1. Exact duplicate email blocked (case-insensitive)
+        form_dup = UserRegisterForm(data={**base_data, 'email': 'RahulKumar@gmail.com'})
+        self.assertFalse(form_dup.is_valid())
+        self.assertIn('email', form_dup.errors)
+
+        # 2. Gmail dot variation duplicate blocked
+        form_dot = UserRegisterForm(data={**base_data, 'email': 'rahul.kumar@gmail.com'})
+        self.assertFalse(form_dot.is_valid())
+        self.assertIn('email', form_dot.errors)
+
+        # 3. Plus alias blocked
+        form_plus = UserRegisterForm(data={**base_data, 'email': 'newuser+spam@gmail.com'})
+        self.assertFalse(form_plus.is_valid())
+        self.assertIn('email', form_plus.errors)
+
+        # 4. Disposable / temporary email domains blocked
+        for temp_email in (
+            'user@temp-mail.org',
+            'user@yopmail.com',
+            'user@10minutemail.com',
+            'user@mailinator.com',
+            'user@sharklasers.com',
+            'user@sub.tempmail.com',
+            'user@burnerdomain.tk',
+            'user@gmai1.com',
+        ):
+            form_temp = UserRegisterForm(data={**base_data, 'email': temp_email})
+            self.assertFalse(form_temp.is_valid(), f"Disposable email {temp_email} should be rejected")
+            self.assertIn('email', form_temp.errors)
+
+        # 5. Legitimate unique email succeeds
+        form_valid = UserRegisterForm(data={**base_data, 'email': 'genuine.person@gmail.com'})
+        self.assertTrue(form_valid.is_valid(), form_valid.errors)

@@ -231,11 +231,22 @@ def home(request):
 def edit_profile(request):
 
     if request.method == 'POST':
+        old_email = (request.user.email or '').strip().lower()
         form = UserUpdateForm(request.POST, request.FILES, instance=request.user)
 
         if form.is_valid():
             try:
-                form.save()
+                user = form.save()
+                new_email = (user.email or '').strip().lower()
+                if old_email != new_email:
+                    user.is_email_verified = False
+                    user.save(update_fields=['is_email_verified'])
+                    try:
+                        send_verification_email(request, user)
+                        request.session['last_email_verification_sent'] = time.time()
+                        messages.info(request, f"Your email address was changed. A verification link has been sent to {user.email}.")
+                    except Exception as e:
+                        print(f"Email error on update: {e}")
                 messages.success(request, "Profile updated successfully.")
                 return redirect('my_profile')
             except Exception as e:

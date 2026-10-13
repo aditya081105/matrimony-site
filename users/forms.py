@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from .models import CustomUser, Profile, Caste, City
+from .validators import validate_unique_and_legitimate_email
 from datetime import date
 
 # =========================
@@ -8,6 +9,15 @@ from datetime import date
 # =========================
 
 class UserRegisterForm(UserCreationForm):
+
+    email = forms.EmailField(
+        required=True,
+        label="Email Address",
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Email Address'
+        })
+    )
 
     full_name = forms.CharField(
         max_length=100,
@@ -73,6 +83,10 @@ class UserRegisterForm(UserCreationForm):
         help_text=""
     )
 
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        return validate_unique_and_legitimate_email(email)
+
     def clean_phone_number(self):
         phone = (self.cleaned_data.get('phone_number') or '').strip()
 
@@ -124,6 +138,9 @@ class UserRegisterForm(UserCreationForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        if 'username' in self.fields:
+            self.fields['username'].widget.attrs['class'] = 'form-control'
+            self.fields['username'].widget.attrs['placeholder'] = 'Username'
         self.fields['full_name'].widget.attrs['placeholder'] = "Full Name"
         self.fields['phone_number'].widget.attrs['placeholder'] = "Phone Number"
         self.fields['password1'].label = "Enter Password"
@@ -136,6 +153,15 @@ class UserRegisterForm(UserCreationForm):
 
 class UserUpdateForm(forms.ModelForm):
 
+    email = forms.EmailField(
+        required=True,
+        label="Email Address",
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Email Address'
+        })
+    )
+
     phone_number = forms.CharField(
         max_length=10,
         min_length=10,
@@ -144,6 +170,11 @@ class UserUpdateForm(forms.ModelForm):
             'placeholder': '10 digit mobile number'
         })
     )
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        exclude_id = self.instance.pk if self.instance and self.instance.pk else None
+        return validate_unique_and_legitimate_email(email, exclude_user_id=exclude_id)
 
     def clean_phone_number(self):
         phone = (self.cleaned_data.get('phone_number') or '').strip()
