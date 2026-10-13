@@ -426,9 +426,15 @@ class UserModelTest(TestCase):
         self.assertFalse(form_plus.is_valid())
         self.assertIn('email', form_plus.errors)
 
-        # 4. Disposable / temporary email domains blocked
+        # 4. Disposable / temporary email domains blocked (including temp-mail.io rotating domains)
         for temp_email in (
             'user@temp-mail.org',
+            'user@temp-mail.io',
+            'user@daouse.com',
+            'user@blondmail.com',
+            'user@vintomaper.com',
+            'user@fexbox.org',
+            'user@randomthrowawaydomain.com',
             'user@yopmail.com',
             'user@10minutemail.com',
             'user@mailinator.com',
