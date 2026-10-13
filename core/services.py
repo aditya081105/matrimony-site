@@ -49,11 +49,8 @@ If you did not register for Siwan Matrimony, please ignore this email.
                 return True
             except Exception as e:
                 logger.warning(f"SMTP send_mail attempt {attempt}/{MAX_RETRIES} failed for {user_email}: {e}")
-                if attempt < MAX_RETRIES and not _is_testing():
-                    time.sleep(1.5 * attempt)
-                continue
 
-        # 2. Try Resend if configured
+        # 2. Fallback to Resend HTTP API if configured (works on Render free tier where port 587 is blocked)
         if getattr(settings, 'RESEND_API_KEY', None):
             try:
                 resend.api_key = settings.RESEND_API_KEY
@@ -69,12 +66,12 @@ If you did not register for Siwan Matrimony, please ignore this email.
                 return True
             except Exception as e:
                 logger.warning(f"Resend attempt {attempt}/{MAX_RETRIES} failed for {user_email}: {e}")
-                if attempt < MAX_RETRIES and not _is_testing():
-                    time.sleep(1.5 * attempt)
-                continue
 
-        # If neither provider is configured, break out to dev fallback
-        break
+        if not (getattr(settings, 'EMAIL_HOST_USER', None) or getattr(settings, 'RESEND_API_KEY', None)):
+            break
+
+        if attempt < MAX_RETRIES and not _is_testing():
+            time.sleep(1.5 * attempt)
 
     # 3. Development / Server log fallback
     print(f"==> VERIFICATION LINK for {user_email}: {verify_link}")
@@ -121,9 +118,6 @@ def _dispatch_contact_email_job(name, sender_email, message_content):
                 return True
             except Exception as e:
                 logger.warning(f"SMTP contact attempt {attempt}/{MAX_RETRIES} failed: {e}")
-                if attempt < MAX_RETRIES and not _is_testing():
-                    time.sleep(1.5 * attempt)
-                continue
 
         if getattr(settings, 'RESEND_API_KEY', None):
             try:
@@ -139,11 +133,12 @@ def _dispatch_contact_email_job(name, sender_email, message_content):
                 return True
             except Exception as e:
                 logger.warning(f"Resend contact attempt {attempt}/{MAX_RETRIES} failed: {e}")
-                if attempt < MAX_RETRIES and not _is_testing():
-                    time.sleep(1.5 * attempt)
-                continue
 
-        break
+        if not (getattr(settings, 'EMAIL_HOST_USER', None) or getattr(settings, 'RESEND_API_KEY', None)):
+            break
+
+        if attempt < MAX_RETRIES and not _is_testing():
+            time.sleep(1.5 * attempt)
 
     logger.info(f"==> CONTACT INQUIRY logged: From {sender_email} ({name}): {message_content}")
     return True
