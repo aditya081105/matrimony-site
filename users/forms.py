@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from .models import CustomUser, Profile, Caste, City
-from .validators import validate_unique_and_legitimate_email
+from .validators import validate_unique_and_legitimate_email, validate_image_file
 from datetime import date
 
 # =========================
@@ -222,11 +222,8 @@ class UserUpdateForm(forms.ModelForm):
         if self.data.get('profile_photo-clear') or self.data.get('remove_profile_photo'):
             return False
         photo = self.cleaned_data.get('profile_photo')
-        if photo and hasattr(photo, 'content_type'):
-            if hasattr(photo, 'size') and photo.size > 5 * 1024 * 1024:
-                raise forms.ValidationError("Image must be under 5MB.")
-            if not photo.content_type.startswith('image/'):
-                raise forms.ValidationError("File must be an image.")
+        if photo and hasattr(photo, 'file'):
+            validate_image_file(photo, max_size_mb=5)
         return photo
 
     class Meta:
@@ -334,14 +331,8 @@ class ProfileForm(forms.ModelForm):
 
     def clean_profile_photo(self):
         photo = self.cleaned_data.get('profile_photo')
-
-        if photo and hasattr(photo, 'content_type'):
-            if photo.size > 2 * 1024 * 1024:
-                raise forms.ValidationError("Image must be under 2MB")
-
-            if not photo.content_type.startswith('image/'):
-                raise forms.ValidationError("File must be an image")
-
+        if photo and hasattr(photo, 'file'):
+            validate_image_file(photo, max_size_mb=5)
         return photo
 
 
