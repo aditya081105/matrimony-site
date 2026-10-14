@@ -307,10 +307,10 @@
         photoInput.addEventListener('change', function(e) {
             const file = e.target.files && e.target.files[0];
             if (file) {
-                // Strict 5.0 MB maximum size check
-                const maxAllowedBytes = 5 * 1024 * 1024;
+                // Strict 5.0 MB decimal check (5,000,000 bytes) matching phone OS file pickers
+                const maxAllowedBytes = 5 * 1000 * 1000;
                 if (file.size > maxAllowedBytes) {
-                    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                    const fileSizeMB = (file.size / 1000000).toFixed(2);
                     alert("This photo is " + fileSizeMB + " MB. Maximum allowed photo size is 5.0 MB. Please choose a smaller file.");
                     photoInput.value = '';
                     window._compressedPhotoBlob = null;
