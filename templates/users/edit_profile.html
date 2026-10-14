@@ -314,15 +314,18 @@
                         previewImg.src = URL.createObjectURL(blob);
                         previewImg.style.opacity = '1';
 
+                        window._compressedPhotoBlob = blob;
+
                         try {
                             const dataTransfer = new DataTransfer();
                             const compressedFile = new File([blob], "profile_photo.jpg", { type: 'image/jpeg' });
                             dataTransfer.items.add(compressedFile);
                             photoInput.files = dataTransfer.files;
                         } catch (err) {
-                            console.warn("Client compression applied to preview", err);
+                            console.warn("Client compression applied via FormData blob", err);
                         }
                     } else {
+                        window._compressedPhotoBlob = null;
                         const reader = new FileReader();
                         reader.onload = function(evt) {
                             previewImg.src = evt.target.result;
@@ -336,6 +339,7 @@
                     }
                 });
             } else {
+                window._compressedPhotoBlob = null;
                 if (clearCheckbox && clearCheckbox.checked) {
                     previewImg.src = defaultImgSrc;
                 } else {
@@ -347,6 +351,7 @@
 
     if (clearCheckbox && previewImg) {
         clearCheckbox.addEventListener('change', function() {
+            window._compressedPhotoBlob = null;
             if (this.checked) {
                 previewImg.src = defaultImgSrc;
                 previewImg.style.opacity = '0.7';
@@ -360,14 +365,38 @@
         });
     }
 
-    // Submit state feedback to prevent double submission and indicate upload progress
+    // Intercept form submit to send the compressed 120KB blob directly via FormData
     const editForm = document.getElementById('editProfileForm');
     if (editForm) {
-        editForm.addEventListener('submit', function() {
+        editForm.addEventListener('submit', function(e) {
             const btn = editForm.querySelector('button[type="submit"]');
             if (btn) {
                 btn.disabled = true;
                 btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving Changes...';
+            }
+
+            if (window._compressedPhotoBlob) {
+                e.preventDefault();
+                const formData = new FormData(editForm);
+                formData.set('profile_photo', window._compressedPhotoBlob, 'profile_photo.jpg');
+
+                fetch(editForm.action || window.location.href, {
+                    method: 'POST',
+                    body: formData
+                }).then(function(res) {
+                    if (res.redirected) {
+                        window.location.href = res.url;
+                    } else {
+                        return res.text().then(function(html) {
+                            document.open();
+                            document.write(html);
+                            document.close();
+                        });
+                    }
+                }).catch(function(err) {
+                    console.error('Fetch upload failed, falling back to standard submit', err);
+                    editForm.submit();
+                });
             }
         });
     }
