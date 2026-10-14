@@ -77,16 +77,17 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 
-import dj_database_url
+db_url = os.getenv('DATABASE_URL', '')
+is_local_db = 'localhost' in db_url or '127.0.0.1' in db_url
+ssl_require = os.getenv('DATABASE_SSL_REQUIRE', 'false' if is_local_db else 'true').lower() in ('true', '1', 't')
 
-# The fallback string here is now completely clean and secure
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL', ''),
+        default=db_url,
         conn_max_age=600,
         conn_health_checks=True,     
-        ssl_require=True
-   )
+        ssl_require=ssl_require
+    )
 }
 
 
