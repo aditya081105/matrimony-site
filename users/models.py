@@ -1,6 +1,6 @@
 # Create your models here.
 
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_save, post_delete, pre_save
 from django.dispatch import receiver
 
 from PIL import Image
@@ -267,6 +267,21 @@ def handle_caste_cache_invalidation(sender, **kwargs):
     invalidate_caste_cache()
 
 
+@receiver(pre_save, sender=CustomUser)
+def delete_old_user_photo_on_change(sender, instance, **kwargs):
+    if not instance.pk:
+        return
+    try:
+        old_photo = CustomUser.objects.filter(pk=instance.pk).values_list('profile_photo', flat=True).first()
+        new_photo = instance.profile_photo.name if (instance.profile_photo and hasattr(instance.profile_photo, 'name')) else ''
+        if old_photo and old_photo != new_photo and 'default' not in str(old_photo).lower():
+            from django.core.files.storage import default_storage
+            if default_storage.exists(old_photo):
+                default_storage.delete(old_photo)
+    except Exception:
+        pass
+
+
 @receiver(post_delete, sender=CustomUser)
 def cleanup_user_photo_on_delete(sender, instance, **kwargs):
     if instance.profile_photo and hasattr(instance.profile_photo, 'name') and instance.profile_photo.name:
@@ -278,4 +293,19 @@ def cleanup_user_photo_on_delete(sender, instance, **kwargs):
                     default_storage.delete(photo_name)
             except Exception:
                 pass
+
+
+@receiver(pre_save, sender=Profile)
+def delete_old_profile_photo_on_change(sender, instance, **kwargs):
+    if not instance.pk:
+        return
+    try:
+        old_photo = Profile.objects.filter(pk=instance.pk).values_list('profile_photo', flat=True).first()
+        new_photo = instance.profile_photo.name if (instance.profile_photo and hasattr(instance.profile_photo, 'name')) else ''
+        if old_photo and old_photo != new_photo and 'default' not in str(old_photo).lower():
+            from django.core.files.storage import default_storage
+            if default_storage.exists(old_photo):
+                default_storage.delete(old_photo)
+    except Exception:
+        pass
     
