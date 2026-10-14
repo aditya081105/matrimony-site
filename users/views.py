@@ -543,3 +543,189 @@ def resend_verification_email(request):
     return redirect("home")
 
 
+# ==============================================================================
+# PASSWORD RESET VIA EMAIL OTP
+# ==============================================================================
+
+from django.core.cache import cache
+import secrets
+from core.services import send_password_reset_code
+from .forms import PasswordResetRequestForm, PasswordResetVerifyForm, PasswordResetSetNewForm
+
+
+def mask_email(email):
+    if not email or '@' not in email:
+        return email
+    local, domain = email.split('@', 1)
+    if len(local) <= 2:
+        masked = local[0] + '***'
+    elif len(local) <= 4:
+        masked = local[:2] + '***'
+    else:
+        masked = local[:3] + '***' + local[-1]
+    return f"{masked}@{domain}"
+
+
+def password_reset_request(request):
+    if request.user.is_authenticated:
+        return redirect('home')
+
+    if request.method == 'POST':
+        form = PasswordResetRequestForm(request.POST)
+        if form.is_valid():
+            raw_email = form.cleaned_data['email'].strip().lower()
+
+            cooldown_key = f"pwd_reset_cooldown_{raw_email}"
+            if cache.get(cooldown_key):
+                messages.warning(
+                    request,
+                    "A verification code was recently sent. Please wait 60 seconds before requesting another code."
+                )
+                request.session['pwd_reset_email'] = raw_email
+                request.session['pwd_reset_masked_email'] = mask_email(raw_email)
+                return redirect('password_reset_verify')
+
+            user = CustomUser.objects.filter(email__iexact=raw_email).first()
+            if user:
+                code = f"{secrets.randbelow(1000000):06d}"
+                reset_data = {
+                    'code': code,
+                    'user_id': user.id,
+                    'email': user.email,
+                    'attempts': 0,
+                    'created_at': time.time(),
+                }
+                cache.set(f"pwd_reset_data_{raw_email}", reset_data, timeout=900)
+                cache.set(cooldown_key, True, timeout=60)
+                send_password_reset_code(user.email, user.full_name or user.username, code)
+
+            request.session['pwd_reset_email'] = raw_email
+            request.session['pwd_reset_masked_email'] = mask_email(raw_email)
+            messages.info(
+                request,
+                f"If an account is associated with {mask_email(raw_email)}, a 6-digit code has been sent."
+            )
+            return redirect('password_reset_verify')
+    else:
+        form = PasswordResetRequestForm()
+
+    return render(request, 'users/password_reset_request.html', {'form': form})
+
+
+def password_reset_verify(request):
+    if request.user.is_authenticated:
+        return redirect('home')
+
+    email = request.session.get('pwd_reset_email')
+    if not email:
+        return redirect('password_reset_request')
+
+    masked_email = request.session.get('pwd_reset_masked_email', mask_email(email))
+    cooldown_key = f"pwd_reset_cooldown_{email}"
+    can_resend = not bool(cache.get(cooldown_key))
+
+    if request.method == 'POST':
+        action = request.POST.get('action', 'verify')
+
+        if action == 'resend':
+            if not can_resend:
+                messages.warning(request, "Please wait a moment before requesting another code.")
+                return redirect('password_reset_verify')
+
+            user = CustomUser.objects.filter(email__iexact=email).first()
+            if user:
+                code = f"{secrets.randbelow(1000000):06d}"
+                reset_data = {
+                    'code': code,
+                    'user_id': user.id,
+                    'email': user.email,
+                    'attempts': 0,
+                    'created_at': time.time(),
+                }
+                cache.set(f"pwd_reset_data_{email}", reset_data, timeout=900)
+                cache.set(cooldown_key, True, timeout=60)
+                send_password_reset_code(user.email, user.full_name or user.username, code)
+
+            messages.success(request, f"A fresh verification code was sent to {masked_email}.")
+            return redirect('password_reset_verify')
+
+        form = PasswordResetVerifyForm(request.POST)
+        if form.is_valid():
+            entered_code = form.cleaned_data['code']
+            cached_data = cache.get(f"pwd_reset_data_{email}")
+
+            if not cached_data:
+                messages.error(request, "Your verification code has expired. Please request a new code.")
+                return redirect('password_reset_request')
+
+            if cached_data.get('attempts', 0) >= 5:
+                cache.delete(f"pwd_reset_data_{email}")
+                messages.error(request, "Too many incorrect attempts. Please request a new code.")
+                return redirect('password_reset_request')
+
+            if not secrets.compare_digest(cached_data['code'], entered_code):
+                cached_data['attempts'] = cached_data.get('attempts', 0) + 1
+                attempts_left = 5 - cached_data['attempts']
+                cache.set(f"pwd_reset_data_{email}", cached_data, timeout=900)
+                messages.error(request, f"Incorrect verification code. {attempts_left} attempt(s) remaining.")
+                return render(request, 'users/password_reset_verify.html', {
+                    'form': form,
+                    'masked_email': masked_email,
+                    'can_resend': can_resend
+                })
+
+            cache.delete(f"pwd_reset_data_{email}")
+            request.session['pwd_reset_verified_user_id'] = cached_data['user_id']
+            request.session['pwd_reset_verified_time'] = time.time()
+            return redirect('password_reset_confirm')
+    else:
+        form = PasswordResetVerifyForm()
+
+    return render(request, 'users/password_reset_verify.html', {
+        'form': form,
+        'masked_email': masked_email,
+        'can_resend': can_resend
+    })
+
+
+def password_reset_confirm(request):
+    if request.user.is_authenticated:
+        return redirect('home')
+
+    user_id = request.session.get('pwd_reset_verified_user_id')
+    verified_time = request.session.get('pwd_reset_verified_time')
+
+    if not user_id or not verified_time:
+        messages.error(request, "Session expired. Please request a new verification code.")
+        return redirect('password_reset_request')
+
+    if time.time() - verified_time > 900:
+        for k in ['pwd_reset_verified_user_id', 'pwd_reset_verified_time', 'pwd_reset_email', 'pwd_reset_masked_email']:
+            request.session.pop(k, None)
+        messages.error(request, "Your password reset session has expired. Please try again.")
+        return redirect('password_reset_request')
+
+    user = get_object_or_404(CustomUser, pk=user_id)
+
+    if request.method == 'POST':
+        form = PasswordResetSetNewForm(request.POST, user=user)
+        if form.is_valid():
+            new_password = form.cleaned_data['new_password1']
+            user.set_password(new_password)
+            user.save()
+
+            for k in ['pwd_reset_verified_user_id', 'pwd_reset_verified_time', 'pwd_reset_email', 'pwd_reset_masked_email']:
+                request.session.pop(k, None)
+
+            messages.success(request, "Your password has been reset successfully! Please log in with your new password.")
+            return redirect('login')
+    else:
+        form = PasswordResetSetNewForm(user=user)
+
+    return render(request, 'users/password_reset_confirm.html', {
+        'form': form,
+        'user_name': user.full_name or user.username
+    })
+
+
+

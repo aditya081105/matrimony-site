@@ -343,3 +343,83 @@ class ProfileForm(forms.ModelForm):
                 raise forms.ValidationError("File must be an image")
 
         return photo
+
+
+# =========================
+# PASSWORD RESET FORMS
+# =========================
+
+from django.contrib.auth.password_validation import validate_password
+
+
+class PasswordResetRequestForm(forms.Form):
+    email = forms.EmailField(
+        required=True,
+        label="Registered Email",
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control rounded-pill py-2 px-3',
+            'placeholder': 'Enter your registered email address',
+            'autofocus': True,
+            'autocomplete': 'email'
+        })
+    )
+
+
+class PasswordResetVerifyForm(forms.Form):
+    code = forms.CharField(
+        required=True,
+        max_length=6,
+        min_length=6,
+        label="6-Digit Verification Code",
+        widget=forms.TextInput(attrs={
+            'class': 'form-control text-center fw-bold fs-3 rounded-4',
+            'placeholder': '••••••',
+            'maxlength': '6',
+            'pattern': '[0-9]{6}',
+            'inputmode': 'numeric',
+            'autocomplete': 'one-time-code',
+            'autofocus': True,
+            'style': 'letter-spacing: 0.35rem;'
+        })
+    )
+
+    def clean_code(self):
+        code = self.cleaned_data.get('code', '').strip()
+        if not code.isdigit():
+            raise forms.ValidationError("Verification code must contain 6 numbers.")
+        return code
+
+
+class PasswordResetSetNewForm(forms.Form):
+    new_password1 = forms.CharField(
+        label="New Password",
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control rounded-pill py-2 px-3',
+            'placeholder': 'Enter your new password',
+            'autocomplete': 'new-password',
+            'autofocus': True
+        })
+    )
+    new_password2 = forms.CharField(
+        label="Confirm New Password",
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control rounded-pill py-2 px-3',
+            'placeholder': 'Re-type your new password',
+            'autocomplete': 'new-password'
+        })
+    )
+
+    def __init__(self, *args, user=None, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        p1 = cleaned_data.get("new_password1")
+        p2 = cleaned_data.get("new_password2")
+        if p1 and p2:
+            if p1 != p2:
+                self.add_error('new_password2', "Passwords do not match. Please verify and re-type.")
+            elif self.user:
+                validate_password(p1, user=self.user)
+        return cleaned_data

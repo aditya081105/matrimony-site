@@ -38,6 +38,11 @@
                        class="form-control rounded-pill"
                        placeholder="Password"
                        required>
+                <div class="d-flex justify-content-end mt-1 px-2">
+                    <a href="{% url 'password_reset_request' %}" class="text-decoration-none text-muted small" style="font-size: 0.8rem;">
+                        Forgot password?
+                    </a>
+                </div>
             </div>
 
             <button type="submit"

@@ -158,9 +158,12 @@ python manage.py runserver
 
 ## Automated Test Suite
 
-The test suite contains **39 automated tests** covering:
+The test suite contains **49 automated tests** covering:
 - Authentication constraints, phone regex checks, and unapproved profile access security.
 - Expiring token email verification via `TimestampSigner` and rate-limiting cooldown.
+- Forgot password workflow via 6-digit email verification code with attempt throttling (max 5), 15-minute expiration, and timing-safe verification.
+- Anti-abuse registration validation: Strict trusted email provider allowlist (`ALLOWED_EMAIL_PROVIDERS`), duplicate email normalization, and Gmail dot/plus alias prevention.
+- Admin account stealth: Moderation accounts strictly isolated and excluded from matchmaking recommendations and public search queries.
 - HTTP POST enforcement and 405 rejection for state-mutating endpoints (`send_request`, `block_user`, `unblock_user`, `unmatch`, `cancel_request`, `toggle_save`).
 - Mutual request matching, bidirectional blocking, and daily request quota enforcement across membership tiers.
 - Reverse OneToOne `select_related` query bounding (`assertNumQueries` / `CaptureQueriesContext`).

@@ -23,4 +23,19 @@ urlpatterns = [
         views.resend_verification_email,
         name="resend_verification"
     ),
+    path(
+        "forgot-password/",
+        views.password_reset_request,
+        name="password_reset_request"
+    ),
+    path(
+        "forgot-password/verify/",
+        views.password_reset_verify,
+        name="password_reset_verify"
+    ),
+    path(
+        "forgot-password/confirm/",
+        views.password_reset_confirm,
+        name="password_reset_confirm"
+    ),
 ]

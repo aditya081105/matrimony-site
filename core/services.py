@@ -155,3 +155,75 @@ def send_contact_email(name, sender_email, message_content):
         _email_executor.submit(_dispatch_contact_email_job, name, sender_email, message_content)
         return True
 
+
+def _dispatch_password_reset_code_job(user_email, user_name, code):
+    subject = "Password Reset Code - Poorvanchal Matrimony"
+    message = f"""Hello {user_name},
+
+You requested a password reset for your Poorvanchal Matrimony account.
+
+Your 6-digit verification code is:
+
+{code}
+
+This code is valid for 15 minutes.
+
+If you did not request a password reset, please ignore this email. Your password will remain unchanged.
+
+Best regards,
+Poorvanchal Matrimony
+https://poorvanchalmatrimony.social
+"""
+    for attempt in range(1, MAX_RETRIES + 1):
+        if getattr(settings, 'EMAIL_HOST_USER', None):
+            try:
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[user_email],
+                    fail_silently=False,
+                )
+                logger.info(f"Password reset code email sent via SMTP to {user_email}")
+                print(f"==> Password reset code sent via SMTP to {user_email}")
+                return True
+            except Exception as e:
+                logger.warning(f"SMTP send_mail attempt {attempt}/{MAX_RETRIES} failed for reset code {user_email}: {e}")
+
+        if getattr(settings, 'RESEND_API_KEY', None):
+            try:
+                resend.api_key = settings.RESEND_API_KEY
+                from_email = getattr(settings, 'RESEND_FROM_EMAIL', 'onboarding@resend.dev')
+                resend.Emails.send({
+                    "from": from_email,
+                    "to": user_email,
+                    "subject": subject,
+                    "text": message,
+                })
+                logger.info(f"Password reset code sent via Resend to {user_email}")
+                return True
+            except Exception as e:
+                logger.warning(f"Resend attempt {attempt}/{MAX_RETRIES} failed for reset code {user_email}: {e}")
+
+        if not (getattr(settings, 'EMAIL_HOST_USER', None) or getattr(settings, 'RESEND_API_KEY', None)):
+            break
+
+        if attempt < MAX_RETRIES and not _is_testing():
+            time.sleep(1.5 * attempt)
+
+    print(f"==> PASSWORD RESET CODE for {user_email}: {code}")
+    return False
+
+
+def send_password_reset_code(user_email, user_name, code):
+    """
+    Dispatches password reset verification codes.
+    Runs asynchronously via ThreadPoolExecutor in production, synchronously in tests.
+    """
+    if _is_testing():
+        return _dispatch_password_reset_code_job(user_email, user_name, code)
+    else:
+        _email_executor.submit(_dispatch_password_reset_code_job, user_email, user_name, code)
+        return True
+
+

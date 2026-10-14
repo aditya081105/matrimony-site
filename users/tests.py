@@ -450,3 +450,68 @@ class UserModelTest(TestCase):
         # 5. Legitimate unique email succeeds
         form_valid = UserRegisterForm(data={**base_data, 'email': 'genuine.person@gmail.com'})
         self.assertTrue(form_valid.is_valid(), form_valid.errors)
+
+
+class PasswordResetTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.user = User.objects.create_user(
+            username="resetuser",
+            email="resetuser@gmail.com",
+            password="OldPassword123!",
+            full_name="Reset User"
+        )
+
+    def test_login_page_renders_forgot_password_link(self):
+        response = self.client.get('/login/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Forgot password?')
+        self.assertContains(response, '/forgot-password/')
+
+    def test_password_reset_request_valid_email(self):
+        from django.core.cache import cache
+        response = self.client.post('/forgot-password/', {'email': 'resetuser@gmail.com'})
+        self.assertRedirects(response, '/forgot-password/verify/')
+        
+        cached_data = cache.get("pwd_reset_data_resetuser@gmail.com")
+        self.assertIsNotNone(cached_data)
+        self.assertEqual(cached_data['user_id'], self.user.id)
+        self.assertEqual(len(cached_data['code']), 6)
+        self.assertTrue(cached_data['code'].isdigit())
+
+    def test_password_reset_verify_flow_and_confirm(self):
+        from django.core.cache import cache
+        # 1. Request code
+        self.client.post('/forgot-password/', {'email': 'resetuser@gmail.com'})
+        cached_data = cache.get("pwd_reset_data_resetuser@gmail.com")
+        valid_code = cached_data['code']
+
+        # 2. Enter wrong code
+        bad_response = self.client.post('/forgot-password/verify/', {'action': 'verify', 'code': '000000'})
+        self.assertEqual(bad_response.status_code, 200)
+        self.assertContains(bad_response, 'Incorrect verification code')
+
+        # 3. Enter correct code
+        good_response = self.client.post('/forgot-password/verify/', {'action': 'verify', 'code': valid_code})
+        self.assertRedirects(good_response, '/forgot-password/confirm/')
+
+        # 4. Confirm new password with mismatch
+        mismatch_res = self.client.post('/forgot-password/confirm/', {
+            'new_password1': 'NewStrongPass123!',
+            'new_password2': 'DifferentPass123!'
+        })
+        self.assertEqual(mismatch_res.status_code, 200)
+        self.assertContains(mismatch_res, 'Passwords do not match')
+
+        # 5. Confirm new password successfully
+        success_res = self.client.post('/forgot-password/confirm/', {
+            'new_password1': 'NewStrongPass123!',
+            'new_password2': 'NewStrongPass123!'
+        })
+        self.assertRedirects(success_res, '/login/')
+
+        # 6. Verify user can now authenticate with new password
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('NewStrongPass123!'))
+        self.assertFalse(self.user.check_password('OldPassword123!'))
