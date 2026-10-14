@@ -514,4 +514,55 @@ class PasswordResetTests(TestCase):
         # 6. Verify user can now authenticate with new password
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password('NewStrongPass123!'))
-        self.assertFalse(self.user.check_password('OldPassword123!'))
+        self.assertFalse(self.user.check_password('OldPassword123!'))
+
+
+class ImageSecurityUploadTest(TestCase):
+    def setUp(self):
+        from users.validators import validate_image_file
+        self.validate_image_file = validate_image_file
+
+    def test_rejects_fake_image_script(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.core.exceptions import ValidationError
+
+        fake_file = SimpleUploadedFile(
+            "fake_avatar.jpg",
+            b"Plain text payload pretending to be a JPG image file",
+            content_type="image/jpeg"
+        )
+        with self.assertRaises(ValidationError) as ctx:
+            self.validate_image_file(fake_file)
+        self.assertIn("not a valid image", str(ctx.exception))
+
+    def test_rejects_oversized_image(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.core.exceptions import ValidationError
+
+        big_file = SimpleUploadedFile(
+            "oversized.jpg",
+            b"0" * (6 * 1024 * 1024),
+            content_type="image/jpeg"
+        )
+        with self.assertRaises(ValidationError) as ctx:
+            self.validate_image_file(big_file, max_size_mb=5)
+        self.assertIn("under 5MB", str(ctx.exception))
+
+    def test_accepts_valid_image(self):
+        from io import BytesIO
+        from PIL import Image
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        img_io = BytesIO()
+        img = Image.new('RGB', (100, 100), color='crimson')
+        img.save(img_io, format='JPEG')
+        img_io.seek(0)
+
+        valid_file = SimpleUploadedFile(
+            "avatar.jpg",
+            img_io.getvalue(),
+            content_type="image/jpeg"
+        )
+        result = self.validate_image_file(valid_file)
+        self.assertEqual(result, valid_file)
+

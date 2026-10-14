@@ -213,3 +213,53 @@ def validate_unique_and_legitimate_email(email: str, exclude_user_id=None) -> st
                     )
 
     return email
+
+
+def validate_image_file(photo, max_size_mb=5):
+    """
+    Validates uploaded images to ensure:
+    1. Size is within the limit (default 5MB).
+    2. Real image magic bytes are present and verified by Pillow (not an executable disguised as .jpg).
+    3. The file format is strictly a safe raster image (JPEG, PNG, WEBP).
+    4. Image dimensions are within sane boundaries (preventing decompression bombs).
+    """
+    if not photo:
+        return photo
+
+    if hasattr(photo, 'size') and photo.size > max_size_mb * 1024 * 1024:
+        raise ValidationError(f"Image file size must be under {max_size_mb}MB.")
+
+    from PIL import Image
+
+    # Header and magic byte integrity verification
+    try:
+        img = Image.open(photo)
+        img.verify()
+        fmt = (img.format or '').upper()
+        if fmt not in ('JPEG', 'JPG', 'PNG', 'WEBP'):
+            raise ValidationError("Invalid image format. Only JPG, PNG, and WebP images are allowed.")
+    except ValidationError:
+        raise
+    except Exception:
+        raise ValidationError("The uploaded file is not a valid image or is corrupted.")
+    finally:
+        if hasattr(photo, 'seek'):
+            photo.seek(0)
+
+    # Resolution and decompression bomb check
+    try:
+        img = Image.open(photo)
+        width, height = img.size
+        if width > 6000 or height > 6000:
+            raise ValidationError("Image resolution is too large (maximum 6000x6000 pixels).")
+        if width < 50 or height < 50:
+            raise ValidationError("Image resolution is too small (minimum 50x50 pixels).")
+    except ValidationError:
+        raise
+    except Exception:
+        raise ValidationError("Unable to verify image dimensions.")
+    finally:
+        if hasattr(photo, 'seek'):
+            photo.seek(0)
+
+    return photo
