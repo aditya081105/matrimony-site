@@ -183,6 +183,8 @@ class Profile(models.Model):
     
 @receiver(post_save, sender=CustomUser)
 def create_or_sync_user_profile(sender, instance, created, **kwargs):
+    if kwargs.get('raw', False):
+        return
     profile, _ = Profile.objects.get_or_create(user=instance)
     Subscription.objects.get_or_create(user=instance, defaults={'plan_type': 'Free', 'is_active': False})
 
