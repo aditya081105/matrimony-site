@@ -8,7 +8,7 @@
 
 A full-stack community matrimonial web platform built with Django 6, PostgreSQL, and Bootstrap 5. Designed for localized community networking with mutual interest matching, privacy controls, manual UPI QR verification flow, transactional email alerts, and cache-aside read optimization.
 
-**Production Domain:** [https://poorvanchalmatrimony.social](https://poorvanchalmatrimony.social) (Legacy mirror: [https://siwan-matrimony.onrender.com/](https://siwan-matrimony.onrender.com/))
+**Production Domain:** [https://poorvanchalmatrimony.social](https://poorvanchalmatrimony.social)
 
 ---
 
