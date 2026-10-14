@@ -23,7 +23,12 @@ data-bs-toggle="dropdown">
 <ul class="dropdown-menu dropdown-menu-end">
 
 <li>
-<form method="POST" action="{% url 'block_user' req.sender.id %}" class="d-inline w-100">
+<form method="POST"
+      action="{% url 'block_user' req.sender.id %}"
+      hx-post="{% url 'block_user' req.sender.id %}"
+      hx-target="closest .col-lg-4"
+      hx-swap="outerHTML"
+      class="d-inline w-100">
     {% csrf_token %}
     <button type="submit" class="dropdown-item text-danger border-0 bg-transparent">
         Block
@@ -71,18 +76,29 @@ style="width:100px;height:100px;object-fit:cover;">
 @{{ req.sender.username }}
 </p>
 
+<div id="request-actions-{{ req.id }}" class="w-100">
 {% if req.status == "pending" %}
 
 <div class="d-grid gap-2">
 
-<form method="POST" action="{% url 'update_request' req.id 'accept' %}" class="d-grid">
+<form method="POST"
+      action="{% url 'update_request' req.id 'accept' %}"
+      hx-post="{% url 'update_request' req.id 'accept' %}"
+      hx-target="#request-actions-{{ req.id }}"
+      hx-swap="outerHTML"
+      class="d-grid">
     {% csrf_token %}
-    <button type="submit" class="btn btn-success btn-sm rounded-pill">
+    <button type="submit" class="btn btn-success btn-sm rounded-pill fw-semibold">
         Accept
     </button>
 </form>
 
-<form method="POST" action="{% url 'update_request' req.id 'reject' %}" class="d-grid">
+<form method="POST"
+      action="{% url 'update_request' req.id 'reject' %}"
+      hx-post="{% url 'update_request' req.id 'reject' %}"
+      hx-target="#request-actions-{{ req.id }}"
+      hx-swap="outerHTML"
+      class="d-grid">
     {% csrf_token %}
     <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill">
         Reject
@@ -93,17 +109,18 @@ style="width:100px;height:100px;object-fit:cover;">
 
 {% elif req.status == "accepted" %}
 
-<span class="badge bg-success py-2">
-Accepted
+<span class="badge bg-success-subtle text-success border border-success-subtle py-2 rounded-pill w-100 fw-semibold">
+    Accepted - Contact Unlocked
 </span>
 
 {% else %}
 
-<span class="badge bg-danger py-2">
-Rejected
+<span class="badge bg-secondary-subtle text-muted border py-2 rounded-pill w-100">
+    Declined
 </span>
 
 {% endif %}
+</div>
 
 </div>
 

@@ -1,0 +1,15 @@
+<div id="request-actions-{{ contact_request.id }}" class="w-100">
+    {% if contact_request.status == "accepted" %}
+        <span class="badge bg-success-subtle text-success border border-success-subtle py-2 rounded-pill w-100 fw-semibold">
+            Accepted - Contact Unlocked
+        </span>
+    {% elif contact_request.status == "rejected" %}
+        <span class="badge bg-secondary-subtle text-muted border py-2 rounded-pill w-100">
+            Request Declined
+        </span>
+    {% else %}
+        <span class="badge bg-secondary py-2 rounded-pill w-100">
+            Processed
+        </span>
+    {% endif %}
+</div>

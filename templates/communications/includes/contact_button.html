@@ -1,0 +1,41 @@
+{% load static %}
+<div id="contact-action-{{ target_user.id }}" class="w-100">
+    {% if error_message %}
+        <div class="alert alert-danger py-1 px-2 small mb-2 text-center rounded-3 shadow-sm" style="font-size: 0.78rem;">
+            {{ error_message }}
+        </div>
+    {% endif %}
+
+    {% if status == 'accepted' or target_user.id in accepted_user_ids %}
+        <span class="badge bg-success-subtle text-success border border-success-subtle w-100 py-2 rounded-pill fw-semibold">
+            Contact Unlocked
+        </span>
+    {% elif status == 'pending' or target_user.id in pending_user_ids %}
+        <div class="d-flex flex-column gap-2">
+            <button class="btn btn-secondary btn-sm w-100 rounded-pill" disabled style="opacity: 0.85;">
+                Request Pending
+            </button>
+            <form method="POST"
+                  action="{% url 'cancel_request' target_user.id %}"
+                  hx-post="{% url 'cancel_request' target_user.id %}"
+                  hx-target="#contact-action-{{ target_user.id }}"
+                  hx-swap="outerHTML">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger btn-sm w-100 rounded-pill">
+                    Cancel Request
+                </button>
+            </form>
+        </div>
+    {% else %}
+        <form method="POST"
+              action="{% url 'send_request' target_user.id %}"
+              hx-post="{% url 'send_request' target_user.id %}"
+              hx-target="#contact-action-{{ target_user.id }}"
+              hx-swap="outerHTML">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-dark btn-sm w-100 rounded-pill fw-semibold">
+                Request Contact
+            </button>
+        </form>
+    {% endif %}
+</div>

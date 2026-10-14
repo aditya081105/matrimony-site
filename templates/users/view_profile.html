@@ -30,27 +30,9 @@
             <li><hr class="dropdown-divider"></li>
 
             {% if profile_user.id in saved_ids %}
-
-                <li>
-                    <form method="POST" action="{% url 'toggle_save' profile_user.id %}" class="d-inline w-100">
-                        {% csrf_token %}
-                        <button type="submit" class="dropdown-item border-0 bg-transparent">
-                            Remove Saved
-                        </button>
-                    </form>
-                </li>
-
+                {% include 'communications/includes/save_button.html' with target_id=profile_user.id is_saved=True %}
             {% else %}
-
-                <li>
-                    <form method="POST" action="{% url 'toggle_save' profile_user.id %}" class="d-inline w-100">
-                        {% csrf_token %}
-                        <button type="submit" class="dropdown-item border-0 bg-transparent">
-                            Save Profile
-                        </button>
-                    </form>
-                </li>
-
+                {% include 'communications/includes/save_button.html' with target_id=profile_user.id is_saved=False %}
             {% endif %}
 
             <li>
@@ -122,7 +104,7 @@
         {% if not is_allowed %}
 
             <div class="text-center mt-4">
-
+                <div id="contact-action-{{ profile_user.id }}" class="d-inline-block">
                 {% if pending_request %}
 
                     <button class="btn btn-secondary rounded-pill px-4 mb-2" disabled>
@@ -131,7 +113,12 @@
 
                     <br>
 
-                    <form method="POST" action="{% url 'cancel_request' profile_user.id %}" class="d-inline">
+                    <form method="POST"
+                          action="{% url 'cancel_request' profile_user.id %}"
+                          hx-post="{% url 'cancel_request' profile_user.id %}"
+                          hx-target="#contact-action-{{ profile_user.id }}"
+                          hx-swap="outerHTML"
+                          class="d-inline">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-outline-danger rounded-pill px-4">
                             Cancel Request
@@ -140,7 +127,12 @@
 
                 {% else %}
 
-                    <form method="POST" action="{% url 'send_request' profile_user.id %}" class="d-inline">
+                    <form method="POST"
+                          action="{% url 'send_request' profile_user.id %}"
+                          hx-post="{% url 'send_request' profile_user.id %}"
+                          hx-target="#contact-action-{{ profile_user.id }}"
+                          hx-swap="outerHTML"
+                          class="d-inline">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-dark rounded-pill px-4">
                             Request Contact
@@ -148,7 +140,7 @@
                     </form>
 
                 {% endif %}
-
+                </div>
             </div>
 
         {% elif is_matched %}

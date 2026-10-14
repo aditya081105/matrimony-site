@@ -5,7 +5,7 @@ from django.db import connection
 from django.db.models import Q, Case, When, Value, IntegerField
 from django.utils import timezone
 from users.models import CustomUser
-from communications.models import Block
+from communications.models import Block, ContactRequest, SavedProfile
 
 
 @login_required
@@ -91,8 +91,40 @@ def search_view(request):
     paginator = Paginator(profiles, 12)
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
-    return render(request, 'search/search_results.html', {
+    saved_ids = []
+    if request.user.is_authenticated:
+        saved_ids = list(SavedProfile.objects.filter(
+            user=request.user
+        ).values_list("saved_user_id", flat=True))
+
+    accepted_requests = ContactRequest.objects.filter(
+        status="accepted"
+    ).filter(
+        Q(sender=request.user) | Q(receiver=request.user)
+    )
+
+    accepted_user_ids = {
+        r.receiver_id if r.sender_id == request.user.id else r.sender_id
+        for r in accepted_requests
+    }
+
+    pending_user_ids = set(
+        ContactRequest.objects.filter(
+            sender=request.user,
+            status="pending"
+        ).values_list("receiver_id", flat=True)
+    )
+
+    context = {
         'query': query,
         'page_obj': page_obj,
         'profiles': page_obj,
-    })
+        'saved_ids': saved_ids,
+        'accepted_user_ids': accepted_user_ids,
+        'pending_user_ids': pending_user_ids,
+    }
+
+    if request.headers.get('HX-Request'):
+        return render(request, 'search/includes/results_list.html', context)
+
+    return render(request, 'search/search_results.html', context)

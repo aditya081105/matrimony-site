@@ -10,14 +10,25 @@
 
         <div class="row justify-content-center mt-4">
             <div class="col-lg-7 col-md-9">
-                <form method="GET" action="{% url 'search_profiles' %}" class="card shadow-sm border-0 rounded-pill p-2 bg-white">
+                <form method="GET"
+                      action="{% url 'search_profiles' %}"
+                      hx-get="{% url 'search_profiles' %}"
+                      hx-target="#search-results-container"
+                      hx-indicator="#search-loading-indicator"
+                      hx-push-url="true"
+                      class="card shadow-sm border-0 rounded-pill p-2 bg-white">
                     <div class="input-group">
                         <input type="text"
                                name="q"
                                class="form-control border-0 bg-transparent ps-4"
                                placeholder="Search by name, occupation, city, or caste..."
                                value="{{ query }}"
-                               required>
+                               hx-get="{% url 'search_profiles' %}"
+                               hx-trigger="input changed delay:300ms, search"
+                               hx-target="#search-results-container"
+                               hx-indicator="#search-loading-indicator"
+                               hx-push-url="true"
+                               autocomplete="off">
                         <button class="btn btn-danger rounded-pill px-4 fw-semibold" type="submit">
                             Search
                         </button>
@@ -27,102 +38,42 @@
         </div>
     </div>
 
-    <!-- Search Results Section -->
-    {% if query %}
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h5 class="fw-bold mb-0 text-dark">
-                Results for "<span class="text-danger">{{ query }}</span>"
-            </h5>
-            <span class="badge bg-secondary rounded-pill px-3 py-2">
-                {{ profiles|length }} Profile{% if profiles|length != 1 %}s{% endif %} Found
-            </span>
-        </div>
-
-        <div class="row g-4 mb-4">
-            {% for profile in profiles %}
+    <!-- Skeleton Loading Shimmer Indicator -->
+    <div id="search-loading-indicator" class="htmx-indicator mb-4">
+        <div class="row g-4 w-100">
             <div class="col-lg-4 col-md-6">
-                <div class="card shadow-sm border-0 rounded-4 overflow-hidden matchmaking-card bg-white position-relative">
-                    {% if profile.is_premium %}
-                        <div class="position-absolute top-0 start-0 m-3 z-1">
-                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1 fw-semibold small">
-                                Verified Member
-                            </span>
-                        </div>
-                    {% endif %}
-
-                    <div class="text-center pt-4 pb-2">
-                        {% if profile.profile_photo %}
-                            <img src="{{ profile.profile_photo.url }}"
-                                 onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';"
-                                 alt="{{ profile.full_name }}"
-                                 class="rounded-circle shadow-sm"
-                                 style="width: 120px; height: 120px; object-fit: cover;">
-                        {% elif profile.profile.profile_photo %}
-                            <img src="{{ profile.profile.profile_photo.url }}"
-                                 onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';"
-                                 alt="{{ profile.full_name }}"
-                                 class="rounded-circle shadow-sm"
-                                 style="width: 120px; height: 120px; object-fit: cover;">
-                        {% else %}
-                            <img src="{% static 'images/default.jpg' %}"
-                                 alt="{{ profile.full_name }}"
-                                 class="rounded-circle shadow-sm"
-                                 style="width: 120px; height: 120px; object-fit: cover;">
-                        {% endif %}
-                    </div>
-
-                        <h5 class="fw-bold mb-1 d-flex align-items-center justify-content-center flex-wrap gap-1">
-                            <span>{{ profile.full_name }}</span>
-                            {% include 'includes/tier_badge.html' with badge_user=profile %}
-                        </h5>
-                        <p class="text-muted small mb-2">
-                            @{{ profile.username }}
-                        </p>
-
-                        <div class="d-flex justify-content-center gap-2 flex-wrap mb-3">
-                            {% if profile.city %}
-                                <span class="badge bg-light text-dark rounded-pill border px-2 py-1 small">
-                                    {{ profile.city.name }}
-                                </span>
-                            {% endif %}
-                            {% if profile.display_caste %}
-                                <span class="badge bg-light text-dark rounded-pill border px-2 py-1 small">
-                                    {{ profile.display_caste }}
-                                </span>
-                            {% elif profile.caste_community %}
-                                <span class="badge bg-light text-dark rounded-pill border px-2 py-1 small">
-                                    {{ profile.caste_community.name }}
-                                </span>
-                            {% endif %}
-                            {% if profile.age %}
-                                <span class="badge bg-light text-dark rounded-pill border px-2 py-1 small">
-                                    {{ profile.age }} yrs
-                                </span>
-                            {% endif %}
-                            {% if profile.height_cm %}
-                                <span class="badge bg-light text-dark rounded-pill border px-2 py-1 small">
-                                    {{ profile.height_cm }} cm
-                                </span>
-                            {% endif %}
-                        </div>
-
-                        <a href="{% url 'view_profile' profile.id %}"
-                           class="btn btn-outline-dark btn-sm rounded-pill w-100 py-2 fw-semibold">
-                            View Full Profile →
-                        </a>
-                    </div>
+                <div class="card border-0 rounded-4 p-4 shadow-sm text-center">
+                    <div class="skeleton-shimmer rounded-circle mx-auto mb-3" style="width: 100px; height: 100px;"></div>
+                    <div class="skeleton-shimmer mx-auto mb-2" style="width: 60%; height: 20px;"></div>
+                    <div class="skeleton-shimmer mx-auto mb-3" style="width: 40%; height: 14px;"></div>
+                    <div class="skeleton-shimmer mx-auto mb-3" style="width: 80%; height: 24px; border-radius: 50rem;"></div>
+                    <div class="skeleton-shimmer mx-auto" style="width: 100%; height: 36px; border-radius: 50rem;"></div>
                 </div>
             </div>
-            {% empty %}
-            <div class="col-12 text-center py-5">
-                <h5 class="fw-bold">No profiles matched your search</h5>
-                <p class="text-muted small">Try searching with a broader keyword, like a city or caste name.</p>
-                <a href="{% url 'profile_list' %}" class="btn btn-outline-secondary rounded-pill px-4">
-                    Browse All Profiles
-                </a>
+            <div class="col-lg-4 col-md-6 d-none d-md-block">
+                <div class="card border-0 rounded-4 p-4 shadow-sm text-center">
+                    <div class="skeleton-shimmer rounded-circle mx-auto mb-3" style="width: 100px; height: 100px;"></div>
+                    <div class="skeleton-shimmer mx-auto mb-2" style="width: 60%; height: 20px;"></div>
+                    <div class="skeleton-shimmer mx-auto mb-3" style="width: 40%; height: 14px;"></div>
+                    <div class="skeleton-shimmer mx-auto mb-3" style="width: 80%; height: 24px; border-radius: 50rem;"></div>
+                    <div class="skeleton-shimmer mx-auto" style="width: 100%; height: 36px; border-radius: 50rem;"></div>
+                </div>
             </div>
-            {% endfor %}
+            <div class="col-lg-4 d-none d-lg-block">
+                <div class="card border-0 rounded-4 p-4 shadow-sm text-center">
+                    <div class="skeleton-shimmer rounded-circle mx-auto mb-3" style="width: 100px; height: 100px;"></div>
+                    <div class="skeleton-shimmer mx-auto mb-2" style="width: 60%; height: 20px;"></div>
+                    <div class="skeleton-shimmer mx-auto mb-3" style="width: 40%; height: 14px;"></div>
+                    <div class="skeleton-shimmer mx-auto mb-3" style="width: 80%; height: 24px; border-radius: 50rem;"></div>
+                    <div class="skeleton-shimmer mx-auto" style="width: 100%; height: 36px; border-radius: 50rem;"></div>
+                </div>
+            </div>
         </div>
-    {% endif %}
+    </div>
+
+    <!-- Live Search Results Container -->
+    <div id="search-results-container">
+        {% include 'search/includes/results_list.html' %}
+    </div>
 </div>
 {% endblock %}

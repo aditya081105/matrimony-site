@@ -1,0 +1,13 @@
+<li id="save-action-{{ target_id }}">
+    <form method="POST"
+          action="{% url 'toggle_save' target_id %}"
+          hx-post="{% url 'toggle_save' target_id %}"
+          hx-target="#save-action-{{ target_id }}"
+          hx-swap="outerHTML"
+          class="d-inline w-100">
+        {% csrf_token %}
+        <button type="submit" class="dropdown-item border-0 bg-transparent">
+            {% if is_saved %}Remove Saved{% else %}Save Profile{% endif %}
+        </button>
+    </form>
+</li>

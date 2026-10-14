@@ -1,0 +1,183 @@
+{% load static %}
+
+{% if query %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 class="fw-bold mb-0 text-dark">
+            Results for "<span class="text-danger">{{ query }}</span>"
+        </h5>
+        <span class="badge bg-secondary rounded-pill px-3 py-2">
+            {{ page_obj.paginator.count }} Profile{% if page_obj.paginator.count != 1 %}s{% endif %} Found
+        </span>
+    </div>
+
+    <div class="row g-4 mb-4">
+        {% for profile in profiles %}
+        <div class="col-lg-4 col-md-6 profile-card-col">
+            <div class="card modern-profile-card shadow-sm border-0 rounded-4 overflow-hidden position-relative h-100">
+
+                <!-- 3-Dot Options Menu -->
+                <div class="dropdown position-absolute top-0 end-0 m-3 z-2">
+                    <button class="btn btn-sm btn-light rounded-circle border shadow-sm"
+                            type="button"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false"
+                            style="width: 32px; height: 32px; line-height: 1;">
+                        ⋮
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
+                        {% if profile.id in saved_ids %}
+                            {% include 'communications/includes/save_button.html' with target_id=profile.id is_saved=True %}
+                        {% else %}
+                            {% include 'communications/includes/save_button.html' with target_id=profile.id is_saved=False %}
+                        {% endif %}
+
+                        <li>
+                            <form method="POST"
+                                  action="{% url 'block_user' profile.id %}"
+                                  hx-post="{% url 'block_user' profile.id %}"
+                                  hx-target="closest .profile-card-col"
+                                  hx-swap="outerHTML"
+                                  class="d-inline w-100">
+                                {% csrf_token %}
+                                <button type="submit" class="dropdown-item text-danger border-0 bg-transparent">
+                                    Block
+                                </button>
+                            </form>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'report_user' profile.id %}">
+                                Report
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="card-body p-4 text-center d-flex flex-column">
+                    <!-- Avatar -->
+                    <div class="mb-3 position-relative d-inline-block mx-auto">
+                        <a href="{% url 'view_profile' profile.id %}">
+                            {% if profile.profile_photo %}
+                                <img src="{{ profile.profile_photo.url }}"
+                                     onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';"
+                                     alt="{{ profile.full_name }}"
+                                     class="rounded-circle shadow-sm"
+                                     style="width: 100px; height: 100px; object-fit: cover; border: 3px solid #f8fafc;">
+                            {% elif profile.profile.profile_photo %}
+                                <img src="{{ profile.profile.profile_photo.url }}"
+                                     onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';"
+                                     alt="{{ profile.full_name }}"
+                                     class="rounded-circle shadow-sm"
+                                     style="width: 100px; height: 100px; object-fit: cover; border: 3px solid #f8fafc;">
+                            {% else %}
+                                <img src="{% static 'images/default.jpg' %}"
+                                     alt="{{ profile.full_name }}"
+                                     class="rounded-circle shadow-sm"
+                                     style="width: 100px; height: 100px; object-fit: cover; border: 3px solid #f8fafc;">
+                            {% endif %}
+                        </a>
+                    </div>
+
+                    <!-- Name and Badges -->
+                    <h5 class="fw-bold mb-1 d-flex align-items-center justify-content-center flex-wrap gap-1">
+                        <a href="{% url 'view_profile' profile.id %}" class="text-dark text-decoration-none">
+                            {{ profile.full_name }}
+                        </a>
+                        {% include 'includes/tier_badge.html' with badge_user=profile %}
+                    </h5>
+                    <p class="text-muted small mb-3">
+                        @{{ profile.username }}
+                    </p>
+
+                    <!-- Profile Details Badges -->
+                    <div class="d-flex justify-content-center gap-1 flex-wrap mb-3">
+                        {% if profile.city %}
+                            <span class="badge bg-light text-dark rounded-pill border px-2 py-1 small">
+                                {{ profile.city.name }}
+                            </span>
+                        {% endif %}
+                        {% if profile.display_caste %}
+                            <span class="badge bg-light text-dark rounded-pill border px-2 py-1 small">
+                                {{ profile.display_caste }}
+                            </span>
+                        {% elif profile.caste_community %}
+                            <span class="badge bg-light text-dark rounded-pill border px-2 py-1 small">
+                                {{ profile.caste_community.name }}
+                            </span>
+                        {% endif %}
+                        {% if profile.age %}
+                            <span class="badge bg-light text-dark rounded-pill border px-2 py-1 small">
+                                {{ profile.age }} yrs
+                            </span>
+                        {% endif %}
+                        {% if profile.height_cm %}
+                            <span class="badge bg-light text-dark rounded-pill border px-2 py-1 small">
+                                {{ profile.height_cm }} cm
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    {% if profile.occupation %}
+                        <div class="small text-muted mb-3">
+                            {{ profile.occupation }}
+                        </div>
+                    {% endif %}
+
+                    <!-- Action Buttons in Card Footer -->
+                    <div class="mt-auto d-flex flex-column gap-2 pt-2">
+                        <a href="{% url 'view_profile' profile.id %}"
+                           class="btn btn-outline-dark btn-sm rounded-pill w-100 py-1.5 fw-semibold">
+                            View Profile
+                        </a>
+
+                        {% include 'communications/includes/contact_button.html' with target_user=profile %}
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <h5 class="fw-bold text-dark mb-2">No profiles matched your search</h5>
+            <p class="text-muted small mb-4">Try searching with a broader keyword, like a city or caste name.</p>
+            <a href="{% url 'profile_list' %}" class="btn btn-outline-dark rounded-pill px-4 btn-sm">
+                Browse All Profiles
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination for HTMX search results -->
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="text-center pt-3 pb-2">
+        {% if page_obj.has_previous %}
+            <button class="btn btn-outline-dark btn-sm rounded-pill px-3"
+                    hx-get="{% url 'search_profiles' %}?q={{ query|urlencode }}&page={{ page_obj.previous_page_number }}"
+                    hx-target="#search-results-container"
+                    hx-indicator="#search-loading-indicator"
+                    hx-push-url="true">
+                Previous
+            </button>
+        {% endif %}
+
+        <span class="mx-3 small text-muted">
+            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </span>
+
+        {% if page_obj.has_next %}
+            <button class="btn btn-outline-dark btn-sm rounded-pill px-3"
+                    hx-get="{% url 'search_profiles' %}?q={{ query|urlencode }}&page={{ page_obj.next_page_number }}"
+                    hx-target="#search-results-container"
+                    hx-indicator="#search-loading-indicator"
+                    hx-push-url="true">
+                Next
+            </button>
+        {% endif %}
+    </div>
+    {% endif %}
+
+{% else %}
+    <div class="text-center py-5">
+        <h5 class="text-muted fw-semibold mb-2">Search Community Profiles</h5>
+        <p class="text-muted small">Type a name, profession, city, or community to start searching in real-time.</p>
+    </div>
+{% endif %}
