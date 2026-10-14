@@ -34,8 +34,8 @@ If you did not register for Poorvanchal Matrimony, please ignore this email.
 """
 
     for attempt in range(1, MAX_RETRIES + 1):
-        # 1. Try standard Django send_mail (Gmail SMTP / Brevo) if configured
-        if getattr(settings, 'EMAIL_HOST_USER', None):
+        # 1. Try standard Django send_mail (Gmail SMTP / Brevo / test locmem) if configured
+        if getattr(settings, 'EMAIL_HOST_USER', None) or _is_testing():
             try:
                 send_mail(
                     subject=subject,
@@ -67,7 +67,7 @@ If you did not register for Poorvanchal Matrimony, please ignore this email.
             except Exception as e:
                 logger.warning(f"Resend attempt {attempt}/{MAX_RETRIES} failed for {user_email}: {e}")
 
-        if not (getattr(settings, 'EMAIL_HOST_USER', None) or getattr(settings, 'RESEND_API_KEY', None)):
+        if not _is_testing() and not (getattr(settings, 'EMAIL_HOST_USER', None) or getattr(settings, 'RESEND_API_KEY', None)):
             break
 
         if attempt < MAX_RETRIES and not _is_testing():
@@ -105,7 +105,7 @@ def _dispatch_contact_email_job(name, sender_email, message_content):
     admin_email = getattr(settings, 'CONTACT_ADMIN_EMAIL', None) or getattr(settings, 'DEFAULT_FROM_EMAIL', 'admin@poorvanchalmatrimony.social')
 
     for attempt in range(1, MAX_RETRIES + 1):
-        if getattr(settings, 'EMAIL_HOST_USER', None):
+        if getattr(settings, 'EMAIL_HOST_USER', None) or _is_testing():
             try:
                 send_mail(
                     subject=subject,
@@ -134,7 +134,7 @@ def _dispatch_contact_email_job(name, sender_email, message_content):
             except Exception as e:
                 logger.warning(f"Resend contact attempt {attempt}/{MAX_RETRIES} failed: {e}")
 
-        if not (getattr(settings, 'EMAIL_HOST_USER', None) or getattr(settings, 'RESEND_API_KEY', None)):
+        if not _is_testing() and not (getattr(settings, 'EMAIL_HOST_USER', None) or getattr(settings, 'RESEND_API_KEY', None)):
             break
 
         if attempt < MAX_RETRIES and not _is_testing():
@@ -175,7 +175,7 @@ Poorvanchal Matrimony
 https://poorvanchalmatrimony.social
 """
     for attempt in range(1, MAX_RETRIES + 1):
-        if getattr(settings, 'EMAIL_HOST_USER', None):
+        if getattr(settings, 'EMAIL_HOST_USER', None) or _is_testing():
             try:
                 send_mail(
                     subject=subject,
@@ -205,7 +205,7 @@ https://poorvanchalmatrimony.social
             except Exception as e:
                 logger.warning(f"Resend attempt {attempt}/{MAX_RETRIES} failed for reset code {user_email}: {e}")
 
-        if not (getattr(settings, 'EMAIL_HOST_USER', None) or getattr(settings, 'RESEND_API_KEY', None)):
+        if not _is_testing() and not (getattr(settings, 'EMAIL_HOST_USER', None) or getattr(settings, 'RESEND_API_KEY', None)):
             break
 
         if attempt < MAX_RETRIES and not _is_testing():
