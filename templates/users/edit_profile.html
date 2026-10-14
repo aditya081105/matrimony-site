@@ -80,7 +80,7 @@
                                        id="id_profile_photo" 
                                        class="form-control" 
                                        accept="image/*">
-                                <div class="form-text small">Accepted formats: JPG, PNG, WEBP (Max 5MB)</div>
+                                <div class="form-text small">Accepted formats: JPG, PNG, WEBP (Max 15MB. Automatically optimized)</div>
                                 {% if form.profile_photo.errors %}
                                     <div class="text-danger small mt-1">
                                         {{ form.profile_photo.errors|striptags }}
@@ -299,6 +299,18 @@
             } else {
                 previewImg.src = originalImgSrc;
                 previewImg.style.opacity = '1';
+            }
+        });
+    }
+
+    // Submit state feedback to prevent double submission and indicate upload progress
+    const editForm = document.getElementById('editProfileForm');
+    if (editForm) {
+        editForm.addEventListener('submit', function() {
+            const btn = editForm.querySelector('button[type="submit"]');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving Changes...';
             }
         });
     }

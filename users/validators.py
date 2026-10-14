@@ -215,15 +215,16 @@ def validate_unique_and_legitimate_email(email: str, exclude_user_id=None) -> st
     return email
 
 
-def validate_image_file(photo, max_size_mb=5):
+def validate_image_file(photo, max_size_mb=15):
     """
     Validates and sanitizes uploaded images:
-    1. Enforces file size limits (default 5MB).
+    1. Enforces file size limits (default 15MB to comfortably accommodate high-res smartphone cameras).
     2. Verifies real image headers/magic bytes using Pillow (rejects disguised executables/scripts).
     3. Enforces safe raster image formats (JPEG, PNG, WEBP).
-    4. Guards against decompression bomb DOS attacks (50x50 to 6000x6000 pixels).
-    5. Strips all EXIF metadata (GPS location coordinates, camera models, timestamps) for user privacy.
-    6. Randomizes filename with a secure UUID to prevent directory traversal or file-probing attacks.
+    4. Guards against decompression bomb DOS attacks (50x50 to 12000x12000 pixels).
+    5. Normalizes camera EXIF orientation and automatically downscales high-res photos to max 1080x1080 for instant mobile loading.
+    6. Strips all EXIF metadata (GPS location coordinates, camera models, timestamps) for user privacy.
+    7. Randomizes filename with a secure UUID to prevent directory traversal or file-probing attacks.
     """
     if not photo:
         return photo
@@ -251,12 +252,12 @@ def validate_image_file(photo, max_size_mb=5):
         if hasattr(photo, 'seek'):
             photo.seek(0)
 
-    # Resolution, decompression bomb check, and EXIF stripping
+    # Resolution, decompression bomb check, EXIF stripping, and downscaling
     try:
         img = Image.open(photo)
         width, height = img.size
-        if width > 6000 or height > 6000:
-            raise ValidationError("Image resolution is too large (maximum 6000x6000 pixels).")
+        if width > 12000 or height > 12000:
+            raise ValidationError("Image resolution is too large (maximum 12000x12000 pixels).")
         if width < 50 or height < 50:
             raise ValidationError("Image resolution is too small (minimum 50x50 pixels).")
 
@@ -266,13 +267,19 @@ def validate_image_file(photo, max_size_mb=5):
         except Exception:
             pass
 
+        # Downscale large mobile phone camera images to web-optimized dimensions (max 1080px bounding box)
+        max_dimension = 1080
+        if max(img.width, img.height) > max_dimension:
+            resample_filter = getattr(Image, 'Resampling', Image).LANCZOS
+            img.thumbnail((max_dimension, max_dimension), resample_filter)
+
         output_fmt = 'PNG' if fmt == 'PNG' else ('WEBP' if fmt == 'WEBP' else 'JPEG')
         if output_fmt == 'JPEG' and img.mode in ('RGBA', 'P', 'LA'):
             img = img.convert('RGB')
 
         clean_buffer = BytesIO()
         # Saving without passing exif parameter strips all EXIF tags including GPS
-        img.save(clean_buffer, format=output_fmt, quality=88, optimize=True)
+        img.save(clean_buffer, format=output_fmt, quality=85, optimize=True)
         clean_buffer.seek(0)
 
         ext = 'png' if output_fmt == 'PNG' else ('webp' if output_fmt == 'WEBP' else 'jpg')
