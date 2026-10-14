@@ -217,11 +217,13 @@ def validate_unique_and_legitimate_email(email: str, exclude_user_id=None) -> st
 
 def validate_image_file(photo, max_size_mb=5):
     """
-    Validates uploaded images to ensure:
-    1. Size is within the limit (default 5MB).
-    2. Real image magic bytes are present and verified by Pillow (not an executable disguised as .jpg).
-    3. The file format is strictly a safe raster image (JPEG, PNG, WEBP).
-    4. Image dimensions are within sane boundaries (preventing decompression bombs).
+    Validates and sanitizes uploaded images:
+    1. Enforces file size limits (default 5MB).
+    2. Verifies real image headers/magic bytes using Pillow (rejects disguised executables/scripts).
+    3. Enforces safe raster image formats (JPEG, PNG, WEBP).
+    4. Guards against decompression bomb DOS attacks (50x50 to 6000x6000 pixels).
+    5. Strips all EXIF metadata (GPS location coordinates, camera models, timestamps) for user privacy.
+    6. Randomizes filename with a secure UUID to prevent directory traversal or file-probing attacks.
     """
     if not photo:
         return photo
@@ -229,7 +231,10 @@ def validate_image_file(photo, max_size_mb=5):
     if hasattr(photo, 'size') and photo.size > max_size_mb * 1024 * 1024:
         raise ValidationError(f"Image file size must be under {max_size_mb}MB.")
 
-    from PIL import Image
+    from PIL import Image, ImageOps
+    from io import BytesIO
+    from django.core.files.uploadedfile import InMemoryUploadedFile
+    import uuid
 
     # Header and magic byte integrity verification
     try:
@@ -246,7 +251,7 @@ def validate_image_file(photo, max_size_mb=5):
         if hasattr(photo, 'seek'):
             photo.seek(0)
 
-    # Resolution and decompression bomb check
+    # Resolution, decompression bomb check, and EXIF stripping
     try:
         img = Image.open(photo)
         width, height = img.size
@@ -254,12 +259,40 @@ def validate_image_file(photo, max_size_mb=5):
             raise ValidationError("Image resolution is too large (maximum 6000x6000 pixels).")
         if width < 50 or height < 50:
             raise ValidationError("Image resolution is too small (minimum 50x50 pixels).")
+
+        # Normalize camera orientation before stripping EXIF tags
+        try:
+            img = ImageOps.exif_transpose(img)
+        except Exception:
+            pass
+
+        output_fmt = 'PNG' if fmt == 'PNG' else ('WEBP' if fmt == 'WEBP' else 'JPEG')
+        if output_fmt == 'JPEG' and img.mode in ('RGBA', 'P', 'LA'):
+            img = img.convert('RGB')
+
+        clean_buffer = BytesIO()
+        # Saving without passing exif parameter strips all EXIF tags including GPS
+        img.save(clean_buffer, format=output_fmt, quality=88, optimize=True)
+        clean_buffer.seek(0)
+
+        ext = 'png' if output_fmt == 'PNG' else ('webp' if output_fmt == 'WEBP' else 'jpg')
+        random_name = f"{uuid.uuid4().hex}.{ext}"
+        content_type = f"image/{ext if ext != 'jpg' else 'jpeg'}"
+
+        sanitized_file = InMemoryUploadedFile(
+            file=clean_buffer,
+            field_name=getattr(photo, 'field_name', 'profile_photo'),
+            name=random_name,
+            content_type=content_type,
+            size=clean_buffer.getbuffer().nbytes,
+            charset=None
+        )
+        return sanitized_file
     except ValidationError:
         raise
     except Exception:
-        raise ValidationError("Unable to verify image dimensions.")
+        raise ValidationError("Unable to process or sanitize image.")
     finally:
         if hasattr(photo, 'seek'):
             photo.seek(0)
 
-    return photo

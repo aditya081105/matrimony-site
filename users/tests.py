@@ -477,6 +477,8 @@ class PasswordResetTests(TestCase):
         cached_data = cache.get("pwd_reset_data_resetuser@gmail.com")
         self.assertIsNotNone(cached_data)
         self.assertEqual(cached_data['user_id'], self.user.id)
+        self.assertIn('code_hash', cached_data)
+        self.assertEqual(len(cached_data['code_hash']), 64)
         self.assertEqual(len(cached_data['code']), 6)
         self.assertTrue(cached_data['code'].isdigit())
 
@@ -559,10 +561,15 @@ class ImageSecurityUploadTest(TestCase):
         img_io.seek(0)
 
         valid_file = SimpleUploadedFile(
-            "avatar.jpg",
+            "my_original_camera_photo_123.jpg",
             img_io.getvalue(),
             content_type="image/jpeg"
         )
         result = self.validate_image_file(valid_file)
-        self.assertEqual(result, valid_file)
+        self.assertIsNotNone(result)
+        self.assertTrue(result.name.endswith('.jpg'))
+        # Original filename must be discarded and replaced with a random UUID
+        self.assertNotEqual(result.name, "my_original_camera_photo_123.jpg")
+        self.assertEqual(len(result.name), 36) # 32 hex chars + .jpg
+
 

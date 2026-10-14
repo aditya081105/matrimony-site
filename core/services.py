@@ -140,8 +140,8 @@ def _dispatch_contact_email_job(name, sender_email, message_content):
         if attempt < MAX_RETRIES and not _is_testing():
             time.sleep(1.5 * attempt)
 
-    logger.info(f"==> CONTACT INQUIRY logged: From {sender_email} ({name}): {message_content}")
-    return True
+    logger.error(f"Failed to deliver contact inquiry email from {sender_email} ({name})")
+    return False
 
 
 def send_contact_email(name, sender_email, message_content):
@@ -211,7 +211,9 @@ https://poorvanchalmatrimony.social
         if attempt < MAX_RETRIES and not _is_testing():
             time.sleep(1.5 * attempt)
 
-    print(f"==> PASSWORD RESET CODE for {user_email}: {code}")
+    logger.error(f"Failed to deliver password reset code to {user_email}")
+    if getattr(settings, 'DEBUG', False) or _is_testing():
+        print(f"==> [DEBUG/TEST] Password reset code for {user_email}: {code}")
     return False
 
 

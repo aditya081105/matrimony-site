@@ -19,21 +19,27 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "t")
 
-ALLOWED_HOSTS = [
-    'localhost',
-    '127.0.0.1',
-    '192.168.29.48',
-    'poorvanchalmatrimony.social',
-    'www.poorvanchalmatrimony.social',
-    'siwan-matrimony.onrender.com',
-]
-CSRF_TRUSTED_ORIGINS = [
-    "https://poorvanchalmatrimony.social",
-    "https://www.poorvanchalmatrimony.social",
-    "https://siwan-matrimony.onrender.com",
-]
+allowed_hosts_env = os.getenv("ALLOWED_HOSTS")
+if allowed_hosts_env:
+    ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_env.split(",") if h.strip()]
+else:
+    ALLOWED_HOSTS = [
+        'localhost',
+        '127.0.0.1',
+        'poorvanchalmatrimony.social',
+        'www.poorvanchalmatrimony.social',
+    ]
+
+csrf_origins_env = os.getenv("CSRF_TRUSTED_ORIGINS")
+if csrf_origins_env:
+    CSRF_TRUSTED_ORIGINS = [o.strip() for o in csrf_origins_env.split(",") if o.strip()]
+else:
+    CSRF_TRUSTED_ORIGINS = [
+        "https://poorvanchalmatrimony.social",
+        "https://www.poorvanchalmatrimony.social",
+    ]
 
 
 
@@ -262,7 +268,7 @@ if REDIS_URL and not TESTING:
             "LOCATION": REDIS_URL,
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
-                "IGNORE_EXCEPTIONS": True,
+                "IGNORE_EXCEPTIONS": False,
             },
             "KEY_PREFIX": "poorvanchal_matrimony",
             "TIMEOUT": 3600,

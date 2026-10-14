@@ -65,12 +65,14 @@ echo "==> [4/7] Checking environment configuration (.env)..."
 if [ ! -f "$APP_DIR/.env" ]; then
     echo "Creating .env from template..."
     cp "$APP_DIR/deploy/.env.example" "$APP_DIR/.env"
+    RANDOM_SECRET=$("$APP_DIR/venv/bin/python" -c "import secrets; print(secrets.token_urlsafe(50))")
+    sed -i "s|change-this-to-a-secure-random-50-character-secret-in-production|$RANDOM_SECRET|g" "$APP_DIR/.env"
 fi
 
 echo "==> [5/7] Collecting static assets and applying database migrations..."
 if [ -f "$APP_DIR/.env" ]; then
-    "$APP_DIR/venv/bin/python" "$APP_DIR/manage.py" collectstatic --noinput || true
-    "$APP_DIR/venv/bin/python" "$APP_DIR/manage.py" migrate || true
+    "$APP_DIR/venv/bin/python" "$APP_DIR/manage.py" collectstatic --noinput
+    "$APP_DIR/venv/bin/python" "$APP_DIR/manage.py" migrate
 fi
 
 echo "==> [6/7] Configuring systemd service..."
