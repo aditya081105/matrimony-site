@@ -58,8 +58,11 @@ class AuthenticatedMemberUser(HttpUser):
     def on_start(self):
         """Authenticates the simulated member session upon worker start."""
         self.is_logged_in = False
-        username = os.getenv("BENCHMARK_USER", "aditya")
-        password = os.getenv("BENCHMARK_PASS", "Aditya@12345")
+        username = os.getenv("BENCHMARK_USER", "")
+        password = os.getenv("BENCHMARK_PASS", "")
+
+        if not username or not password:
+            return
 
         login_res = self.client.get("/login/", name="[Auth] Fetch Login Form")
         csrf_token = login_res.cookies.get("csrftoken")

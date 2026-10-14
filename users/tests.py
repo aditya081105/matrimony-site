@@ -479,15 +479,19 @@ class PasswordResetTests(TestCase):
         self.assertEqual(cached_data['user_id'], self.user.id)
         self.assertIn('code_hash', cached_data)
         self.assertEqual(len(cached_data['code_hash']), 64)
-        self.assertEqual(len(cached_data['code']), 6)
-        self.assertTrue(cached_data['code'].isdigit())
+        # Ensure plaintext code is NEVER stored in cache
+        self.assertNotIn('code', cached_data)
 
     def test_password_reset_verify_flow_and_confirm(self):
-        from django.core.cache import cache
+        from django.core import mail
+        import re
+
         # 1. Request code
         self.client.post('/forgot-password/', {'email': 'resetuser@gmail.com'})
-        cached_data = cache.get("pwd_reset_data_resetuser@gmail.com")
-        valid_code = cached_data['code']
+        self.assertTrue(len(mail.outbox) > 0)
+        match = re.search(r'\b\d{6}\b', mail.outbox[-1].body)
+        self.assertIsNotNone(match)
+        valid_code = match.group(0)
 
         # 2. Enter wrong code
         bad_response = self.client.post('/forgot-password/verify/', {'action': 'verify', 'code': '000000'})
