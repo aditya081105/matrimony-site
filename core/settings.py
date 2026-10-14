@@ -268,7 +268,7 @@ if REDIS_URL and not TESTING:
             "LOCATION": REDIS_URL,
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
-                "IGNORE_EXCEPTIONS": False,
+                "IGNORE_EXCEPTIONS": True,
             },
             "KEY_PREFIX": "poorvanchal_matrimony",
             "TIMEOUT": 3600,

@@ -6,7 +6,7 @@ def update_plan_features(apps, schema_editor):
     plans_data = {
         'silver': {
             'features': (
-                "Send up to 10 requests per day\n"
+                "Send up to 10 contact requests per day\n"
                 "Verified Silver badge on profile\n"
                 "Highlighted profile visibility\n"
                 "Standard customer support"
@@ -14,7 +14,6 @@ def update_plan_features(apps, schema_editor):
         },
         'gold': {
             'features': (
-                "Direct phone and email contact unlock\n"
                 "Unlimited contact requests\n"
                 "Verified Gold badge on profile\n"
                 "Boosted search and matchmaking visibility\n"
@@ -24,7 +23,6 @@ def update_plan_features(apps, schema_editor):
         'diamond': {
             'features': (
                 "All Gold features included\n"
-                "Direct phone and email contact unlock\n"
                 "Top-of-the-list profile placement\n"
                 "Elite Diamond badge on profile\n"
                 "Dedicated relationship manager profile review"
@@ -33,6 +31,12 @@ def update_plan_features(apps, schema_editor):
     }
     for code, data in plans_data.items():
         Plan.objects.filter(code=code).update(features=data['features'])
+
+    try:
+        from core.caching import invalidate_plan_cache
+        invalidate_plan_cache()
+    except Exception:
+        pass
 
 
 def rollback_plan_features(apps, schema_editor):

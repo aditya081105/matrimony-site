@@ -361,9 +361,8 @@ def view_profile(request, user_id):
         status="accepted"
     ).exists()
 
-    # Contact details allowed for mutual match, admin viewing, or premium members
-    is_premium = bool(request.user.is_authenticated and getattr(request.user, 'is_premium', False))
-    is_allowed = is_matched or is_viewer_admin or is_premium
+    # Contact details allowed for mutual match OR admin viewing (privacy-first consent model)
+    is_allowed = is_matched or is_viewer_admin
 
     # pending request object
     pending_request = ContactRequest.objects.filter(
@@ -550,15 +549,17 @@ def resend_verification_email(request):
 
 from django.core.cache import cache
 import hashlib
+import hmac
 import secrets
 from core.services import send_password_reset_code
 from .forms import PasswordResetRequestForm, PasswordResetVerifyForm, PasswordResetSetNewForm
 
 
 def hash_reset_code(email, code):
-    """Computes HMAC-like SHA-256 digest so raw OTP codes are never stored in cache memory."""
-    secret = getattr(settings, 'SECRET_KEY', 'poorvanchal_default_key')
-    return hashlib.sha256(f"{secret}:{email}:{code}".encode()).hexdigest()
+    """Computes true HMAC-SHA256 digest so raw OTP codes are never stored in cache memory."""
+    secret = (getattr(settings, 'SECRET_KEY', None) or 'poorvanchal_default_key').encode('utf-8')
+    message = f"{email.lower().strip()}:{code.strip()}".encode('utf-8')
+    return hmac.new(secret, message, hashlib.sha256).hexdigest()
 
 
 def mask_email(email):
@@ -606,8 +607,6 @@ def password_reset_request(request):
                     'attempts': 0,
                     'created_at': time.time(),
                 }
-                if getattr(settings, 'TESTING', False) or 'test' in sys.argv:
-                    reset_data['code'] = code
                 cache.set(f"pwd_reset_data_{raw_email}", reset_data, timeout=900)
                 send_password_reset_code(user.email, user.full_name or user.username, code)
 
@@ -656,8 +655,6 @@ def password_reset_verify(request):
                     'attempts': 0,
                     'created_at': time.time(),
                 }
-                if getattr(settings, 'TESTING', False) or 'test' in sys.argv:
-                    reset_data['code'] = code
                 cache.set(f"pwd_reset_data_{email}", reset_data, timeout=900)
                 send_password_reset_code(user.email, user.full_name or user.username, code)
 
