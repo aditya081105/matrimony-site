@@ -223,7 +223,7 @@ class UserUpdateForm(forms.ModelForm):
             return False
         photo = self.cleaned_data.get('profile_photo')
         if photo and hasattr(photo, 'file') and 'profile_photo' in self.files:
-            photo = validate_image_file(photo, max_size_mb=15)
+            photo = validate_image_file(photo, max_size_mb=5)
         return photo
 
     class Meta:
@@ -332,7 +332,7 @@ class ProfileForm(forms.ModelForm):
     def clean_profile_photo(self):
         photo = self.cleaned_data.get('profile_photo')
         if photo and hasattr(photo, 'file') and 'profile_photo' in self.files:
-            photo = validate_image_file(photo, max_size_mb=15)
+            photo = validate_image_file(photo, max_size_mb=5)
         return photo
 
 

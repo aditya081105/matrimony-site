@@ -215,10 +215,10 @@ def validate_unique_and_legitimate_email(email: str, exclude_user_id=None) -> st
     return email
 
 
-def validate_image_file(photo, max_size_mb=15):
+def validate_image_file(photo, max_size_mb=5):
     """
     Validates and sanitizes uploaded images:
-    1. Enforces file size limits (default 15MB to comfortably accommodate high-res smartphone cameras).
+    1. Enforces file size limits (default 5MB).
     2. Verifies real image headers/magic bytes using Pillow (rejects disguised executables/scripts).
     3. Enforces safe raster image formats (JPEG, PNG, WEBP).
     4. Guards against decompression bomb DOS attacks (50x50 to 12000x12000 pixels).

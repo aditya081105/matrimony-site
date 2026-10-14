@@ -80,7 +80,7 @@
                                        id="id_profile_photo" 
                                        class="form-control" 
                                        accept="image/*">
-                                <div class="form-text small">Accepted formats: JPG, PNG, WEBP (Max 15MB. Automatically optimized)</div>
+                                <div class="form-text small">Accepted formats: JPG, PNG, WEBP (Max 5MB). High-resolution phone photos are automatically compressed before upload for instant saving.</div>
                                 {% if form.profile_photo.errors %}
                                     <div class="text-danger small mt-1">
                                         {{ form.profile_photo.errors|striptags }}
@@ -258,26 +258,83 @@
 </div>
 
 <script>
-    // Live preview when selecting a new photo
     const photoInput = document.getElementById('id_profile_photo');
     const previewImg = document.getElementById('profilePreviewImg');
     const clearCheckbox = document.getElementById('profile_photo-clear_id');
     const defaultImgSrc = "{% static 'images/default.jpg' %}";
     let originalImgSrc = previewImg ? previewImg.src : defaultImgSrc;
 
+    function compressImageFile(file, maxDimension, quality, callback) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxDimension || height > maxDimension) {
+                    if (width > height) {
+                        height = Math.round((height * maxDimension) / width);
+                        width = maxDimension;
+                    } else {
+                        width = Math.round((width * maxDimension) / height);
+                        height = maxDimension;
+                    }
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob(function(blob) {
+                    callback(blob);
+                }, 'image/jpeg', quality);
+            };
+            img.onerror = function() {
+                callback(null);
+            };
+            img.src = e.target.result;
+        };
+        reader.onerror = function() {
+            callback(null);
+        };
+        reader.readAsDataURL(file);
+    }
+
     if (photoInput && previewImg) {
         photoInput.addEventListener('change', function(e) {
             const file = e.target.files && e.target.files[0];
             if (file) {
-                const reader = new FileReader();
-                reader.onload = function(evt) {
-                    previewImg.src = evt.target.result;
-                    previewImg.style.opacity = '1';
-                };
-                reader.readAsDataURL(file);
-                if (clearCheckbox) {
-                    clearCheckbox.checked = false;
-                }
+                previewImg.style.opacity = '0.5';
+
+                compressImageFile(file, 1080, 0.85, function(blob) {
+                    if (blob) {
+                        previewImg.src = URL.createObjectURL(blob);
+                        previewImg.style.opacity = '1';
+
+                        try {
+                            const dataTransfer = new DataTransfer();
+                            const compressedFile = new File([blob], "profile_photo.jpg", { type: 'image/jpeg' });
+                            dataTransfer.items.add(compressedFile);
+                            photoInput.files = dataTransfer.files;
+                        } catch (err) {
+                            console.warn("Client compression applied to preview", err);
+                        }
+                    } else {
+                        const reader = new FileReader();
+                        reader.onload = function(evt) {
+                            previewImg.src = evt.target.result;
+                            previewImg.style.opacity = '1';
+                        };
+                        reader.readAsDataURL(file);
+                    }
+
+                    if (clearCheckbox) {
+                        clearCheckbox.checked = false;
+                    }
+                });
             } else {
                 if (clearCheckbox && clearCheckbox.checked) {
                     previewImg.src = defaultImgSrc;
