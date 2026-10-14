@@ -40,7 +40,7 @@ def register(request):
 
             messages.success(
                 request,
-                f"Welcome to Siwan Matrimony, {user.full_name or user.username}! Your profile has been created successfully."
+                f"Welcome to Poorvanchal Matrimony, {user.full_name or user.username}! Your profile has been created successfully."
             )
 
             return redirect("home")

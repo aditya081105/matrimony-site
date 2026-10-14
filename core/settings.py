@@ -21,8 +21,17 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.29.48', "siwan-matrimony.onrender.com"]
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '192.168.29.48',
+    'poorvanchalmatrimony.social',
+    'www.poorvanchalmatrimony.social',
+    'siwan-matrimony.onrender.com',
+]
 CSRF_TRUSTED_ORIGINS = [
+    "https://poorvanchalmatrimony.social",
+    "https://www.poorvanchalmatrimony.social",
     "https://siwan-matrimony.onrender.com",
 ]
 
@@ -254,7 +263,7 @@ if REDIS_URL and not TESTING:
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
                 "IGNORE_EXCEPTIONS": True,
             },
-            "KEY_PREFIX": "siwan_matrimony",
+            "KEY_PREFIX": "poorvanchal_matrimony",
             "TIMEOUT": 3600,
         }
     }
@@ -262,7 +271,7 @@ else:
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-            "LOCATION": "siwan-matrimony-locmem",
+            "LOCATION": "poorvanchal-matrimony-locmem",
             "TIMEOUT": 3600,
         }
     }
@@ -279,9 +288,9 @@ EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() in ("true", "1", "t")
 EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", 5))
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", os.getenv("EMAIL_HOST_USER", "Siwan Matrimony <noreply@siwan-matrimony.com>"))
-CONTACT_ADMIN_EMAIL = os.getenv("CONTACT_ADMIN_EMAIL", "admin@siwan-matrimony.com")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", os.getenv("EMAIL_HOST_USER", "Poorvanchal Matrimony <noreply@poorvanchalmatrimony.social>"))
+CONTACT_ADMIN_EMAIL = os.getenv("CONTACT_ADMIN_EMAIL", "admin@poorvanchalmatrimony.social")
 
 # Payment & UPI Configurations
-UPI_ID = os.getenv("UPI_ID", "payments@siwanmatrimony")
-UPI_NAME = os.getenv("UPI_NAME", "Siwan Matrimony")
+UPI_ID = os.getenv("UPI_ID", "payments@poorvanchalmatrimony")
+UPI_NAME = os.getenv("UPI_NAME", "Poorvanchal Matrimony")

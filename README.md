@@ -1,4 +1,4 @@
-# Siwan Matrimony
+# Poorvanchal Matrimony
 
 [![Django CI Pipeline](https://github.com/aditya081105/matrimony-site/actions/workflows/ci.yml/badge.svg)](https://github.com/aditya081105/matrimony-site/actions/workflows/ci.yml)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/)
@@ -8,7 +8,7 @@
 
 A full-stack community matrimonial web platform built with Django 6, PostgreSQL, and Bootstrap 5. Designed for localized community networking with mutual interest matching, privacy controls, manual UPI QR verification flow, transactional email alerts, and cache-aside read optimization.
 
-**Live Production URL:** [https://siwan-matrimony.onrender.com/](https://siwan-matrimony.onrender.com/)
+**Production Domain:** [https://poorvanchalmatrimony.social](https://poorvanchalmatrimony.social) (Legacy mirror: [https://siwan-matrimony.onrender.com/](https://siwan-matrimony.onrender.com/))
 
 ---
 

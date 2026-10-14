@@ -76,9 +76,9 @@ def plans_view(request):
 def checkout_view(request, plan_code):
     plan = get_object_or_404(Plan, code=plan_code, is_active=True)
 
-    upi_id = getattr(settings, 'UPI_ID', 'payments@siwanmatrimony')
-    upi_name = getattr(settings, 'UPI_NAME', 'Siwan Matrimony')
-    transaction_note = f"SiwanMatrimony_{plan.code}_{request.user.id}"
+    upi_id = getattr(settings, 'UPI_ID', 'payments@poorvanchalmatrimony')
+    upi_name = getattr(settings, 'UPI_NAME', 'Poorvanchal Matrimony')
+    transaction_note = f"PoorvanchalMatrimony_{plan.code}_{request.user.id}"
 
     # Check if a custom uploaded QR code exists in static/images
     custom_qr_image = None

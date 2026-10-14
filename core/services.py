@@ -23,14 +23,14 @@ MAX_RETRIES = 3
 
 
 def _dispatch_email_job(user_email, user_name, verify_link):
-    subject = "Verify your email - Siwan Matrimony"
-    message = f"""Welcome to Siwan Matrimony, {user_name}!
+    subject = "Verify your email - Poorvanchal Matrimony"
+    message = f"""Welcome to Poorvanchal Matrimony, {user_name}!
 
 Please verify your email address to unlock matchmaking and contact requests:
 
 {verify_link}
 
-If you did not register for Siwan Matrimony, please ignore this email.
+If you did not register for Poorvanchal Matrimony, please ignore this email.
 """
 
     for attempt in range(1, MAX_RETRIES + 1):
@@ -102,7 +102,7 @@ def send_verification_email(request, user):
 def _dispatch_contact_email_job(name, sender_email, message_content):
     subject = f"Contact Form Inquiry - {name}"
     body = f"Name: {name}\nEmail: {sender_email}\n\nMessage:\n{message_content}"
-    admin_email = getattr(settings, 'CONTACT_ADMIN_EMAIL', None) or getattr(settings, 'DEFAULT_FROM_EMAIL', 'admin@siwan-matrimony.com')
+    admin_email = getattr(settings, 'CONTACT_ADMIN_EMAIL', None) or getattr(settings, 'DEFAULT_FROM_EMAIL', 'admin@poorvanchalmatrimony.social')
 
     for attempt in range(1, MAX_RETRIES + 1):
         if getattr(settings, 'EMAIL_HOST_USER', None):
