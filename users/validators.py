@@ -229,7 +229,9 @@ def validate_image_file(photo, max_size_mb=5):
     if not photo:
         return photo
 
-    if hasattr(photo, 'size') and photo.size > max_size_mb * 1024 * 1024:
+    # Enforce strict decimal limit (5,000,000 bytes) to match phone camera file pickers
+    max_bytes = max_size_mb * 1000 * 1000
+    if hasattr(photo, 'size') and photo.size > max_bytes:
         raise ValidationError(f"Image file size must be under {max_size_mb}MB.")
 
     from PIL import Image, ImageOps
