@@ -576,4 +576,63 @@ class ImageSecurityUploadTest(TestCase):
         self.assertNotEqual(result.name, "my_original_camera_photo_123.jpg")
         self.assertEqual(len(result.name), 36) # 32 hex chars + .jpg
 
+    def test_old_photo_deleted_on_replacement_or_clear(self):
+        from io import BytesIO
+        from PIL import Image
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.core.files.storage import default_storage
+        from users.models import CustomUser
+        from users.forms import UserUpdateForm
+
+        user = CustomUser.objects.create_user(
+            username='photouser',
+            email='photouser@gmail.com',
+            password='TestPassword123!',
+            phone_number='9876543210'
+        )
+
+        def make_image_file(name):
+            io = BytesIO()
+            Image.new('RGB', (80, 80), color='blue').save(io, format='JPEG')
+            io.seek(0)
+            return SimpleUploadedFile(name, io.getvalue(), content_type='image/jpeg')
+
+        # First upload
+        form1 = UserUpdateForm(
+            data={'full_name': 'Photo User', 'email': 'photouser@gmail.com', 'gender': 'M', 'phone_number': '9876543210'},
+            files={'profile_photo': make_image_file('photo1.jpg')},
+            instance=user
+        )
+        self.assertTrue(form1.is_valid(), form1.errors)
+        u1 = form1.save()
+        first_photo = u1.profile_photo.name
+        self.assertTrue(default_storage.exists(first_photo))
+
+        # Second upload (replace photo)
+        form2 = UserUpdateForm(
+            data={'full_name': 'Photo User', 'email': 'photouser@gmail.com', 'gender': 'M', 'phone_number': '9876543210'},
+            files={'profile_photo': make_image_file('photo2.jpg')},
+            instance=u1
+        )
+        self.assertTrue(form2.is_valid(), form2.errors)
+        u2 = form2.save()
+        second_photo = u2.profile_photo.name
+        self.assertNotEqual(first_photo, second_photo)
+        self.assertTrue(default_storage.exists(second_photo))
+        # First photo must be deleted from disk
+        self.assertFalse(default_storage.exists(first_photo))
+
+        # Third step (clear photo)
+        form3 = UserUpdateForm(
+            data={'full_name': 'Photo User', 'email': 'photouser@gmail.com', 'gender': 'M', 'phone_number': '9876543210', 'profile_photo-clear': 'on'},
+            files={},
+            instance=u2
+        )
+        self.assertTrue(form3.is_valid(), form3.errors)
+        u3 = form3.save()
+        self.assertFalse(bool(u3.profile_photo))
+        # Second photo must now also be deleted from disk
+        self.assertFalse(default_storage.exists(second_photo))
+
+
 
