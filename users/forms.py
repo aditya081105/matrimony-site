@@ -222,8 +222,8 @@ class UserUpdateForm(forms.ModelForm):
         if self.data.get('profile_photo-clear') or self.data.get('remove_profile_photo'):
             return False
         photo = self.cleaned_data.get('profile_photo')
-        if photo and hasattr(photo, 'file'):
-            photo = validate_image_file(photo, max_size_mb=5)
+        if photo and hasattr(photo, 'file') and 'profile_photo' in self.files:
+            photo = validate_image_file(photo, max_size_mb=15)
         return photo
 
     class Meta:
@@ -331,8 +331,8 @@ class ProfileForm(forms.ModelForm):
 
     def clean_profile_photo(self):
         photo = self.cleaned_data.get('profile_photo')
-        if photo and hasattr(photo, 'file'):
-            photo = validate_image_file(photo, max_size_mb=5)
+        if photo and hasattr(photo, 'file') and 'profile_photo' in self.files:
+            photo = validate_image_file(photo, max_size_mb=15)
         return photo
 
 
