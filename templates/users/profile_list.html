@@ -13,7 +13,13 @@
 
 <div class="collapse d-md-block" id="filterPanel">
 
-<form method="GET" class="card shadow-sm border-0 rounded-4 p-4 mb-4">
+<form method="GET"
+      action="{% url 'profile_list' %}"
+      hx-get="{% url 'profile_list' %}"
+      hx-target="#profiles-grid-container"
+      hx-indicator="#filter-indicator"
+      hx-push-url="true"
+      class="card shadow-sm border-0 rounded-4 p-4 mb-4">
 
     <div class="d-flex justify-content-between align-items-center mb-3">
 
@@ -133,6 +139,10 @@
             </button>
 
             <a href="{% url 'profile_list' %}"
+               hx-get="{% url 'profile_list' %}"
+               hx-target="#profiles-grid-container"
+               hx-indicator="#filter-indicator"
+               hx-push-url="true"
                class="btn btn-outline-secondary w-100 rounded-pill">
                 Reset
             </a>
@@ -144,254 +154,38 @@
 </form>
 </div>
 
-{% if request.GET %}
-<div class="mb-4">
-
-    <div class="d-flex flex-wrap gap-2 align-items-center">
-
-        <span class="text-muted small">Active Filters:</span>
-
-        {% if request.GET.gender %}
-            <span class="badge bg-dark rounded-pill px-3 py-2">
-                Gender: {{ request.GET.gender }}
-            </span>
-        {% endif %}
-
-        {% if request.GET.min_age %}
-            <span class="badge bg-secondary rounded-pill px-3 py-2">
-                Min Age: {{ request.GET.min_age }}
-            </span>
-        {% endif %}
-
-        {% if request.GET.max_age %}
-            <span class="badge bg-secondary rounded-pill px-3 py-2">
-                Max Age: {{ request.GET.max_age }}
-            </span>
-        {% endif %}
-
-        {% if request.GET.min_height %}
-            <span class="badge bg-secondary rounded-pill px-3 py-2">
-                Min Height: {{ request.GET.min_height }} cm
-            </span>
-        {% endif %}
-
-        {% if request.GET.max_height %}
-            <span class="badge bg-secondary rounded-pill px-3 py-2">
-                Max Height: {{ request.GET.max_height }} cm
-            </span>
-        {% endif %}
-
-        {% if request.GET.city %}
-            <span class="badge bg-secondary rounded-pill px-3 py-2">
-                City Selected
-            </span>
-        {% endif %}
-
-        {% if request.GET.caste %}
-            <span class="badge bg-secondary rounded-pill px-3 py-2">
-                Caste: {{ request.GET.caste }}
-            </span>
-        {% endif %}
-
-        <a href="{% url 'profile_list' %}"
-           class="badge bg-danger rounded-pill px-3 py-2 text-decoration-none">
-            Clear All
-        </a>
-
-    </div>
-
-</div>
-{% endif %}
-
-<div class="row g-4 mb-4">
-
-{% for profile in page_obj %}
-<div class="col-lg-4 col-md-6 mb-4">
-
-    <div class="card shadow-sm border-0 rounded-4 position-relative matchmaking-card">
-
-        <!-- 3 Dot Menu -->
-        <div class="dropdown position-absolute top-0 end-0 m-3">
-            <button class="btn btn-sm btn-light rounded-circle"
-                    data-bs-toggle="dropdown">
-                ⋮
-            </button>
-
-            <ul class="dropdown-menu dropdown-menu-end">
-
-                {% if profile.id in saved_ids %}
-
-                <li>
-                    <form method="POST" action="{% url 'toggle_save' profile.id %}" class="d-inline w-100">
-                        {% csrf_token %}
-                        <button type="submit" class="dropdown-item border-0 bg-transparent">
-                            Remove Saved
-                        </button>
-                    </form>
-                </li>
-
-                {% else %}
-
-                <li>
-                    <form method="POST" action="{% url 'toggle_save' profile.id %}" class="d-inline w-100">
-                        {% csrf_token %}
-                        <button type="submit" class="dropdown-item border-0 bg-transparent">
-                            Save Profile
-                        </button>
-                    </form>
-                </li>
-                {% endif %}
-
-                <li>
-                    <form method="POST" action="{% url 'block_user' profile.id %}" class="d-inline w-100">
-                        {% csrf_token %}
-                        <button type="submit" class="dropdown-item text-danger border-0 bg-transparent">
-                            Block
-                        </button>
-                    </form>
-                </li>
-                <li>
-                    <a class="dropdown-item"
-                       href="{% url 'report_user' profile.id %}">
-                        Report
-                    </a>
-                </li>
-            </ul>
+<!-- Skeleton Shimmer Loading Indicator for Filters & Pagination -->
+<div id="filter-indicator" class="htmx-indicator mb-4">
+    <div class="row g-4 w-100">
+        <div class="col-lg-4 col-md-6">
+            <div class="card border-0 rounded-4 p-4 shadow-sm text-center">
+                <div class="skeleton-shimmer rounded-circle mx-auto mb-3" style="width: 70px; height: 70px;"></div>
+                <div class="skeleton-shimmer mx-auto mb-2" style="width: 60%; height: 20px;"></div>
+                <div class="skeleton-shimmer mx-auto mb-3" style="width: 40%; height: 14px;"></div>
+                <div class="skeleton-shimmer mx-auto" style="width: 100%; height: 32px; border-radius: 50rem;"></div>
+            </div>
         </div>
-
-        <div class="card-body p-4">
-
-            <!-- Top Row -->
-            <div class="d-flex align-items-center">
-
-                <a href="{% url 'view_profile' profile.id %}">
-                    {% if profile.profile_photo %}
-                        <img src="{{ profile.profile_photo.url }}"
-                            onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';"
-                            class="rounded-circle me-3"
-                            style="width:70px;height:70px;object-fit:cover;">
-                    {% elif profile.profile.profile_photo %}
-                        <img src="{{ profile.profile.profile_photo.url }}"
-                            onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';"
-                            class="rounded-circle me-3"
-                            style="width:70px;height:70px;object-fit:cover;">
-                    {% else %}
-                        <img src="{% static 'images/default.jpg' %}"
-                            class="rounded-circle me-3"
-                            style="width:70px;height:70px;object-fit:cover;">
-                    {% endif %}
-                </a>
-
-                <div class="flex-grow-1">
-
-                    <h6 class="fw-semibold mb-0 d-flex align-items-center flex-wrap gap-1">
-                        <span>{{ profile.full_name }}</span>
-                        {% include 'includes/tier_badge.html' with badge_user=profile %}
-                    </h6>
-
-                    <div class="small text-muted mb-1">
-                        @{{ profile.username }}
-                    </div>
-
-                    <div class="small text-muted">
-
-                        {% if profile.age %}
-                        {{ profile.age }} yrs
-                        {% endif %}
-
-                        {% if profile.height_cm %}
-                        • {{ profile.height_cm }} cm
-                        {% endif %}
-
-                    </div>
-
-                </div>
-
+        <div class="col-lg-4 col-md-6 d-none d-md-block">
+            <div class="card border-0 rounded-4 p-4 shadow-sm text-center">
+                <div class="skeleton-shimmer rounded-circle mx-auto mb-3" style="width: 70px; height: 70px;"></div>
+                <div class="skeleton-shimmer mx-auto mb-2" style="width: 60%; height: 20px;"></div>
+                <div class="skeleton-shimmer mx-auto mb-3" style="width: 40%; height: 14px;"></div>
+                <div class="skeleton-shimmer mx-auto" style="width: 100%; height: 32px; border-radius: 50rem;"></div>
             </div>
-
-            <!-- Secondary Info -->
-            <div class="mt-3 small text-muted">
-
-                {{ profile.city|default:"City not specified" }}
-
-                <br>
-
-                {{ profile.display_caste|default:profile.caste_community|default:"Community not specified" }}
-
+        </div>
+        <div class="col-lg-4 d-none d-lg-block">
+            <div class="card border-0 rounded-4 p-4 shadow-sm text-center">
+                <div class="skeleton-shimmer rounded-circle mx-auto mb-3" style="width: 70px; height: 70px;"></div>
+                <div class="skeleton-shimmer mx-auto mb-2" style="width: 60%; height: 20px;"></div>
+                <div class="skeleton-shimmer mx-auto mb-3" style="width: 40%; height: 14px;"></div>
+                <div class="skeleton-shimmer mx-auto" style="width: 100%; height: 32px; border-radius: 50rem;"></div>
             </div>
-
-            <hr class="my-3">
-
-            <!-- Action Buttons -->
-            <a href="{% url 'view_profile' profile.id %}"
-            class="btn btn-outline-dark btn-sm w-100 mb-2 rounded-pill">
-                View Profile
-            </a>
-
-            {% if profile.id in accepted_user_ids %}
-
-                <span class="badge bg-success w-100 py-2 rounded-pill">
-                    Contact Unlocked
-                </span>
-
-            {% elif profile.id in pending_user_ids %}
-
-                <button class="btn btn-secondary btn-sm w-100 rounded-pill mb-2" disabled>
-                    Request Pending
-                </button>
-
-                <form method="POST" action="{% url 'cancel_request' profile.id %}">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-outline-danger btn-sm w-100 rounded-pill">
-                        Cancel Request
-                    </button>
-                </form>
-
-            {% else %}
-
-                <form method="POST" action="{% url 'send_request' profile.id %}">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-dark btn-sm w-100 rounded-pill">
-                        Request Contact
-                    </button>
-                </form>
-
-            {% endif %}
-
         </div>
     </div>
 </div>
 
-<!-- existing card -->
-{% empty %}
-    <div class="text-center py-5">
-        <h5 class="text-muted">No profiles found.</h5>
-        <p class="text-muted">Try adjusting your filters.</p>
-    </div>
-{% endfor %}
-
-</div>
-
-<div class="mt-auto text-center pt-4 pb-3">
-
-{% if page_obj.has_previous %}
-<a href="?page={{ page_obj.previous_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode|safe }}{% endif %}"
-class="btn btn-outline-dark btn-sm">
-Previous
-</a>
-{% endif %}
-
-<span class="mx-2">
-Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-</span>
-
-{% if page_obj.has_next %}
-<a href="?page={{ page_obj.next_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode|safe }}{% endif %}"
-class="btn btn-outline-dark btn-sm">
-Next
-</a>
-{% endif %}
-
+<div id="profiles-grid-container">
+    {% include 'users/includes/profile_grid.html' %}
 </div>
 </div>
 {% endblock %}

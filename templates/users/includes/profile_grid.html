@@ -1,0 +1,214 @@
+{% load static %}
+
+{% if request.GET.gender or request.GET.min_age or request.GET.max_age or request.GET.min_height or request.GET.max_height or request.GET.city or request.GET.caste %}
+<div class="mb-4">
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <span class="text-muted small">Active Filters:</span>
+
+        {% if request.GET.gender %}
+            <span class="badge bg-dark rounded-pill px-3 py-2">
+                Gender: {{ request.GET.gender }}
+            </span>
+        {% endif %}
+
+        {% if request.GET.min_age %}
+            <span class="badge bg-secondary rounded-pill px-3 py-2">
+                Min Age: {{ request.GET.min_age }}
+            </span>
+        {% endif %}
+
+        {% if request.GET.max_age %}
+            <span class="badge bg-secondary rounded-pill px-3 py-2">
+                Max Age: {{ request.GET.max_age }}
+            </span>
+        {% endif %}
+
+        {% if request.GET.min_height %}
+            <span class="badge bg-secondary rounded-pill px-3 py-2">
+                Min Height: {{ request.GET.min_height }} cm
+            </span>
+        {% endif %}
+
+        {% if request.GET.max_height %}
+            <span class="badge bg-secondary rounded-pill px-3 py-2">
+                Max Height: {{ request.GET.max_height }} cm
+            </span>
+        {% endif %}
+
+        {% if request.GET.city %}
+            <span class="badge bg-secondary rounded-pill px-3 py-2">
+                City Selected
+            </span>
+        {% endif %}
+
+        {% if request.GET.caste %}
+            <span class="badge bg-secondary rounded-pill px-3 py-2">
+                Caste: {{ request.GET.caste }}
+            </span>
+        {% endif %}
+
+        <a href="{% url 'profile_list' %}"
+           hx-get="{% url 'profile_list' %}"
+           hx-target="#profiles-grid-container"
+           hx-indicator="#filter-indicator"
+           hx-push-url="true"
+           class="badge bg-danger rounded-pill px-3 py-2 text-decoration-none">
+            Clear All
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<div class="row g-4 mb-4">
+{% for profile in page_obj %}
+<div class="col-lg-4 col-md-6 mb-4 profile-card-col">
+
+    <div class="card modern-profile-card shadow-sm border-0 rounded-4 position-relative h-100">
+
+        <!-- 3-Dot Options Dropdown -->
+        <div class="dropdown position-absolute top-0 end-0 m-3 z-2">
+            <button class="btn btn-sm btn-light rounded-circle border shadow-sm"
+                    type="button"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                    style="width: 32px; height: 32px; line-height: 1;">
+                ⋮
+            </button>
+
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
+                {% if profile.id in saved_ids %}
+                    {% include 'communications/includes/save_button.html' with target_id=profile.id is_saved=True %}
+                {% else %}
+                    {% include 'communications/includes/save_button.html' with target_id=profile.id is_saved=False %}
+                {% endif %}
+
+                <li>
+                    <form method="POST"
+                          action="{% url 'block_user' profile.id %}"
+                          hx-post="{% url 'block_user' profile.id %}"
+                          hx-target="closest .profile-card-col"
+                          hx-swap="outerHTML"
+                          class="d-inline w-100">
+                        {% csrf_token %}
+                        <button type="submit" class="dropdown-item text-danger border-0 bg-transparent">
+                            Block
+                        </button>
+                    </form>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="{% url 'report_user' profile.id %}">
+                        Report
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card-body p-4 d-flex flex-column">
+
+            <!-- Profile Summary Row -->
+            <div class="d-flex align-items-center">
+                <a href="{% url 'view_profile' profile.id %}">
+                    {% if profile.profile_photo %}
+                        <img src="{{ profile.profile_photo.url }}"
+                             onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';"
+                             alt="{{ profile.full_name }}"
+                             class="rounded-circle me-3 shadow-sm"
+                             style="width:70px; height:70px; object-fit:cover; border: 2px solid #f1f5f9;">
+                    {% elif profile.profile.profile_photo %}
+                        <img src="{{ profile.profile.profile_photo.url }}"
+                             onerror="this.onerror=null; this.src='{% static 'images/default.jpg' %}';"
+                             alt="{{ profile.full_name }}"
+                             class="rounded-circle me-3 shadow-sm"
+                             style="width:70px; height:70px; object-fit:cover; border: 2px solid #f1f5f9;">
+                    {% else %}
+                        <img src="{% static 'images/default.jpg' %}"
+                             alt="{{ profile.full_name }}"
+                             class="rounded-circle me-3 shadow-sm"
+                             style="width:70px; height:70px; object-fit:cover; border: 2px solid #f1f5f9;">
+                    {% endif %}
+                </a>
+
+                <div class="flex-grow-1 overflow-hidden pe-3">
+                    <h6 class="fw-semibold mb-0 d-flex align-items-center flex-wrap gap-1 text-truncate">
+                        <a href="{% url 'view_profile' profile.id %}" class="text-dark text-decoration-none">
+                            {{ profile.full_name }}
+                        </a>
+                        {% include 'includes/tier_badge.html' with badge_user=profile %}
+                    </h6>
+
+                    <div class="small text-muted mb-1 text-truncate">
+                        @{{ profile.username }}
+                    </div>
+
+                    <div class="small text-muted">
+                        {% if profile.age %}
+                            {{ profile.age }} yrs
+                        {% endif %}
+                        {% if profile.height_cm %}
+                            • {{ profile.height_cm }} cm
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Demographics & Location -->
+            <div class="mt-3 small text-muted">
+                <div>{{ profile.city|default:"City not specified" }}</div>
+                <div>{{ profile.display_caste|default:profile.caste_community|default:"Community not specified" }}</div>
+            </div>
+
+            <hr class="my-3 opacity-25">
+
+            <!-- Card Actions -->
+            <div class="mt-auto d-flex flex-column gap-2">
+                <a href="{% url 'view_profile' profile.id %}"
+                   class="btn btn-outline-dark btn-sm w-100 rounded-pill py-1.5 fw-semibold">
+                    View Profile
+                </a>
+
+                {% include 'communications/includes/contact_button.html' with target_user=profile %}
+            </div>
+
+        </div>
+    </div>
+</div>
+{% empty %}
+    <div class="col-12 text-center py-5">
+        <h5 class="text-muted fw-semibold">No profiles found</h5>
+        <p class="text-muted small">Try adjusting your filters or clearing search criteria.</p>
+    </div>
+{% endfor %}
+</div>
+
+<!-- Reactive HTMX Pagination -->
+{% if page_obj.paginator.num_pages > 1 %}
+<div class="mt-auto text-center pt-4 pb-3">
+
+    {% if page_obj.has_previous %}
+    <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode|safe }}{% endif %}"
+       hx-get="?page={{ page_obj.previous_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode|safe }}{% endif %}"
+       hx-target="#profiles-grid-container"
+       hx-indicator="#filter-indicator"
+       hx-push-url="true"
+       class="btn btn-outline-dark btn-sm rounded-pill px-3">
+        Previous
+    </a>
+    {% endif %}
+
+    <span class="mx-3 small text-muted">
+        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+    </span>
+
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode|safe }}{% endif %}"
+       hx-get="?page={{ page_obj.next_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode|safe }}{% endif %}"
+       hx-target="#profiles-grid-container"
+       hx-indicator="#filter-indicator"
+       hx-push-url="true"
+       class="btn btn-outline-dark btn-sm rounded-pill px-3">
+        Next
+    </a>
+    {% endif %}
+
+</div>
+{% endif %}

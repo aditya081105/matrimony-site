@@ -98,3 +98,15 @@ class SearchTests(TestCase):
         response = self.client.get(reverse('search_profiles'), {'q': 'Doctor'})
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Pooja Verma")
+
+    def test_search_htmx_partial_render(self):
+        response = self.client.get(
+            reverse('search_profiles'),
+            {'q': 'Doctor'},
+            HTTP_HX_REQUEST='true'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'search/includes/results_list.html')
+        self.assertTemplateNotUsed(response, 'base.html')
+        self.assertContains(response, "Pooja Verma")
+        self.assertContains(response, 'contact-action-')

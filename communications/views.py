@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib import messages
@@ -28,16 +29,35 @@ def safe_redirect(request, fallback="profile_list"):
 @login_required
 @require_POST
 def send_request(request, user_id):
+    is_htmx = bool(request.headers.get('HX-Request'))
 
     if request.user.is_suspended:
+        if is_htmx:
+            return render(request, "communications/includes/contact_button.html", {
+                "target_user": CustomUser(id=user_id),
+                "status": "none",
+                "error_message": "Your account has been suspended."
+            })
         messages.error(request, "Your account has been suspended.")
         return redirect("home")
 
     if not request.user.is_approved:
+        if is_htmx:
+            return render(request, "communications/includes/contact_button.html", {
+                "target_user": CustomUser(id=user_id),
+                "status": "none",
+                "error_message": "Your account is pending approval."
+            })
         messages.error(request, "Your account is pending approval.")
         return redirect('home')
     
     if not request.user.is_email_verified:
+        if is_htmx:
+            return render(request, "communications/includes/contact_button.html", {
+                "target_user": CustomUser(id=user_id),
+                "status": "none",
+                "error_message": "Verify your email first."
+            })
         messages.error(request, "Verify your email first.")
         return redirect("home")
 
@@ -47,12 +67,24 @@ def send_request(request, user_id):
         request.user.city,
         request.user.profile_photo,
     ]):
+        if is_htmx:
+            return render(request, "communications/includes/contact_button.html", {
+                "target_user": CustomUser(id=user_id),
+                "status": "none",
+                "error_message": "Complete your profile before sending requests."
+            })
         messages.error(request, "Complete your profile before sending requests.")
         return redirect("edit_profile")
 
     receiver = get_object_or_404(CustomUser, id=user_id)
 
     if receiver.is_staff or receiver.is_superuser:
+        if is_htmx:
+            return render(request, "communications/includes/contact_button.html", {
+                "target_user": receiver,
+                "status": "none",
+                "error_message": "This account is unavailable."
+            })
         messages.error(request, "This account is unavailable.")
         return redirect('profile_list')
 
@@ -62,6 +94,11 @@ def send_request(request, user_id):
         Q(sender=request.user, receiver=receiver) |
         Q(sender=receiver, receiver=request.user)
     ).exists():
+        if is_htmx:
+            return render(request, "communications/includes/contact_button.html", {
+                "target_user": receiver,
+                "status": "accepted"
+            })
         messages.info(request, "You are already matched with this user.")
         return redirect("profile_list")
 
@@ -70,6 +107,12 @@ def send_request(request, user_id):
         return redirect("profile_list")
 
     if receiver.is_suspended:
+        if is_htmx:
+            return render(request, "communications/includes/contact_button.html", {
+                "target_user": receiver,
+                "status": "none",
+                "error_message": "This account is unavailable."
+            })
         messages.error(request, "This account is unavailable.")
         return redirect('profile_list')
 
@@ -87,11 +130,22 @@ def send_request(request, user_id):
         ).exists()
 
         if is_blocked:
+            if is_htmx:
+                return render(request, "communications/includes/contact_button.html", {
+                    "target_user": receiver,
+                    "status": "none",
+                    "error_message": "You cannot interact with this user."
+                })
             messages.error(request, "You cannot interact with this user.")
             return redirect('profile_list')
 
         # Prevent duplicate requests in same direction
         if ContactRequest.objects.filter(sender=request.user, receiver=receiver, status='pending').exists():
+            if is_htmx:
+                return render(request, "communications/includes/contact_button.html", {
+                    "target_user": receiver,
+                    "status": "pending"
+                })
             messages.info(request, "You have already sent a pending request to this user.")
             return redirect("profile_list")
 
@@ -113,6 +167,11 @@ def send_request(request, user_id):
                 target_user=receiver,
                 action='accept_request'
             )
+            if is_htmx:
+                return render(request, "communications/includes/contact_button.html", {
+                    "target_user": receiver,
+                    "status": "accepted"
+                })
             messages.success(request, f"It's a match! You and {receiver.full_name} are now connected.")
             return safe_redirect(request, "profile_list")
 
@@ -131,6 +190,13 @@ def send_request(request, user_id):
         is_admin = bool(request.user.is_staff or request.user.is_superuser)
 
         if not is_admin and receiver_daily_attempts >= 3:
+            err_msg = f"Daily contact limit (3) reached for {receiver.full_name or receiver.username}."
+            if is_htmx:
+                return render(request, "communications/includes/contact_button.html", {
+                    "target_user": receiver,
+                    "status": "none",
+                    "error_message": err_msg
+                })
             messages.error(
                 request,
                 f"For member safety and privacy, you can only send up to 3 contact attempts to {receiver.full_name or receiver.username} in a single day. You can still send contact requests to other profiles."
@@ -149,6 +215,13 @@ def send_request(request, user_id):
 
         if total_daily_attempts >= daily_limit:
             tier_name = "Silver" if tier == "silver" else "Free"
+            err_msg = f"Daily contact limit of {daily_limit} reached for your {tier_name} plan."
+            if is_htmx:
+                return render(request, "communications/includes/contact_button.html", {
+                    "target_user": receiver,
+                    "status": "none",
+                    "error_message": err_msg
+                })
             messages.error(
                 request,
                 f"Daily contact request limit of {daily_limit} reached for your {tier_name} plan. Upgrade to Gold for unlimited requests."
@@ -172,6 +245,11 @@ def send_request(request, user_id):
             action='send_request'
         )
 
+    if is_htmx:
+        return render(request, "communications/includes/contact_button.html", {
+            "target_user": receiver,
+            "status": "pending"
+        })
     messages.success(request, f"Contact request sent to {receiver.full_name}.")
     return safe_redirect(request, "profile_list")
 
@@ -186,6 +264,8 @@ def update_request(request, request_id, action):
         )
 
         if contact_request.status != 'pending':
+            if request.headers.get('HX-Request'):
+                return render(request, 'communications/includes/request_action_status.html', {'contact_request': contact_request})
             messages.info(request, "This request has already been processed.")
             return redirect('received_requests')
 
@@ -209,6 +289,9 @@ def update_request(request, request_id, action):
             )
 
         contact_request.save()
+
+    if request.headers.get('HX-Request'):
+        return render(request, 'communications/includes/request_action_status.html', {'contact_request': contact_request})
     return redirect('received_requests')
 
 @login_required
@@ -242,11 +325,18 @@ def unmatch(request, user_id):
 @login_required
 @require_POST
 def cancel_request(request, user_id):
+    receiver = get_object_or_404(CustomUser, id=user_id)
     ContactRequest.objects.filter(
         sender=request.user,
-        receiver_id=user_id,
+        receiver=receiver,
         status='pending'
     ).delete()
+
+    if request.headers.get('HX-Request'):
+        return render(request, "communications/includes/contact_button.html", {
+            "target_user": receiver,
+            "status": "none"
+        })
 
     messages.success(request, "Request cancelled.")
     return safe_redirect(request, 'profile_list')
@@ -285,14 +375,21 @@ def block_user(request, user_id):
         Q(user=target, saved_user=request.user)
     ).delete()
 
-    messages.success(request, "User blocked.")
-
     ActivityLog.objects.create(
         user=request.user,
         target_user=target,
         action='block_user'
     )
 
+    if request.headers.get('HX-Request'):
+        return HttpResponse(
+            '<div class="col-lg-4 col-md-6 mb-4">'
+            '<div class="card border-0 rounded-4 p-4 text-center bg-light text-muted small shadow-sm">'
+            'Profile blocked and removed from view.'
+            '</div></div>'
+        )
+
+    messages.success(request, "User blocked.")
     return redirect('profile_list')
 
 @login_required
@@ -381,6 +478,12 @@ def toggle_save(request, user_id):
 
     if not created:
         obj.delete()
+
+    if request.headers.get('HX-Request'):
+        return render(request, 'communications/includes/save_button.html', {
+            'target_id': target.id,
+            'is_saved': created
+        })
 
     return safe_redirect(request, "profile_list")
 

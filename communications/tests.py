@@ -208,6 +208,70 @@ class CommunicationTests(TestCase):
                 f"Endpoint {endpoint} allowed GET but must require POST"
             )
 
+    def test_send_request_htmx(self):
+        response = self.client.post(
+            reverse("send_request", args=[self.user2.id]),
+            HTTP_HX_REQUEST="true"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "communications/includes/contact_button.html")
+        self.assertContains(response, "Request Pending")
+        self.assertContains(response, "Cancel Request")
+
+    def test_cancel_request_htmx(self):
+        ContactRequest.objects.create(
+            sender=self.user1,
+            receiver=self.user2,
+            status="pending"
+        )
+        response = self.client.post(
+            reverse("cancel_request", args=[self.user2.id]),
+            HTTP_HX_REQUEST="true"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "communications/includes/contact_button.html")
+        self.assertContains(response, "Request Contact")
+
+    def test_toggle_save_htmx(self):
+        # First toggle: Save
+        response = self.client.post(
+            reverse("toggle_save", args=[self.user2.id]),
+            HTTP_HX_REQUEST="true"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "communications/includes/save_button.html")
+        self.assertContains(response, "Remove Saved")
+
+        # Second toggle: Unsave
+        response2 = self.client.post(
+            reverse("toggle_save", args=[self.user2.id]),
+            HTTP_HX_REQUEST="true"
+        )
+        self.assertEqual(response2.status_code, 200)
+        self.assertContains(response2, "Save Profile")
+
+    def test_update_request_accept_htmx(self):
+        req = ContactRequest.objects.create(
+            sender=self.user2,
+            receiver=self.user1,
+            status="pending"
+        )
+        response = self.client.post(
+            reverse("update_request", args=[req.id, "accept"]),
+            HTTP_HX_REQUEST="true"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "communications/includes/request_action_status.html")
+        self.assertContains(response, "Accepted - Contact Unlocked")
+
+    def test_block_user_htmx(self):
+        response = self.client.post(
+            reverse("block_user", args=[self.user2.id]),
+            HTTP_HX_REQUEST="true"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Profile blocked")
+
 
 @skipUnlessDBFeature('has_select_for_update')
 class CommunicationConcurrencyTests(TransactionTestCase):

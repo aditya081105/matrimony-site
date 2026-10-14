@@ -1,4 +1,5 @@
 from django.test import TestCase
+from django.urls import reverse
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -303,6 +304,31 @@ class UserModelTest(TestCase):
         profile_ids_f = [p.id for p in res_f.context['page_obj']]
         self.assertIn(target_f.id, profile_ids_f)
         self.assertNotIn(target_m.id, profile_ids_f)
+
+    def test_profile_list_htmx_partial_render(self):
+        viewer = User.objects.create_user(
+            username="htmx_viewer",
+            password="TestPass123!",
+            is_approved=True,
+            is_email_verified=True,
+            gender='M'
+        )
+        User.objects.create_user(
+            username="target_female_htmx",
+            password="TestPass123!",
+            is_approved=True,
+            is_email_verified=True,
+            is_active=True,
+            gender='F',
+            full_name="Target Female"
+        )
+        self.client.force_login(viewer)
+        res = self.client.get(reverse('profile_list'), HTTP_HX_REQUEST="true")
+        self.assertEqual(res.status_code, 200)
+        self.assertTemplateUsed(res, 'users/includes/profile_grid.html')
+        self.assertTemplateNotUsed(res, 'base.html')
+        self.assertContains(res, 'profile-card-col')
+        self.assertContains(res, 'Target Female')
 
     def test_admin_account_hidden_from_regular_users(self):
         from django.urls import reverse

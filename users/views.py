@@ -210,6 +210,9 @@ def profile_list(request):
         'selected_gender': selected_gender,
     }
 
+    if request.headers.get('HX-Request'):
+        return render(request, 'users/includes/profile_grid.html', context)
+
     return render(request, 'users/profile_list.html', context)
 
 def home(request):
