@@ -281,12 +281,29 @@ class UserUpdateForm(forms.ModelForm):
 
     def save(self, commit=True):
         is_cleared = bool(self.data.get('profile_photo-clear') or self.data.get('remove_profile_photo'))
+
+        # Track existing photo filename to delete the old file from disk upon replacement or removal
+        old_photo_name = None
+        if self.instance and self.instance.pk:
+            old_photo_name = CustomUser.objects.filter(pk=self.instance.pk).values_list('profile_photo', flat=True).first()
+
         if is_cleared:
             self.instance.profile_photo = None
         user = super().save(commit=commit)
         if is_cleared and commit:
             CustomUser.objects.filter(pk=user.pk).update(profile_photo=None)
+
         if commit:
+            new_photo_name = user.profile_photo.name if (user.profile_photo and hasattr(user.profile_photo, 'name')) else ''
+            # If photo changed or was removed, permanently delete the old photo from disk
+            if old_photo_name and old_photo_name != new_photo_name and 'default' not in str(old_photo_name).lower():
+                try:
+                    from django.core.files.storage import default_storage
+                    if default_storage.exists(old_photo_name):
+                        default_storage.delete(old_photo_name)
+                except Exception:
+                    pass
+
             profile, _ = Profile.objects.get_or_create(user=user)
             if user.city:
                 profile.city_hometown = user.city

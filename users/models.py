@@ -265,4 +265,17 @@ def handle_city_cache_invalidation(sender, **kwargs):
 def handle_caste_cache_invalidation(sender, **kwargs):
     from core.caching import invalidate_caste_cache
     invalidate_caste_cache()
+
+
+@receiver(post_delete, sender=CustomUser)
+def cleanup_user_photo_on_delete(sender, instance, **kwargs):
+    if instance.profile_photo and hasattr(instance.profile_photo, 'name') and instance.profile_photo.name:
+        photo_name = instance.profile_photo.name
+        if 'default' not in str(photo_name).lower():
+            try:
+                from django.core.files.storage import default_storage
+                if default_storage.exists(photo_name):
+                    default_storage.delete(photo_name)
+            except Exception:
+                pass
     
