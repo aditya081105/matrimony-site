@@ -56,6 +56,12 @@ Join Poorvanchal Matrimony
 
 {{ field }}
 
+{% if field.name == "email" %}
+<div class="form-text text-muted" style="font-size: 0.8rem;">
+    Accepted: Gmail, Outlook, Yahoo, Apple, Rediffmail, Zoho, Proton, and institutional domains.
+</div>
+{% endif %}
+
 {% if field.errors %}
 <div class="text-danger small">
 {{ field.errors|striptags }}

@@ -3,7 +3,8 @@
 [![Django CI Pipeline](https://github.com/aditya081105/matrimony-site/actions/workflows/ci.yml/badge.svg)](https://github.com/aditya081105/matrimony-site/actions/workflows/ci.yml)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/)
 [![Django 6.0](https://img.shields.io/badge/Django-6.0-green.svg)](https://www.djangoproject.com/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon%20Cloud-blue.svg)](https://neon.tech/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20NVMe-blue.svg)](https://www.postgresql.org/)
+[![Redis](https://img.shields.io/badge/Redis-7%20In--Memory-red.svg)](https://redis.io/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
 A full-stack community matrimonial web platform built with Django 6, PostgreSQL, and Bootstrap 5. Designed for localized community networking with mutual interest matching, privacy controls, manual UPI QR verification flow, transactional email alerts, and cache-aside read optimization.
@@ -67,18 +68,18 @@ This project was built to address real-world community matrimonial needs with pr
 - **Trade-off:** Completely eliminates 2-3% payment gateway transaction fees and merchant onboarding friction for a non-profit community platform, but requires human review.
 - **Scale Path:** Implement automated payment gateway webhooks (Razorpay / Cashfree) backed by an idempotency key and a strict payment status state machine.
 
-### 4. Cache Backend Scope
-- **Current State:** Cache-aside operates using Django's default cache framework backend.
-- **Trade-off:** Zero external service configuration required for local development and single-dyno hosting.
-- **Scale Path:** In multi-container environments, swap the backend to shared Redis/Memcached so cache invalidations are synchronized across all web instances.
+### 4. Cache Backend Architecture
+- **Current State:** Redis Cache (via `django-redis`) provides shared cache-aside invalidation, OTP rate limiting, and multi-worker session state, falling back to in-memory `LocMemCache` during local test runs.
+- **Trade-off:** High-performance in-memory caching synchronized across all Gunicorn workers without data drift.
+- **Scale Path:** For multi-region clustering, introduce Redis Sentinel or Redis Cluster.
 
 ---
 
 ## Core Platform Features
 
-- **Authentication & Profiles:** Custom user model extending `AbstractUser`, phone number validation against Indian telecom numbering (`^[6-9]\d{9}$`), Cloudinary image management, and time-stamped email verification.
+- **Authentication & Profiles:** Custom user model extending `AbstractUser`, phone number validation against Indian telecom numbering (`^[6-9]\d{9}$`), Pillow image verification with EXIF metadata stripping and UUID anonymization, and time-stamped email verification.
 - **Matchmaking & Discovery:** Filter by age, height, city, and caste. Mutual interest matching automatically detects reciprocal requests and creates match connections.
-- **Privacy & Rate Limiting:** Sensitive contact details are shielded until mutual approval. Free users are throttled to 3 requests/day across profiles, Silver members to 10/day, and Gold members enjoy unlimited requests, with an additional per-target throttle of 3 attempts/day.
+- **Privacy & Rate Limiting:** Sensitive contact details are shielded until mutual approval or verified Gold/Diamond membership. Free users are throttled to 3 requests/day across profiles, Silver members to 10/day, and Gold members enjoy unlimited requests.
 - **UPI Subscriptions:** Tiered plans (Silver, Gold, Diamond VIP) with dynamic QR codes, 12-character UTR submission, duplicate prevention via database constraints, and row-locked subscription activation.
 
 ---
@@ -88,14 +89,14 @@ This project was built to address real-world community matrimonial needs with pr
 | Layer | Technologies |
 | :--- | :--- |
 | **Backend** | Python 3.12 / 3.13, Django 6.0 |
-| **Database** | PostgreSQL (Neon Cloud Serverless), dj-database-url |
+| **Database** | PostgreSQL 16 (Self-hosted on NVMe), dj-database-url |
 | **Concurrency & Workers** | Python `concurrent.futures`, Django `transaction.atomic()`, Row Locks (`select_for_update`) |
-| **Caching** | Django Cache Framework (Cache-Aside with signal-based invalidation) |
+| **Caching** | Redis 7 (`django-redis` cache-aside with signal-based invalidation) |
 | **Observability** | Custom `RequestIDMiddleware`, structured logging with `X-Request-ID` telemetry |
-| **Media & Assets** | Cloudinary CDN Storage, WhiteNoise |
-| **Email Delivery** | Gmail SMTP / Resend API |
+| **Media & Assets** | Local NVMe Storage with Nginx direct static serving & security headers, WhiteNoise |
+| **Email Delivery** | Dedicated Gmail SMTP / Resend API |
 | **CI/CD** | GitHub Actions (`.github/workflows/ci.yml`) with PostgreSQL 15 service |
-| **Containerization** | Docker (Gunicorn WSGI), Docker Compose |
+| **Deployment** | Nginx Reverse Proxy, Systemd Daemon (Gunicorn WSGI), Cloudflare Edge WAF |
 | **Frontend** | Django Templates, Bootstrap 5.3 |
 
 ---
