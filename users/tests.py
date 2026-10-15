@@ -1496,6 +1496,90 @@ class Phase5LockoutAndRateLimitingTests(TestCase):
         self.assertContains(res_blocked, "Too many messages sent from your IP")
 
 
+class Phase6EdgeCasesAndSRITests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        from datetime import date
+        from users.models import City, Caste
+        cache.clear()
+        self.user = User.objects.create_user(
+            username="p6_user",
+            email="p6_user@example.com",
+            password="P6Password123!",
+            is_active=True,
+            is_approved=True,
+            is_email_verified=True,
+            gender="M",
+            phone_number="9876543299",
+            date_of_birth=date(1995, 5, 20),
+            height_cm=175,
+            city=City.objects.create(name="P6City"),
+            caste_community=Caste.objects.create(name="P6Caste"),
+        )
+        self.other_user = User.objects.create_user(
+            username="p6_other",
+            email="p6_other@example.com",
+            password="P6Password123!",
+            is_active=True,
+            is_approved=True,
+            is_email_verified=True,
+            gender="F",
+            phone_number="9876543298",
+            date_of_birth=date(1996, 6, 21),
+            height_cm=165,
+            city=City.objects.get(name="P6City"),
+            caste_community=Caste.objects.get(name="P6Caste"),
+        )
+
+    def test_search_age_overflow_and_out_of_range(self):
+        self.client.login(username="p6_user", password="P6Password123!")
+        huge_age = "999999999999999999999999999999"
+        res_min = self.client.get(reverse('profile_list'), {'min_age': huge_age})
+        self.assertEqual(res_min.status_code, 200)
+
+        res_max = self.client.get(reverse('profile_list'), {'max_age': huge_age})
+        self.assertEqual(res_max.status_code, 200)
+
+        res_neg = self.client.get(reverse('profile_list'), {'min_age': '-50'})
+        self.assertEqual(res_neg.status_code, 200)
+
+    def test_update_request_invalid_action_returns_404(self):
+        from communications.models import ContactRequest
+        self.client.login(username="p6_user", password="P6Password123!")
+        req = ContactRequest.objects.create(
+            sender=self.other_user,
+            receiver=self.user,
+            status="pending"
+        )
+        res = self.client.post(
+            reverse('update_request', kwargs={'request_id': req.id, 'action': 'invalid_action'})
+        )
+        self.assertEqual(res.status_code, 404)
+        req.refresh_from_db()
+        self.assertEqual(req.status, "pending")
+
+    def test_subresource_integrity_attributes_present(self):
+        res = self.client.get(reverse('home'))
+        self.assertEqual(res.status_code, 200)
+        content = res.content.decode('utf-8')
+
+        # Verify Bootstrap CSS SRI
+        self.assertIn('cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css', content)
+        self.assertIn('integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"', content)
+
+        # Verify HTMX SRI
+        self.assertIn('cdn.jsdelivr.net/npm/htmx.org@1.9.12/dist/htmx.min.js', content)
+        self.assertIn('integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2"', content)
+
+        # Verify Bootstrap Bundle JS SRI
+        self.assertIn('cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js', content)
+        self.assertIn('integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"', content)
+
+        # All 3 must specify crossorigin="anonymous"
+        self.assertGreaterEqual(content.count('crossorigin="anonymous"'), 3)
+
+
+
 
 
 
