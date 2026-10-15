@@ -146,7 +146,6 @@ STORAGES = {
         "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
 }
-STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
 
 CLOUDINARY_STORAGE = {
     'CLOUD_NAME': os.getenv("CLOUDINARY_CLOUD_NAME"),
@@ -158,24 +157,21 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 
-SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
-X_FRAME_OPTIONS = "DENY"
-
-
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-SECURE_SSL_REDIRECT = True
-
 import sys
 
 TESTING = "test" in sys.argv
-
 RUNNING_DEV_SERVER = "runserver" in sys.argv
+
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
 
 SESSION_COOKIE_SECURE = not TESTING and not RUNNING_DEV_SERVER
 CSRF_COOKIE_SECURE = not TESTING and not RUNNING_DEV_SERVER
 SECURE_SSL_REDIRECT = not TESTING and not RUNNING_DEV_SERVER
+SECURE_HSTS_SECONDS = 31536000 if (not TESTING and not RUNNING_DEV_SERVER) else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not TESTING and not RUNNING_DEV_SERVER
+SILENCED_SYSTEM_CHECKS = ["security.W021"]  # HSTS preload deliberately off
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 if TESTING:
     ci_db_url = os.getenv('DATABASE_URL') if (os.getenv('CI') or os.getenv('USE_POSTGRES_TEST')) else None
@@ -255,8 +251,6 @@ LOGGING = {
         "level": "INFO",
     },
 }
-
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Cache Configuration: Redis Cache for multi-worker synchronization with LocMem fallback
 REDIS_URL = os.getenv("REDIS_URL")
