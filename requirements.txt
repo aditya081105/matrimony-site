@@ -8,7 +8,7 @@ Django==6.0.8
 django-cloudinary-storage==0.3.0
 django-crispy-forms==2.6
 django-redis==7.0.0
-gunicorn==26.0.0
+gunicorn==26.2.0
 idna==3.18
 packaging==26.2
 pillow==12.3.0
