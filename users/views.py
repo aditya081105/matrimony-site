@@ -15,6 +15,10 @@ from communications.models import Block, ContactRequest, ActivityLog, Report, Sa
 from django.http import HttpResponse, Http404
 from django.core.signing import TimestampSigner, BadSignature, SignatureExpired
 from django.conf import settings
+from django.core.cache import cache
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
+from core.utils import get_client_ip
 
 from django.contrib.admin.views.decorators import staff_member_required
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -466,13 +470,53 @@ def admin_reject_user(request, user_id):
 
 def contact_view(request):
     if request.method == "POST":
+        honeypot = request.POST.get("website_hp", "").strip()
+        if honeypot:
+            # Silent discard for bot submissions
+            return render(request, "users/contact.html", {"success": True})
+
+        client_ip = get_client_ip(request) or "unknown"
+        rate_key = f"contact_rate_{client_ip}"
+        current_count = cache.get(rate_key, 0)
+        if current_count >= 3:
+            messages.error(request, "Too many messages sent from your IP. Please try again later.")
+            return render(request, "users/contact.html")
+
         name = request.POST.get("name", "").strip()
         email = request.POST.get("email", "").strip()
         message = request.POST.get("message", "").strip()
 
+        context = {"name": name, "email": email, "message": message}
+
         if not name or not email or not message:
             messages.error(request, "Please fill in all fields.")
-            return render(request, "users/contact.html")
+            return render(request, "users/contact.html", context)
+
+        if len(name) > 100:
+            messages.error(request, "Name must be 100 characters or fewer.")
+            return render(request, "users/contact.html", context)
+
+        if len(email) > 100:
+            messages.error(request, "Email must be 100 characters or fewer.")
+            return render(request, "users/contact.html", context)
+
+        try:
+            validate_email(email)
+        except ValidationError:
+            messages.error(request, "Please enter a valid email address.")
+            return render(request, "users/contact.html", context)
+
+        if len(message) > 1000:
+            messages.error(request, "Message must be 1,000 characters or fewer.")
+            return render(request, "users/contact.html", context)
+
+        if cache.get(rate_key) is None:
+            cache.set(rate_key, 1, timeout=3600)
+        else:
+            try:
+                cache.incr(rate_key)
+            except Exception:
+                cache.set(rate_key, current_count + 1, timeout=3600)
 
         from core.services import send_contact_email
         sent = send_contact_email(name, email, message)
@@ -484,6 +528,7 @@ def contact_view(request):
             return redirect("contact_us")
 
     return render(request, "users/contact.html")
+
 
 
 def verify_email(request, token):
@@ -608,6 +653,17 @@ def password_reset_request(request):
         if form.is_valid():
             raw_email = form.cleaned_data['email'].strip().lower()
 
+            hourly_key = f"pwd_reset_hourly_{raw_email}"
+            hourly_count = cache.get(hourly_key, 0)
+            if hourly_count >= 5:
+                messages.warning(
+                    request,
+                    "Too many password reset requests for this email. Please try again in an hour."
+                )
+                request.session['pwd_reset_email'] = raw_email
+                request.session['pwd_reset_masked_email'] = mask_email(raw_email)
+                return redirect('password_reset_verify')
+
             cooldown_key = f"pwd_reset_cooldown_{raw_email}"
             if cache.get(cooldown_key):
                 messages.warning(
@@ -620,6 +676,13 @@ def password_reset_request(request):
 
             # Prevent user enumeration: Enforce cooldown regardless of whether account exists
             cache.set(cooldown_key, True, timeout=60)
+            if cache.get(hourly_key) is None:
+                cache.set(hourly_key, 1, timeout=3600)
+            else:
+                try:
+                    cache.incr(hourly_key)
+                except Exception:
+                    cache.set(hourly_key, hourly_count + 1, timeout=3600)
 
             user = CustomUser.objects.filter(email__iexact=raw_email).first()
             if user:
@@ -632,6 +695,7 @@ def password_reset_request(request):
                     'created_at': time.time(),
                 }
                 cache.set(f"pwd_reset_data_{raw_email}", reset_data, timeout=900)
+                cache.set(f"pwd_reset_attempts_{raw_email}", 0, timeout=900)
                 send_password_reset_code(user.email, user.full_name or user.username, code)
 
             request.session['pwd_reset_email'] = raw_email
@@ -663,11 +727,27 @@ def password_reset_verify(request):
         action = request.POST.get('action', 'verify')
 
         if action == 'resend':
+            hourly_key = f"pwd_reset_hourly_{email}"
+            hourly_count = cache.get(hourly_key, 0)
+            if hourly_count >= 5:
+                messages.warning(
+                    request,
+                    "Too many password reset requests for this email. Please try again in an hour."
+                )
+                return redirect('password_reset_verify')
+
             if not can_resend:
                 messages.warning(request, "Please wait a moment before requesting another code.")
                 return redirect('password_reset_verify')
 
             cache.set(cooldown_key, True, timeout=60)
+            if cache.get(hourly_key) is None:
+                cache.set(hourly_key, 1, timeout=3600)
+            else:
+                try:
+                    cache.incr(hourly_key)
+                except Exception:
+                    cache.set(hourly_key, hourly_count + 1, timeout=3600)
 
             user = CustomUser.objects.filter(email__iexact=email).first()
             if user:
@@ -680,6 +760,7 @@ def password_reset_verify(request):
                     'created_at': time.time(),
                 }
                 cache.set(f"pwd_reset_data_{email}", reset_data, timeout=900)
+                cache.set(f"pwd_reset_attempts_{email}", 0, timeout=900)
                 send_password_reset_code(user.email, user.full_name or user.username, code)
 
             messages.success(request, f"If an account is associated with {masked_email}, a fresh code was sent.")
@@ -694,8 +775,11 @@ def password_reset_verify(request):
                 messages.error(request, "Your verification code has expired. Please request a new code.")
                 return redirect('password_reset_request')
 
-            if cached_data.get('attempts', 0) >= 5:
+            attempts_key = f"pwd_reset_attempts_{email}"
+            current_attempts = cache.get(attempts_key, 0)
+            if current_attempts >= 5:
                 cache.delete(f"pwd_reset_data_{email}")
+                cache.delete(attempts_key)
                 messages.error(request, "Too many incorrect attempts. Please request a new code.")
                 return redirect('password_reset_request')
 
@@ -707,9 +791,19 @@ def password_reset_verify(request):
                 is_valid_code = secrets.compare_digest(cached_data['code'], entered_code)
 
             if not is_valid_code:
-                cached_data['attempts'] = cached_data.get('attempts', 0) + 1
-                attempts_left = 5 - cached_data['attempts']
-                cache.set(f"pwd_reset_data_{email}", cached_data, timeout=900)
+                try:
+                    new_attempts = cache.incr(attempts_key)
+                except Exception:
+                    new_attempts = current_attempts + 1
+                    cache.set(attempts_key, new_attempts, timeout=900)
+
+                if new_attempts >= 5:
+                    cache.delete(f"pwd_reset_data_{email}")
+                    cache.delete(attempts_key)
+                    messages.error(request, "Too many incorrect attempts. Please request a new code.")
+                    return redirect('password_reset_request')
+
+                attempts_left = 5 - new_attempts
                 messages.error(request, f"Incorrect verification code. {attempts_left} attempt(s) remaining.")
                 return render(request, 'users/password_reset_verify.html', {
                     'form': form,
@@ -718,6 +812,7 @@ def password_reset_verify(request):
                 })
 
             cache.delete(f"pwd_reset_data_{email}")
+            cache.delete(attempts_key)
             request.session['pwd_reset_verified_user_id'] = cached_data['user_id']
             request.session['pwd_reset_verified_time'] = time.time()
             return redirect('password_reset_confirm')
@@ -729,6 +824,7 @@ def password_reset_verify(request):
         'masked_email': masked_email,
         'can_resend': can_resend
     })
+
 
 
 def password_reset_confirm(request):

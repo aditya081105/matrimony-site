@@ -252,6 +252,8 @@ class UserModelTest(TestCase):
 
     def test_contact_form_submission(self):
         from django.urls import reverse
+        from django.core.cache import cache
+        cache.clear()
         response = self.client.post(reverse('contact_us'), {
             'name': 'Test Submitter',
             'email': 'submitter@example.com',
@@ -259,6 +261,83 @@ class UserModelTest(TestCase):
         })
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Your message has been sent successfully.")
+
+    def test_contact_form_honeypot_discards_silently(self):
+        from django.urls import reverse
+        from django.core import mail
+        from django.core.cache import cache
+        cache.clear()
+        mail.outbox.clear()
+
+        response = self.client.post(reverse('contact_us'), {
+            'name': 'Spam Bot',
+            'email': 'bot@spammer.org',
+            'message': 'Buy cheap meds now',
+            'website_hp': 'http://spammer.org',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Your message has been sent successfully.")
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_contact_form_ip_rate_limiting(self):
+        from django.urls import reverse
+        from django.core import mail
+        from django.core.cache import cache
+        cache.clear()
+        mail.outbox.clear()
+
+        ip_env = {'REMOTE_ADDR': '198.51.100.42'}
+
+        for i in range(3):
+            response = self.client.post(reverse('contact_us'), {
+                'name': f'Submitter {i}',
+                'email': f'submitter{i}@example.com',
+                'message': f'Message {i}',
+            }, **ip_env)
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, "Your message has been sent successfully.")
+
+        self.assertEqual(len(mail.outbox), 3)
+
+        # 4th request from same IP should be blocked
+        blocked_response = self.client.post(reverse('contact_us'), {
+            'name': 'Submitter 4',
+            'email': 'submitter4@example.com',
+            'message': 'Message 4',
+        }, **ip_env)
+        self.assertEqual(blocked_response.status_code, 200)
+        self.assertContains(blocked_response, "Too many messages sent from your IP. Please try again later.")
+        self.assertEqual(len(mail.outbox), 3)
+
+    def test_contact_form_validation_bounds(self):
+        from django.urls import reverse
+        from django.core.cache import cache
+        cache.clear()
+
+        # Name too long
+        res1 = self.client.post(reverse('contact_us'), {
+            'name': 'A' * 101,
+            'email': 'valid@example.com',
+            'message': 'Hello world',
+        })
+        self.assertContains(res1, "Name must be 100 characters or fewer.")
+
+        # Invalid email
+        res2 = self.client.post(reverse('contact_us'), {
+            'name': 'Valid Name',
+            'email': 'not-an-email',
+            'message': 'Hello world',
+        })
+        self.assertContains(res2, "Please enter a valid email address.")
+
+        # Message too long
+        res3 = self.client.post(reverse('contact_us'), {
+            'name': 'Valid Name',
+            'email': 'valid@example.com',
+            'message': 'M' * 1001,
+        })
+        self.assertContains(res3, "Message must be 1,000 characters or fewer.")
+
 
     def test_profile_list_gender_filter_defaults_and_explicit(self):
         from django.urls import reverse
@@ -568,6 +647,41 @@ class PasswordResetTests(TestCase):
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password('NewStrongPass123!'))
         self.assertFalse(self.user.check_password('OldPassword123!'))
+
+    def test_password_reset_atomic_attempt_lockout(self):
+        from django.core.cache import cache
+        cache.clear()
+
+        # Request code
+        self.client.post('/forgot-password/', {'email': 'resetuser@gmail.com'})
+
+        # 4 incorrect attempts
+        for attempt in range(1, 5):
+            res = self.client.post('/forgot-password/verify/', {'action': 'verify', 'code': '000000'})
+            self.assertEqual(res.status_code, 200)
+            self.assertContains(res, 'Incorrect verification code')
+
+        # 5th incorrect attempt locks out and redirects to /forgot-password/
+        res5 = self.client.post('/forgot-password/verify/', {'action': 'verify', 'code': '000000'})
+        self.assertRedirects(res5, '/forgot-password/')
+        self.assertIsNone(cache.get('pwd_reset_data_resetuser@gmail.com'))
+        self.assertIsNone(cache.get('pwd_reset_attempts_resetuser@gmail.com'))
+
+    def test_password_reset_hourly_rate_limit(self):
+        from django.core.cache import cache
+        cache.clear()
+
+        # 5 requests within the hour (clearing 60s cooldown between requests)
+        for i in range(5):
+            cache.delete('pwd_reset_cooldown_resetuser@gmail.com')
+            res = self.client.post('/forgot-password/', {'email': 'resetuser@gmail.com'})
+            self.assertRedirects(res, '/forgot-password/verify/')
+
+        # 6th request triggers hourly limit
+        cache.delete('pwd_reset_cooldown_resetuser@gmail.com')
+        res6 = self.client.post('/forgot-password/', {'email': 'resetuser@gmail.com'}, follow=True)
+        self.assertContains(res6, 'Too many password reset requests for this email')
+
 
 
 class ImageSecurityUploadTest(TestCase):

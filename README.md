@@ -64,9 +64,18 @@ This project was built to address real-world community matrimonial needs with pr
 - **Scale Path:** Adopt an external dedicated search engine (Meilisearch or Elasticsearch) if multi-lingual phonetic transliteration or complex facet aggregations are required at scale.
 
 ### 3. Offline UPI QR Flow vs. Payment Gateway Webhooks
-- **Current State:** NPCI-compliant UPI QR codes are rendered dynamically with encoded order tags; users submit their bank UTR for manual admin verification.
-- **Trade-off:** Completely eliminates 2-3% payment gateway transaction fees and merchant onboarding friction for a non-profit community platform, but requires human review.
-- **Scale Path:** Implement automated payment gateway webhooks (Razorpay / Cashfree) backed by an idempotency key and a strict payment status state machine.
+- **Current State:** NPCI-compliant UPI QR codes are generated dynamically with encoded transaction tags and amount. Users complete payment via their preferred UPI app and submit their 12-character bank UTR (Unique Transaction Reference) for verification.
+- **Verification State Machine & Concurrency Integrity:**
+  - Orders progress through a finite state machine: `pending` -> `verified` | `rejected`.
+  - Format validation strictly enforces 12-character alphanumeric tokens (`^[A-Za-z0-9]{12}$`).
+  - Active orders enforce a database `UniqueConstraint` on UTR to prevent double-spending or replay attacks.
+  - Verification executes within an atomic transaction with row-level locks (`select_for_update()`) on `PaymentOrder` and `Subscription` models to prevent race conditions during activation.
+  - Financial audit trails are preserved: `PaymentOrder.user` uses `on_delete=models.SET_NULL` so payment and UTR accounting records survive user account deletions.
+- **Bank Reconciliation Workflow:**
+  - Administrators cross-check submitted UTRs directly against bank account statements before executing verification.
+  - Upon approval, the user's tier privileges (contact quota, badge, direct contact unlock) activate immediately.
+- **Trade-off:** Completely eliminates 2-3% payment gateway intermediary fees and merchant onboarding friction for a non-profit community platform, with the trade-off of requiring human reconciliation.
+- **Scale Path:** Transition to automated payment gateway webhooks (Razorpay / Cashfree / Stripe) backed by cryptographic signature verification, idempotency keys, and automated reconciliation daemons.
 
 ### 4. Cache Backend Architecture
 - **Current State:** Redis Cache (via `django-redis`) provides shared cache-aside invalidation, OTP rate limiting, and multi-worker session state, falling back to in-memory `LocMemCache` during local test runs.
