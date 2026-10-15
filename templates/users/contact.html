@@ -15,19 +15,25 @@ Your message has been sent successfully.
 <form method="POST">
 {% csrf_token %}
 
+<!-- Anti-spam Honeypot Field (invisible to genuine users) -->
+<div style="display:none;" aria-hidden="true">
+    <label for="website_hp">Leave this field blank</label>
+    <input type="text" id="website_hp" name="website_hp" tabindex="-1" autocomplete="off">
+</div>
+
 <div class="mb-3">
 <label class="form-label">Your Name</label>
-<input type="text" name="name" class="form-control" required>
+<input type="text" name="name" class="form-control" maxlength="100" value="{{ name|default:'' }}" required>
 </div>
 
 <div class="mb-3">
 <label class="form-label">Your Email</label>
-<input type="email" name="email" class="form-control" required>
+<input type="email" name="email" class="form-control" maxlength="100" value="{{ email|default:'' }}" required>
 </div>
 
 <div class="mb-3">
 <label class="form-label">Message</label>
-<textarea name="message" rows="4" class="form-control" required></textarea>
+<textarea name="message" rows="4" class="form-control" maxlength="1000" required>{{ message|default:'' }}</textarea>
 </div>
 
 <button type="submit" class="btn btn-dark w-100">
