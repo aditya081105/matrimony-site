@@ -16,9 +16,12 @@ Install as a nightly root cron job:
 ```
 
 ### B. Manual / Pre-Deployment Backup
-Always execute a snapshot before pulling code updates or running migrations:
+Always execute a snapshot before pulling code updates or running migrations (via script or direct `pg_dump`):
 ```bash
 /var/www/poorvanchalmatrimony/deploy/scripts/backup_db.sh
+
+# Or direct manual pg_dump snapshot:
+sudo -u postgres pg_dump poorvanchal_db | gzip > "/var/backups/poorvanchal/db/poorvanchal_db_$(date +%Y%m%d_%H%M%S).sql.gz"
 ```
 
 ### C. Backup Verification & Restore Testing
