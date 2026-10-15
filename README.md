@@ -179,7 +179,7 @@ python manage.py runserver
 
 ## Automated Test Suite
 
-The test suite contains **127 automated tests** (0 failures, 1 skipped) covering:
+The test suite contains **129 automated tests** (0 failures, 1 skipped) covering:
 - **Authentication & Lockout:** IPv6 `/64` CIDR normalization, CGNAT 100/hr IP threshold, account-level failure tracking (50/hr alert without lockout DoS), and timing-safe password resets.
 - **Payment & Subscription State Machine:** Atomic `approve()` and `reject()` methods with row-level locks (`select_for_update`), 3-order concurrent pending cap, and active UTR database uniqueness.
 - **Privacy & Unified Visibility:** Centralized `can_view`, `visible_profiles`, and `get_profile_privacy_context` with mutual-match masking for parents' names and exact DOB.

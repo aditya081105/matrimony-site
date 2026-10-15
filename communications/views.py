@@ -397,7 +397,7 @@ def block_user(request, user_id):
 
     if request.headers.get('HX-Request'):
         return HttpResponse(
-            '<div class="col-lg-4 col-md-6 mb-4">'
+            '<div class="col-lg-4 col-md-6 mb-4 profile-card-col">'
             '<div class="card border-0 rounded-4 p-4 text-center bg-light text-muted small shadow-sm">'
             'Profile blocked and removed from view.'
             '</div></div>'
