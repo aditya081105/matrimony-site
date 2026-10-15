@@ -21,6 +21,6 @@ resend==2.32.2
 six==1.17.0
 sqlparse==0.6.0
 typing_extensions==4.15.0
-tzdata==2026.2
+tzdata==2026.5
 urllib3==2.8.0
 whitenoise==6.12.0
