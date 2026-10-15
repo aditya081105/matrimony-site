@@ -23,6 +23,7 @@ from core.utils import get_client_ip
 from django.contrib.admin.views.decorators import staff_member_required
 from django.utils.http import url_has_allowed_host_and_scheme
 from users.decorators import active_member_required
+from users.visibility import visible_profiles, can_view, get_profile_privacy_context
 from .models import CustomUser, Caste, City, Profile
 from .forms import UserRegisterForm, UserUpdateForm
 from core.services import send_verification_email
@@ -67,34 +68,12 @@ def profile_list(request):
     cities = get_cached_cities()
     castes = get_cached_castes()
 
-    blocked_by_me = Block.objects.filter(
-        blocker=request.user
-    ).values_list("blocked_id", flat=True)
-
-    blocked_me = Block.objects.filter(
-        blocked=request.user
-    ).values_list("blocker_id", flat=True)
-
-    blocked_ids = set(blocked_by_me) | set(blocked_me)
-
     now = timezone.now()
     active_sub_filter = Q(subscription__is_active=True) & (
         Q(subscription__expires_at__isnull=True) | Q(subscription__expires_at__gt=now)
     )
 
-    profiles = CustomUser.objects.filter(
-        is_active=True,
-        is_approved=True,
-        is_suspended=False
-    ).exclude(
-        id__in=blocked_ids
-    ).exclude(
-        id=request.user.id
-    ).exclude(
-        is_staff=True
-    ).exclude(
-        is_superuser=True
-    ).annotate(
+    profiles = visible_profiles(request.user).annotate(
         tier_weight=Case(
             When(active_sub_filter, subscription__plan__code='diamond', then=Value(3)),
             When(active_sub_filter, subscription__plan__code='gold', then=Value(2)),
@@ -335,19 +314,9 @@ def my_matches(request):
         else:
             matched_users.append(m.sender)
 
-    blocked_by_me = Block.objects.filter(
-        blocker=request.user
-    ).values_list("blocked_id", flat=True)
-
-    blocked_me = Block.objects.filter(
-        blocked=request.user
-    ).values_list("blocker_id", flat=True)
-
-    blocked_ids = set(blocked_by_me) | set(blocked_me)
-
     matched_users = [
         u for u in matched_users
-        if u.id not in blocked_ids and u.is_active and not u.is_suspended
+        if can_view(request.user, u)
     ]
 
     return render(request, 'users/my_matches.html', {
@@ -356,49 +325,12 @@ def my_matches(request):
 
 @active_member_required
 def view_profile(request, user_id):
-
     profile_user = get_object_or_404(CustomUser, id=user_id)
-    is_viewer_admin = bool(request.user.is_staff or request.user.is_superuser)
-    is_target_admin = bool(profile_user.is_staff or profile_user.is_superuser)
 
-    # 1. Hide admin/staff accounts from non-admin viewers: 404 eliminates enumeration oracle
-    if is_target_admin and not is_viewer_admin:
+    if not can_view(request.user, profile_user):
         raise Http404("Profile not found.")
 
-    # 2. Deactivated accounts unavailable to non-admin viewers
-    if not profile_user.is_active and not is_viewer_admin:
-        raise Http404("Profile not found.")
-
-    # 3. Unapproved accounts unavailable to other non-staff users
-    if not profile_user.is_approved and not is_viewer_admin and profile_user != request.user:
-        raise Http404("Profile not found.")
-
-    # 4. Suspended profiles unavailable to regular users (admins can view for moderation)
-    if profile_user.is_suspended and not is_viewer_admin:
-        raise Http404("Profile not found.")
-
-    # 5. Blocked profiles unavailable to non-staff viewers
-    if not is_viewer_admin:
-        if (
-            Block.objects.filter(blocker=profile_user, blocked=request.user).exists()
-            or
-            Block.objects.filter(blocker=request.user, blocked=profile_user).exists()
-        ):
-            raise Http404("Profile not found.")
-
-    # accepted match
-    is_matched = ContactRequest.objects.filter(
-        sender=request.user,
-        receiver=profile_user,
-        status="accepted"
-    ).exists() or ContactRequest.objects.filter(
-        sender=profile_user,
-        receiver=request.user,
-        status="accepted"
-    ).exists()
-
-    # Contact details allowed for mutual match OR admin viewing (privacy-first consent model)
-    is_allowed = is_matched or is_viewer_admin
+    privacy_ctx = get_profile_privacy_context(request.user, profile_user)
 
     # pending request object
     pending_request = ContactRequest.objects.filter(
@@ -414,11 +346,9 @@ def view_profile(request, user_id):
 
     return render(request, "users/view_profile.html", {
         "profile_user": profile_user,
-        "is_allowed": is_allowed,
-        "is_matched": is_matched,
-        "is_viewer_admin": is_viewer_admin,
         "pending_request": pending_request,
-        "saved_ids": saved_ids
+        "saved_ids": saved_ids,
+        **privacy_ctx,
     })
 
 @login_required
