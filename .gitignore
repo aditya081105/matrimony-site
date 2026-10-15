@@ -2,6 +2,8 @@
 __pycache__/
 *.pyc
 *.pyo
+deploy/
+venv/
 .venv/
 db.sqlite3
 staticfiles/

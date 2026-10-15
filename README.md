@@ -179,7 +179,7 @@ python manage.py runserver
 
 ## Automated Test Suite
 
-The test suite contains **129 automated tests** (0 failures, 1 skipped) covering:
+The test suite contains **137 automated tests** (0 failures, 1 skipped) covering:
 - **Authentication & Lockout:** IPv6 `/64` CIDR normalization, CGNAT 100/hr IP threshold, account-level failure tracking (50/hr alert without lockout DoS), and timing-safe password resets.
 - **Payment & Subscription State Machine:** Atomic `approve()` and `reject()` methods with row-level locks (`select_for_update`), 3-order concurrent pending cap, and active UTR database uniqueness.
 - **Privacy & Unified Visibility:** Centralized `can_view`, `visible_profiles`, and `get_profile_privacy_context` with mutual-match masking for parents' names and exact DOB.
@@ -188,7 +188,7 @@ The test suite contains **129 automated tests** (0 failures, 1 skipped) covering
 - **Database Integrity:** Database `UniqueConstraint` on `Lower('email')` and `phone_number`.
 - **Edge Cases & Query Defense:** Safe handling for age/height bounds catching `OverflowError` and HTTP 404 for invalid request actions.
 - **Subresource Integrity (SRI):** Cryptographic SHA-384 hashes and `crossorigin="anonymous"` on all CDN assets.
-- **Deployment Hardening:** Strict `manage.py check --deploy --fail-level WARNING`, systemd `NoNewPrivileges=true`, and `chmod 600 .env` file permission enforcement.
+- **Deployment & Production Security:** Strict `manage.py check --deploy --fail-level WARNING` and environment configuration validation.
 
 ```bash
 python manage.py test
