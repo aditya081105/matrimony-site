@@ -2,7 +2,7 @@
 
 [![Django CI Pipeline](https://github.com/aditya081105/matrimony-site/actions/workflows/ci.yml/badge.svg)](https://github.com/aditya081105/matrimony-site/actions/workflows/ci.yml)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/)
-[![Django 6.0](https://img.shields.io/badge/Django-6.0-green.svg)](https://www.djangoproject.com/)
+[![Django 6.0](https://img.shields.io/badge/Django-6.0.8-green.svg)](https://www.djangoproject.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20NVMe-blue.svg)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-7%20In--Memory-red.svg)](https://redis.io/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
@@ -40,12 +40,23 @@ A full-stack community matrimonial web platform built with Django 6, PostgreSQL,
 - **Exponential Backoff Retries:** Worker jobs implement a 3-attempt retry loop with exponential delay (`time.sleep(1.5 * attempt)`) to survive transient network or provider glitches.
 - **Deterministic Testing:** Automatically falls back to synchronous execution during automated test runs to maintain deterministic test assertions.
 
-### 5. Security & Verification
+### 5. Security, Privacy & Anti-Abuse Architecture
+- **Unified Privacy & Visibility Engine:** Centralized visibility logic (`can_view`, `visible_profiles`, `get_profile_privacy_context`) guards all profile views and search feeds. High-sensitivity attributes (exact date of birth, parents' names) are masked until mutual interest approval or premium membership.
+- **IPv6 /64 & CGNAT-Aware Lockout Protection:** Aggregates IPv6 addresses by `/64` CIDR prefix, applies a 100 failed attempts/hour IP threshold to accommodate CGNAT and campus proxies without accidental lockouts, and tracks account-level failures (50 failures/hour triggers security alerts without locking out legitimate account holders).
+- **Payment & Subscription State Machine:** Payment transitions (`approve()`, `reject()`) are encapsulated in atomic state machines protected by database row-level locking (`select_for_update()`). Enforces a strict 3-order concurrent pending cap and an active order UTR `UniqueConstraint` to eliminate race conditions and double-spending.
+- **Image Decompression Bomb Guard:** Pillow image processing limits dimension parsing to 16 megapixels (`MAX_IMAGE_PIXELS = 16_000_000`), strips EXIF metadata, normalizes uploads to RGB JPEG, and restricts uploads to active, approved users.
+- **Scraping Defense & Rate-Limiting:** Profile browsing is throttled to 120 views/hour per authenticated user (exempting admin/staff), with silent contact form honeypots and IP-level burst protections.
+- **Subresource Integrity (SRI):** Cryptographic SHA-384 hashes and `crossorigin="anonymous"` verify integrity across all external CDN scripts and styles.
 - **State Mutation Protection:** All state-modifying actions (`send_request`, `update_request`, `cancel_request`, `unmatch`, `block_user`, `unblock_user`, `toggle_save`) strictly enforce HTTP POST with CSRF tokens (`@require_POST`), preventing GET-based CSRF and link pre-fetching attacks.
-- **Expiring Email Verification:** Verification links use Django's `TimestampSigner` with a 24-hour expiration window (`max_age=86400`) and rate-limiting cooldown to prevent verification link reuse or flooding.
-- **Payment Reference Integrity:** UPI UTR submissions enforce 12-character alphanumeric format validation (`^[A-Za-z0-9]{12}$`) and a database `UniqueConstraint` on active orders to reject duplicate or racing submissions.
-- **Profile Access Gate:** Public profile viewing verifies that the targeted user has been approved by administrators before revealing details.
-- **Bidirectional Privacy:** Blocking isolates both users symmetrically across searches and contact request paths.
+- **Secure Email Verification & Timing-Safe Resets:** Verification links use Django's `TimestampSigner` with a 24-hour expiration window (`max_age=86400`) and rate-limiting cooldown. Password reset codes use 6-digit tokens compared via `secrets.compare_digest` with 5-attempt throttling.
+
+### 6. Production Hardening & Operational Runbook
+A complete operational checklist and runbook is provided in [`deploy/DEPLOYMENT_GUIDE.md`](deploy/DEPLOYMENT_GUIDE.md), detailing:
+- **Systemd Process Sandboxing:** Gunicorn runs under a dedicated service (`poorvanchal.service`) with `NoNewPrivileges=true`, `PrivateTmp=true`, `ProtectSystem=full`, and restrictive umask `0027`.
+- **Persistent SELinux Policies:** Configured with `etc_t` file context on production `.env` (`chmod 600`) to permit systemd `EnvironmentFile` reading without triggering AVC denials under enforcing mode.
+- **TLS 1.3 & Reverse Proxy Security:** Nginx configured with automated Certbot SSL certificates, Cloudflare real-IP restoration (`set_real_ip_from`), HSTS (`max-age=31536000`), secure cookies (`SESSION_COOKIE_SECURE = True`), and strict deployment security checks (`manage.py check --deploy --fail-level WARNING`).
+- **Database Backup Snapshotting:** Automated pre-deployment SQL snapshots (`pg_dump | gzip`) with non-zero integrity verification.
+
 
 ---
 
@@ -97,7 +108,7 @@ This project was built to address real-world community matrimonial needs with pr
 
 | Layer | Technologies |
 | :--- | :--- |
-| **Backend** | Python 3.12 / 3.13, Django 6.0 |
+| **Backend** | Python 3.12 / 3.13, Django 6.0.8 |
 | **Database** | PostgreSQL 16 (Self-hosted on NVMe), dj-database-url |
 | **Concurrency & Workers** | Python `concurrent.futures`, Django `transaction.atomic()`, Row Locks (`select_for_update`) |
 | **Caching** | Redis 7 (`django-redis` cache-aside with signal-based invalidation) |
@@ -168,18 +179,16 @@ python manage.py runserver
 
 ## Automated Test Suite
 
-The test suite contains **49 automated tests** covering:
-- Authentication constraints, phone regex checks, and unapproved profile access security.
-- Expiring token email verification via `TimestampSigner` and rate-limiting cooldown.
-- Forgot password workflow via 6-digit email verification code with attempt throttling (max 5), 15-minute expiration, and timing-safe verification.
-- Anti-abuse registration validation: Strict trusted email provider allowlist (`ALLOWED_EMAIL_PROVIDERS`), duplicate email normalization, and Gmail dot/plus alias prevention.
-- Admin account stealth: Moderation accounts strictly isolated and excluded from matchmaking recommendations and public search queries.
-- HTTP POST enforcement and 405 rejection for state-mutating endpoints (`send_request`, `block_user`, `unblock_user`, `unmatch`, `cancel_request`, `toggle_save`).
-- Mutual request matching, bidirectional blocking, and daily request quota enforcement across membership tiers.
-- Reverse OneToOne `select_related` query bounding (`assertNumQueries` / `CaptureQueriesContext`).
-- Cache-aside hit/miss lifecycle and signal-driven cache invalidation.
-- Membership order creation, strict 12-character alphanumeric UTR validation, duplicate UTR database rejection, and subscription lifecycle transitions.
-- Concurrency quota race testing using `TransactionTestCase` and `@skipUnlessDBFeature('has_select_for_update')`, executed against PostgreSQL in GitHub Actions CI.
+The test suite contains **127 automated tests** (0 failures, 1 skipped) covering:
+- **Authentication & Lockout:** IPv6 `/64` CIDR normalization, CGNAT 100/hr IP threshold, account-level failure tracking (50/hr alert without lockout DoS), and timing-safe password resets.
+- **Payment & Subscription State Machine:** Atomic `approve()` and `reject()` methods with row-level locks (`select_for_update`), 3-order concurrent pending cap, and active UTR database uniqueness.
+- **Privacy & Unified Visibility:** Centralized `can_view`, `visible_profiles`, and `get_profile_privacy_context` with mutual-match masking for parents' names and exact DOB.
+- **Image Security & Moderation:** Pillow decompression bomb protection (16M pixel cap), EXIF metadata stripping, upload rate limits, and suspended user upload blocking.
+- **Rate Limiting & Anti-Scraping:** Profile browsing limited to 120 views/hour per user (with staff/admin exemption), contact form honeypot, and IP-level limits.
+- **Database Integrity:** Database `UniqueConstraint` on `Lower('email')` and `phone_number`.
+- **Edge Cases & Query Defense:** Safe handling for age/height bounds catching `OverflowError` and HTTP 404 for invalid request actions.
+- **Subresource Integrity (SRI):** Cryptographic SHA-384 hashes and `crossorigin="anonymous"` on all CDN assets.
+- **Deployment Hardening:** Strict `manage.py check --deploy --fail-level WARNING`, systemd `NoNewPrivileges=true`, and `chmod 600 .env` file permission enforcement.
 
 ```bash
 python manage.py test
