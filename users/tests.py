@@ -1102,4 +1102,100 @@ class ImageSecurityUploadTest(TestCase):
         self.assertEqual(order.utr_number, "UTR123456789")
 
 
+class Phase3SecurityAndModerationTests(TestCase):
+    def setUp(self):
+        self.approved_user = User.objects.create_user(
+            username="approved_mod_user",
+            email="mod_user@example.com",
+            password="ModPassword123!",
+            full_name="Original Name",
+            gender="M",
+            phone_number="9876543210",
+            is_approved=True,
+            is_email_verified=True,
+            is_suspended=False,
+        )
+        self.suspended_user = User.objects.create_user(
+            username="suspended_user",
+            email="suspended@example.com",
+            password="ModPassword123!",
+            full_name="Suspended User",
+            gender="M",
+            phone_number="9876543211",
+            is_approved=True,
+            is_email_verified=True,
+            is_suspended=True,
+        )
+        self.unapproved_user = User.objects.create_user(
+            username="unapproved_user",
+            email="unapproved@example.com",
+            password="ModPassword123!",
+            full_name="Unapproved User",
+            gender="F",
+            phone_number="9876543212",
+            is_approved=False,
+            is_email_verified=True,
+            is_suspended=False,
+        )
+
+    def test_suspended_user_blocked_from_edit_profile(self):
+        self.client.login(username="suspended_user", password="ModPassword123!")
+        res = self.client.get(reverse('edit_profile'))
+        self.assertEqual(res.status_code, 302)
+        res_post = self.client.post(reverse('edit_profile'), {'bio': 'Hacked bio'})
+        self.assertEqual(res_post.status_code, 302)
+
+    def test_unapproved_user_allowed_access_to_edit_profile(self):
+        self.client.login(username="unapproved_user", password="ModPassword123!")
+        res = self.client.get(reverse('edit_profile'))
+        self.assertEqual(res.status_code, 200)
+
+    def test_critical_name_change_resets_approval(self):
+        self.client.login(username="approved_mod_user", password="ModPassword123!")
+        res = self.client.post(reverse('edit_profile'), {
+            'full_name': 'Changed Full Name',
+            'email': 'mod_user@example.com',
+            'gender': 'M',
+            'phone_number': '9876543210',
+            'bio': 'Original bio',
+        })
+        self.assertEqual(res.status_code, 302)
+        self.approved_user.refresh_from_db()
+        self.assertEqual(self.approved_user.full_name, 'Changed Full Name')
+        self.assertFalse(self.approved_user.is_approved)
+
+    def test_non_critical_bio_change_preserves_approval_and_flags_needs_review(self):
+        self.client.login(username="approved_mod_user", password="ModPassword123!")
+        res = self.client.post(reverse('edit_profile'), {
+            'full_name': 'Original Name',
+            'email': 'mod_user@example.com',
+            'gender': 'M',
+            'phone_number': '9876543210',
+            'bio': 'Updated bio only',
+        })
+        self.assertEqual(res.status_code, 302)
+        self.approved_user.refresh_from_db()
+        self.assertTrue(self.approved_user.is_approved)
+        self.assertTrue(self.approved_user.needs_review)
+
+    def test_image_decompression_bomb_pixel_cap(self):
+        from users.validators import validate_image_file
+        from django.core.exceptions import ValidationError
+        from PIL import Image
+        from io import BytesIO
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        # Create an image with > 16 million pixels (5000 x 4000 = 20,000,000 pixels)
+        buf = BytesIO()
+        img = Image.new('RGB', (5000, 4000), color='blue')
+        img.save(buf, format='JPEG')
+        buf.seek(0)
+        upload = SimpleUploadedFile("bomb.jpg", buf.read(), content_type="image/jpeg")
+
+        with self.assertRaises(ValidationError) as ctx:
+            validate_image_file(upload)
+        self.assertIn("resolution is too large", str(ctx.exception).lower())
+
+
+
 
