@@ -152,22 +152,58 @@ class PaymentOrder(models.Model):
             locked_order.save(update_fields=['status'])
             self.status = 'rejected'
 
-            if was_completed and self.user and hasattr(self.user, 'subscription'):
-                sub = self.user.subscription
-                if sub.active_order_id == self.id or sub.active_order == self:
-                    other = PaymentOrder.objects.filter(
-                        user=self.user,
-                        status__in=['completed', 'superseded']
-                    ).exclude(id=self.id).order_by('-verified_at', '-created_at').first()
-                    if other:
-                        other.status = 'superseded'
-                        other.approve()
-                    else:
-                        sub.reset_to_free()
+            if was_completed and self.user:
+                from users.models import Subscription
+                sub = Subscription.objects.select_for_update().filter(user=self.user).first()
+                if sub and (sub.active_order_id == self.id or sub.active_order == self):
+                    sync_user_subscription_from_orders(self.user, exclude_order_id=self.id)
 
     def activate_subscription(self):
         """Backward-compatible delegation to approve()."""
         return self.approve()
+
+
+def sync_user_subscription_from_orders(user, exclude_order_id=None):
+    """
+    Recalculates active subscription state from the user's latest valid verified order.
+    Used when an active order is rejected or deleted.
+    """
+    from users.models import Subscription
+    if not user:
+        return
+
+    sub = Subscription.objects.select_for_update().filter(user=user).first()
+    if not sub:
+        return
+
+    now = timezone.now()
+
+    qs = PaymentOrder.objects.filter(
+        user=user,
+        status__in=['completed', 'superseded']
+    )
+    if exclude_order_id:
+        qs = qs.exclude(id=exclude_order_id)
+
+    latest_order = qs.order_by('-verified_at', '-created_at').first()
+
+    if latest_order and latest_order.verified_at:
+        order_expiry = latest_order.verified_at + timedelta(days=latest_order.plan.duration_days)
+        if order_expiry > now:
+            PaymentOrder.objects.filter(user=user, status='completed').exclude(id=latest_order.id).update(status='superseded')
+            latest_order.status = 'completed'
+            latest_order.save(update_fields=['status'])
+
+            sub.is_active = True
+            sub.plan = latest_order.plan
+            sub.plan_type = latest_order.plan.name
+            sub.active_order = latest_order
+            sub.expires_at = order_expiry
+            sub.save()
+            return
+
+    # No valid unexpired order found -> reset to free
+    sub.reset_to_free()
 
 
 from django.db.models.signals import post_delete
@@ -179,15 +215,7 @@ def handle_payment_order_deleted(sender, instance, **kwargs):
     if instance.user and hasattr(instance.user, 'subscription'):
         sub = instance.user.subscription
         if sub.active_order_id == instance.id or sub.active_order == instance:
-            latest_completed = PaymentOrder.objects.filter(
-                user=instance.user,
-                status__in=['completed', 'superseded']
-            ).exclude(id=instance.id).order_by('-verified_at', '-created_at').first()
-            if latest_completed:
-                latest_completed.status = 'superseded'
-                latest_completed.approve()
-            else:
-                sub.reset_to_free()
+            sync_user_subscription_from_orders(instance.user, exclude_order_id=instance.id)
 
 
 @receiver(post_delete, sender=Plan)
@@ -197,16 +225,7 @@ def handle_plan_deleted(sender, instance, **kwargs):
         models.Q(plan=instance) | models.Q(plan_type=instance.name)
     )
     for sub in subs:
-        latest_completed = PaymentOrder.objects.filter(
-            user=sub.user,
-            status__in=['completed', 'superseded'],
-            plan__isnull=False
-        ).exclude(plan=instance).order_by('-verified_at', '-created_at').first()
-        if latest_completed:
-            latest_completed.status = 'superseded'
-            latest_completed.approve()
-        else:
-            sub.reset_to_free()
+        sync_user_subscription_from_orders(sub.user)
 
 
 @receiver([models.signals.post_save, models.signals.post_delete], sender=Plan)
