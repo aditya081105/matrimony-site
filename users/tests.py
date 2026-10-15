@@ -1726,6 +1726,44 @@ class Phase7PaymentCapsAndDBConstraintsTests(TestCase):
         self.assertEqual(res_staff.status_code, 200)
 
 
+class Phase8DeploymentHardeningTests(TestCase):
+    def test_systemd_service_hardening(self):
+        from django.conf import settings
+        service_file = settings.BASE_DIR / 'deploy' / 'systemd' / 'poorvanchal.service'
+        self.assertTrue(service_file.exists())
+        content = service_file.read_text(encoding='utf-8')
+        self.assertIn("NoNewPrivileges=true", content)
+        self.assertIn("PrivateTmp=true", content)
+        self.assertIn("ProtectSystem=full", content)
+        self.assertNotIn("User=root", content)
+
+    def test_setup_vps_chmod_env(self):
+        from django.conf import settings
+        setup_script = settings.BASE_DIR / 'deploy' / 'setup_vps.sh'
+        self.assertTrue(setup_script.exists())
+        content = setup_script.read_text(encoding='utf-8')
+        self.assertIn("chmod 600", content)
+        self.assertIn("cloudflare_realip.conf", content)
+
+    def test_nginx_security_and_cf_header_stripping(self):
+        from django.conf import settings
+        nginx_conf = settings.BASE_DIR / 'deploy' / 'nginx' / 'poorvanchalmatrimony.social.conf'
+        self.assertTrue(nginx_conf.exists())
+        content = nginx_conf.read_text(encoding='utf-8')
+        self.assertIn('proxy_set_header CF-Connecting-IP "";', content)
+        self.assertIn(r'location ~ /\.(?!well-known)', content)
+        self.assertIn('deny all;', content)
+
+    def test_deployment_guide_exists(self):
+        from django.conf import settings
+        guide = settings.BASE_DIR / 'deploy' / 'DEPLOYMENT_GUIDE.md'
+        self.assertTrue(guide.exists())
+        content = guide.read_text(encoding='utf-8')
+        self.assertIn("pg_dump", content)
+        self.assertIn("check --deploy", content)
+
+
+
 
 
 
