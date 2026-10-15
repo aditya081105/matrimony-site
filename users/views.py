@@ -414,9 +414,23 @@ def admin_dashboard(request):
         .order_by('-report_count')[:5]
     )
 
-    pending_users = CustomUser.objects.filter(
-        Q(is_approved=False) | Q(is_phone_verified=False)
-    ).order_by('-date_joined')[:30]
+    active_filter = request.GET.get('filter', 'all')
+    base_pending_qs = CustomUser.objects.filter(is_suspended=False)
+
+    review_needed_count = base_pending_qs.filter(needs_review=True).count()
+    unapproved_count = base_pending_qs.filter(is_approved=False).count()
+    total_pending_count = base_pending_qs.filter(
+        Q(is_approved=False) | Q(is_phone_verified=False) | Q(needs_review=True)
+    ).count()
+
+    if active_filter == 'edited':
+        pending_users = base_pending_qs.filter(needs_review=True).order_by('-date_joined')[:50]
+    elif active_filter == 'unapproved':
+        pending_users = base_pending_qs.filter(is_approved=False).order_by('-date_joined')[:50]
+    else:
+        pending_users = base_pending_qs.filter(
+            Q(is_approved=False) | Q(is_phone_verified=False) | Q(needs_review=True)
+        ).order_by('-date_joined')[:50]
 
     context = {
         'total_users': total_users,
@@ -427,6 +441,10 @@ def admin_dashboard(request):
         'total_reports': total_reports,
         'top_reported': top_reported,
         'pending_users': pending_users,
+        'active_filter': active_filter,
+        'review_needed_count': review_needed_count,
+        'unapproved_count': unapproved_count,
+        'total_pending_count': total_pending_count,
     }
 
     return render(request, 'admin_dashboard.html', context)
@@ -439,8 +457,19 @@ def admin_verify_user(request, user_id):
         user.is_approved = True
         user.is_phone_verified = True
         user.is_email_verified = True
-        user.save(update_fields=['is_approved', 'is_phone_verified', 'is_email_verified'])
-        messages.success(request, f"User {user.full_name or user.username} has been fully approved and verified (Phone + Email).")
+        user.needs_review = False
+        user.save(update_fields=['is_approved', 'is_phone_verified', 'is_email_verified', 'needs_review'])
+        messages.success(request, f"User {user.full_name or user.username} has been fully approved, verified, and cleared from review queue.")
+    return redirect('admin_dashboard')
+
+
+@staff_member_required
+def admin_clear_review(request, user_id):
+    if request.method == 'POST':
+        user = get_object_or_404(CustomUser, id=user_id)
+        user.needs_review = False
+        user.save(update_fields=['needs_review'])
+        messages.success(request, f"Profile edit for {user.full_name or user.username} has been approved.")
     return redirect('admin_dashboard')
 
 
