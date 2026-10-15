@@ -2,6 +2,7 @@ import re
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.core.cache import cache
+from core.utils import get_client_ip
 from .models import CustomUser, Profile, Caste, City
 from .validators import validate_unique_and_legitimate_email, validate_image_file
 from datetime import date
@@ -438,13 +439,25 @@ class PasswordResetSetNewForm(forms.Form):
 class RateLimitedAuthenticationForm(AuthenticationForm):
     """
     Protects user accounts against credential brute-force attacks.
-    Enforces a temporary 15-minute lock after 5 consecutive failed attempts on any account.
+    Enforces a temporary 15-minute lock after 5 consecutive failed attempts
+    for the specific (username, IP) pair. This prevents an external attacker
+    from locking out legitimate account owners from their own devices/IPs.
+    Also enforces an IP-level threshold to block high-frequency password spraying.
     """
     def clean(self):
         username = (self.cleaned_data.get('username') or '').strip().lower()
-        if username:
-            lock_key = f"login_lock_{username}"
-            if cache.get(lock_key):
+        client_ip = get_client_ip(self.request) if self.request else 'unknown'
+
+        if client_ip:
+            ip_lock_key = f"login_ip_lock_{client_ip}"
+            if cache.get(ip_lock_key):
+                raise forms.ValidationError(
+                    "Too many failed login attempts from this network. Please try again in 15 minutes."
+                )
+
+        if username and client_ip:
+            pair_lock_key = f"login_lock_{username}_{client_ip}"
+            if cache.get(pair_lock_key):
                 raise forms.ValidationError(
                     "This account is temporarily locked due to multiple failed login attempts. Please try again in 15 minutes."
                 )
@@ -452,21 +465,35 @@ class RateLimitedAuthenticationForm(AuthenticationForm):
         try:
             return super().clean()
         except forms.ValidationError as e:
-            if username:
-                attempt_key = f"login_attempts_{username}"
-                attempts = cache.get(attempt_key, 0) + 1
+            if client_ip:
+                ip_attempt_key = f"login_ip_attempts_{client_ip}"
+                ip_attempts = cache.get(ip_attempt_key, 0) + 1
+                if ip_attempts >= 20:
+                    cache.set(f"login_ip_lock_{client_ip}", True, timeout=900)
+                    cache.delete(ip_attempt_key)
+                    raise forms.ValidationError(
+                        "Too many failed login attempts from this network. Access temporarily suspended for 15 minutes."
+                    )
+                else:
+                    cache.set(ip_attempt_key, ip_attempts, timeout=900)
+
+            if username and client_ip:
+                pair_attempt_key = f"login_attempts_{username}_{client_ip}"
+                attempts = cache.get(pair_attempt_key, 0) + 1
                 if attempts >= 5:
-                    cache.set(f"login_lock_{username}", True, timeout=900)  # 15 min lock
-                    cache.delete(attempt_key)
+                    cache.set(f"login_lock_{username}_{client_ip}", True, timeout=900)  # 15 min lock
+                    cache.delete(pair_attempt_key)
                     raise forms.ValidationError(
                         "Too many failed login attempts. This account is temporarily locked for 15 minutes."
                     )
                 else:
-                    cache.set(attempt_key, attempts, timeout=900)
+                    cache.set(pair_attempt_key, attempts, timeout=900)
             raise e
 
     def confirm_login_allowed(self, user):
         super().confirm_login_allowed(user)
         username = user.get_username().strip().lower()
-        cache.delete(f"login_attempts_{username}")
-        cache.delete(f"login_lock_{username}")
+        client_ip = get_client_ip(self.request) if self.request else 'unknown'
+        if client_ip:
+            cache.delete(f"login_attempts_{username}_{client_ip}")
+            cache.delete(f"login_lock_{username}_{client_ip}")

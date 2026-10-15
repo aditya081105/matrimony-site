@@ -1002,10 +1002,9 @@ class ImageSecurityUploadTest(TestCase):
         )
 
         # Clean cache keys before test
-        cache.delete("login_attempts_lockout_victim")
-        cache.delete("login_lock_lockout_victim")
+        cache.clear()
 
-        # 5 failed attempts with wrong password
+        # 5 failed attempts with wrong password from default IP (127.0.0.1)
         for _ in range(5):
             res = self.client.post(reverse('login'), {
                 'username': 'lockout_victim',
@@ -1013,7 +1012,7 @@ class ImageSecurityUploadTest(TestCase):
             })
             self.assertEqual(res.status_code, 200)
 
-        # 6th attempt with REAL password must be blocked because the account is locked
+        # 6th attempt with REAL password from the SAME IP must be blocked because that IP is locked
         res_locked = self.client.post(reverse('login'), {
             'username': 'lockout_victim',
             'password': 'RealPassword123!'
@@ -1021,9 +1020,30 @@ class ImageSecurityUploadTest(TestCase):
         self.assertEqual(res_locked.status_code, 200)
         self.assertContains(res_locked, "temporarily locked")
 
+        # 7th attempt with REAL password from a DIFFERENT IP (e.g. legitimate user's device) MUST succeed
+        legit_res = self.client.post(reverse('login'), {
+            'username': 'lockout_victim',
+            'password': 'RealPassword123!'
+        }, REMOTE_ADDR='198.51.100.77')
+        self.assertRedirects(legit_res, reverse('home'))
+
         # Cleanup
-        cache.delete("login_attempts_lockout_victim")
-        cache.delete("login_lock_lockout_victim")
+        cache.clear()
+
+    def test_get_client_ip_ignores_spoofed_headers(self):
+        from core.utils import get_client_ip
+        from django.test import RequestFactory
+
+        rf = RequestFactory()
+
+        # Direct client sends fake CF-Connecting-IP and fake X-Forwarded-For
+        req = rf.post('/contact/', HTTP_CF_CONNECTING_IP='8.8.8.8', HTTP_X_FORWARDED_FOR='1.2.3.4')
+        self.assertEqual(get_client_ip(req), '127.0.0.1')
+
+        # Behind Nginx with authenticated X-Real-IP
+        req_nginx = rf.post('/contact/', HTTP_X_REAL_IP='203.0.113.195', HTTP_CF_CONNECTING_IP='8.8.8.8')
+        self.assertEqual(get_client_ip(req_nginx), '203.0.113.195')
+
 
     def test_delete_account_requires_correct_password(self):
         del_user = User.objects.create_user(
