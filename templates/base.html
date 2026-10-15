@@ -747,6 +747,12 @@
     }
 
     function setSiteLanguage(lang) {
+        // Update visible UI text immediately
+        document.querySelectorAll('.current-lang-text').forEach(function(el) {
+            el.textContent = (lang === 'hi' ? 'हि' : 'ENG');
+        });
+
+        // Set googtrans cookies across host and root domain
         var host = window.location.hostname;
         var hostParts = host.split('.');
         var rootDomain = hostParts.length > 1 ? '.' + hostParts.slice(-2).join('.') : host;
@@ -755,9 +761,8 @@
             document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
             document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + host + ';';
             document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + rootDomain + ';';
-            document.cookie = 'googtrans=/en/en; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-            document.cookie = 'googtrans=/en/en; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + host + ';';
-            document.cookie = 'googtrans=/en/en; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + rootDomain + ';';
+            document.cookie = 'googtrans=/en/en; path=/;';
+            document.cookie = 'googtrans=/en/en; path=/; domain=' + host + ';';
         } else {
             var cookieVal = '/en/' + lang;
             document.cookie = 'googtrans=' + cookieVal + '; path=/;';
@@ -767,12 +772,28 @@
             }
         }
 
-        var combo = document.querySelector('.goog-te-combo');
-        if (combo) {
-            combo.value = lang;
-            combo.dispatchEvent(new Event('change'));
-        }
-        window.location.reload();
+        // Trigger Google Translate in-place without page reload
+        var attempts = 0;
+        var triggerInterval = setInterval(function() {
+            attempts++;
+            var combo = document.querySelector('.goog-te-combo');
+            if (combo) {
+                clearInterval(triggerInterval);
+                if (lang === 'en') {
+                    var hasEn = false;
+                    for (var i = 0; i < combo.options.length; i++) {
+                        if (combo.options[i].value === 'en') { hasEn = true; break; }
+                    }
+                    combo.value = hasEn ? 'en' : '';
+                } else {
+                    combo.value = lang;
+                }
+                combo.dispatchEvent(new Event('change'));
+            }
+            if (attempts > 30) {
+                clearInterval(triggerInterval);
+            }
+        }, 100);
     }
 
     // Keep body at top: 0
@@ -782,16 +803,32 @@
         }
     }, 250);
 
-    // Reflect current language in navbar label
+    // On load: synchronize language from cookie
     document.addEventListener("DOMContentLoaded", function() {
-        if (document.cookie.indexOf('googtrans=/en/hi') !== -1) {
+        var isHindi = document.cookie.indexOf('googtrans=/en/hi') !== -1;
+        if (isHindi) {
             document.querySelectorAll('.current-lang-text').forEach(function(el) {
                 el.textContent = 'हि';
             });
+            var initAttempts = 0;
+            var initTimer = setInterval(function() {
+                initAttempts++;
+                var combo = document.querySelector('.goog-te-combo');
+                if (combo) {
+                    clearInterval(initTimer);
+                    if (combo.value !== 'hi') {
+                        combo.value = 'hi';
+                        combo.dispatchEvent(new Event('change'));
+                    }
+                }
+                if (initAttempts > 40) {
+                    clearInterval(initTimer);
+                }
+            }, 100);
         }
     });
 </script>
-<div id="google_translate_element" style="display:none; position:absolute; width:0; height:0; overflow:hidden;"></div>
+<div id="google_translate_element" style="position:fixed; left:-9999px; top:-9999px; width:1px; height:1px; opacity:0; pointer-events:none;"></div>
 <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
 </html>
