@@ -1805,10 +1805,149 @@ class Phase8DeploymentHardeningTests(TestCase):
         self.assertIn("check --deploy", content)
 
 
+class RegistrationWizardAndEducationTests(TestCase):
+    def setUp(self):
+        from users.models import City
+        self.city = City.objects.create(name="Varanasi")
 
+    def test_customuser_education_field_saved(self):
+        user = User.objects.create_user(
+            username="eduuser",
+            password="StrongPass123!",
+            education="B.Tech Computer Science"
+        )
+        self.assertEqual(user.education, "B.Tech Computer Science")
+        user.refresh_from_db()
+        self.assertEqual(user.education, "B.Tech Computer Science")
 
+    def test_user_register_form_with_education_and_step2_fields(self):
+        from users.forms import UserRegisterForm
+        form_data = {
+            'username': 'wizarduser',
+            'full_name': 'Wizard User',
+            'gender': 'M',
+            'date_of_birth': '1996-04-12',
+            'phone_number': '9876543211',
+            'email': 'wizard@example.com',
+            'password1': 'StrongPass123!',
+            'password2': 'StrongPass123!',
+            'education': 'MBA Finance',
+            'occupation': 'Financial Analyst',
+            'city': self.city.id,
+            'height_cm': 175,
+            'caste': 'Brahmin',
+            'sub_caste': 'Shukla',
+            'bio': 'Passionate finance professional looking for a life partner.',
+        }
+        form = UserRegisterForm(data=form_data)
+        self.assertTrue(form.is_valid(), form.errors)
+        user = form.save()
+        self.assertEqual(user.education, 'MBA Finance')
+        self.assertEqual(user.occupation, 'Financial Analyst')
+        self.assertEqual(user.city, self.city)
+        self.assertEqual(user.height_cm, 175)
+        self.assertEqual(user.caste, 'Brahmin')
+        self.assertEqual(user.sub_caste, 'Shukla')
+        self.assertEqual(user.bio, 'Passionate finance professional looking for a life partner.')
 
+    def test_user_update_form_with_education(self):
+        from datetime import date
+        from users.forms import UserUpdateForm
+        user = User.objects.create_user(
+            username="updateedu",
+            password="StrongPass123!",
+            phone_number="9876543212",
+            date_of_birth=date(1994, 2, 10),
+            full_name="Update User",
+        )
+        form_data = {
+            'full_name': 'Update User',
+            'email': 'updateedu@example.com',
+            'gender': 'M',
+            'phone_number': '9876543212',
+            'date_of_birth': '1994-02-10',
+            'education': 'MBBS Doctor',
+            'occupation': 'Physician',
+            'city': self.city.id,
+            'height_cm': 180,
+            'caste': 'Rajput',
+            'sub_caste': 'Singh',
+            'bio': 'Doctor based in Varanasi.',
+        }
+        form = UserUpdateForm(data=form_data, instance=user)
+        self.assertTrue(form.is_valid(), form.errors)
+        saved = form.save()
+        self.assertEqual(saved.education, 'MBBS Doctor')
+        self.assertEqual(saved.occupation, 'Physician')
 
+    def test_registration_view_get_renders_wizard_structure(self):
+        res = self.client.get(reverse('register'))
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, 'id="step1Container"')
+        self.assertContains(res, 'id="step2Container"')
+        self.assertContains(res, 'enctype="multipart/form-data"')
+        self.assertContains(res, 'Education / Degree')
+        self.assertContains(res, 'Step 1: Account &amp; Identity')
+        self.assertContains(res, 'Step 2: Matrimonial Details')
 
+    def test_registration_view_post_creates_user_with_education(self):
+        post_data = {
+            'username': 'registerednew',
+            'full_name': 'New User',
+            'gender': 'F',
+            'date_of_birth': '1997-08-20',
+            'phone_number': '9876543213',
+            'email': 'newuser@example.com',
+            'password1': 'SecretPass123!',
+            'password2': 'SecretPass123!',
+            'education': 'M.Tech CSE',
+            'occupation': 'Software Engineer',
+            'city': self.city.id,
+            'height_cm': 165,
+            'caste': 'Kayastha',
+            'sub_caste': 'Srivastava',
+            'bio': 'Software Engineer in tech company.',
+        }
+        res = self.client.post(reverse('register'), data=post_data, follow=True)
+        self.assertEqual(res.status_code, 200)
+        created_user = User.objects.get(username='registerednew')
+        self.assertEqual(created_user.education, 'M.Tech CSE')
+        self.assertEqual(created_user.occupation, 'Software Engineer')
+        self.assertEqual(created_user.city, self.city)
+
+    def test_my_profile_and_view_profile_display_education(self):
+        user_a = User.objects.create_user(
+            username="usera",
+            password="StrongPass123!",
+            phone_number="9876543214",
+            full_name="User Alpha",
+            education="PhD Mathematics",
+            occupation="Professor",
+            gender="M",
+            is_approved=True,
+            is_email_verified=True,
+        )
+        user_b = User.objects.create_user(
+            username="userb",
+            password="StrongPass123!",
+            phone_number="9876543215",
+            full_name="User Beta",
+            education="M.Com Gold Medalist",
+            occupation="Chartered Accountant",
+            gender="F",
+            is_approved=True,
+            is_email_verified=True,
+        )
+        self.client.force_login(user_a)
+
+        # Check user_a viewing their own profile
+        res_my = self.client.get(reverse('my_profile'))
+        self.assertEqual(res_my.status_code, 200)
+        self.assertContains(res_my, "PhD Mathematics")
+
+        # Check user_a viewing user_b's profile
+        res_view = self.client.get(reverse('view_profile', kwargs={'user_id': user_b.id}))
+        self.assertEqual(res_view.status_code, 200)
+        self.assertContains(res_view, "M.Com Gold Medalist")
 
 

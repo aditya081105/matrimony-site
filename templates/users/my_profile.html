@@ -51,6 +51,22 @@ style="width:160px;height:160px;object-fit:cover;">
 <div class="row small mb-4">
 
 <div class="col-md-6 mb-2">
+<strong>Gender:</strong> {{ request.user.get_gender_display|default:"Not specified" }}
+</div>
+
+<div class="col-md-6 mb-2">
+<strong>Date of Birth:</strong> {{ request.user.date_of_birth|default:"Not specified" }}{% if request.user.age %} ({{ request.user.age }} yrs old){% endif %}
+</div>
+
+<div class="col-md-6 mb-2">
+<strong>Height:</strong> {% if request.user.height_cm %}{{ request.user.height_cm }} cm{% else %}Not specified{% endif %}
+</div>
+
+<div class="col-md-6 mb-2">
+<strong>Education:</strong> {{ request.user.education|default:request.user.profile.education|default:"Not specified" }}
+</div>
+
+<div class="col-md-6 mb-2">
 <strong>Occupation:</strong> {{ request.user.occupation|default:"Not specified" }}
 </div>
 
