@@ -1,13 +1,14 @@
 def get_client_ip(request):
     """
-    Extracts the client IP address from HTTP headers.
-    Prioritizes HTTP_CF_CONNECTING_IP and HTTP_X_FORWARDED_FOR when behind Cloudflare or reverse proxies,
-    falling back to REMOTE_ADDR.
+    Extracts the trusted client IP address.
+    In production behind Nginx, Nginx sets X-Real-IP from $remote_addr (which is
+    safely restored via ngx_http_realip_module only when connecting from trusted
+    Cloudflare CIDRs).
+    We do NOT read raw client-supplied CF-Connecting-IP or X-Forwarded-For headers
+    to prevent origin header injection or rate-limit bypasses.
+    Falls back to REMOTE_ADDR (standard WSGI / local test runner).
     """
-    cf_ip = request.META.get('HTTP_CF_CONNECTING_IP')
-    if cf_ip:
-        return cf_ip.strip()
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        return x_forwarded_for.split(',')[0].strip()
+    x_real_ip = request.META.get('HTTP_X_REAL_IP')
+    if x_real_ip:
+        return x_real_ip.strip()
     return (request.META.get('REMOTE_ADDR') or '').strip()
