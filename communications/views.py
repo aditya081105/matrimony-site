@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse
+from django.http import HttpResponse, Http404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib import messages
@@ -246,6 +246,9 @@ def send_request(request, user_id):
 @active_member_required
 @require_POST
 def update_request(request, request_id, action):
+    if action not in ('accept', 'reject'):
+        raise Http404("Invalid action.")
+
     with transaction.atomic():
         contact_request = get_object_or_404(
             ContactRequest.objects.select_for_update(),
