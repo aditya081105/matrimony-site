@@ -1,2 +1,1 @@
--r requirements.txt
-locust==2.46.7
+pip-audit==2.10.1

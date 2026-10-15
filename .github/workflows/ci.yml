@@ -5,11 +5,19 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  schedule:
+    # Run weekly every Monday at 06:00 UTC to detect newly published CVE advisories
+    - cron: '0 6 * * 1'
 
 jobs:
   test:
     name: Run Automated Tests & Static Checks
     runs-on: ubuntu-latest
+    env:
+      SECRET_KEY: 'ci-secret-key-for-running-tests-safely-with-more-than-fifty-characters-randomized'
+      DEBUG: 'True'
+      CI: 'true'
+      DATABASE_URL: 'postgresql://postgres:postgrespassword@localhost:5432/test_matrimony'
 
     services:
       postgres:
@@ -39,21 +47,26 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Security Vulnerability Audit (pip-audit)
+        run: |
+          pip-audit -r requirements.txt
 
       - name: Django System Checks
         run: |
           python manage.py check
+
+      - name: Django Deployment Security Checks
+        env:
+          DEBUG: 'False'
+        run: |
+          python manage.py check --deploy --fail-level WARNING
 
       - name: Validate Static Files
         run: |
           python manage.py collectstatic --noinput
 
       - name: Run Automated Test Suite
-        env:
-          SECRET_KEY: 'ci-secret-key-for-running-tests-safely'
-          DEBUG: 'True'
-          CI: 'true'
-          DATABASE_URL: 'postgresql://postgres:postgrespassword@localhost:5432/test_matrimony'
         run: |
           python manage.py test --verbosity=2
