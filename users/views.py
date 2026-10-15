@@ -1,6 +1,9 @@
 from datetime import date
+import logging
 import random
 import time
+
+logger = logging.getLogger(__name__)
 from django.db.models import Q, Count, Case, When, Value, IntegerField
 from django.utils import timezone
 from django.db import models
@@ -273,7 +276,8 @@ def edit_profile(request):
                 if "permissions" in err_str or "notallowed" in err_str:
                     messages.error(request, "Image upload failed: Your Cloudinary API key has restricted permissions. Please enable 'create/upload' permission on your Cloudinary Access Key.")
                 else:
-                    messages.error(request, f"Error saving profile: {e}")
+                    logger.exception("Error saving profile for user %s: %s", request.user.id, e)
+                    messages.error(request, "An error occurred while saving your profile. Please check your inputs and try again.")
     else:
         form = UserUpdateForm(instance=request.user)
 
@@ -329,6 +333,24 @@ def my_matches(request):
 
 @active_member_required
 def view_profile(request, user_id):
+    # Anti-scraping rate limit: staff and superusers exempt
+    if not (request.user.is_staff or request.user.is_superuser):
+        rate_key = f"profile_view_rate_{request.user.id}"
+        view_count = cache.get(rate_key, 0)
+        if view_count >= 120:
+            messages.warning(
+                request,
+                "You have reached the hourly profile browsing limit. Please try again in an hour."
+            )
+            return redirect('profile_list')
+        if view_count == 0:
+            cache.set(rate_key, 1, timeout=3600)
+        else:
+            try:
+                cache.incr(rate_key)
+            except Exception:
+                cache.set(rate_key, view_count + 1, timeout=3600)
+
     profile_user = get_object_or_404(CustomUser, id=user_id)
 
     if not can_view(request.user, profile_user):

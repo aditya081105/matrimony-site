@@ -79,6 +79,16 @@ from users.decorators import active_member_required
 def checkout_view(request, plan_code):
     plan = get_object_or_404(Plan, code=plan_code, is_active=True)
 
+    # Limit open pending orders per user (max 3 open concurrently)
+    pending_orders_count = PaymentOrder.objects.filter(user=request.user, status='pending').count()
+    if pending_orders_count >= 3:
+        messages.warning(
+            request,
+            "You have reached the maximum limit of 3 pending payment orders. "
+            "Please wait for your existing orders to be verified before submitting a new one."
+        )
+        return redirect('payment_history')
+
     upi_id = getattr(settings, 'UPI_ID', 'payments@poorvanchalmatrimony')
     upi_name = getattr(settings, 'UPI_NAME', 'Poorvanchal Matrimony')
     transaction_note = f"PoorvanchalMatrimony_{plan.code}_{request.user.id}"

@@ -1579,6 +1579,154 @@ class Phase6EdgeCasesAndSRITests(TestCase):
         self.assertGreaterEqual(content.count('crossorigin="anonymous"'), 3)
 
 
+class Phase7PaymentCapsAndDBConstraintsTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        from datetime import date
+        from users.models import City, Caste
+        from payments.models import Plan
+        cache.clear()
+
+        self.city = City.objects.create(name="P7City")
+        self.caste = Caste.objects.create(name="P7Caste")
+
+        self.user = User.objects.create_user(
+            username="p7_user",
+            email="p7_user@example.com",
+            password="P7Password123!",
+            is_active=True,
+            is_approved=True,
+            is_email_verified=True,
+            gender="M",
+            phone_number="9876543111",
+            date_of_birth=date(1994, 4, 15),
+            height_cm=178,
+            city=self.city,
+            caste_community=self.caste,
+        )
+
+        self.plan = Plan.objects.create(
+            code='silver_p7',
+            name='Silver P7',
+            price=199.00,
+            duration_days=30,
+            features='Feature 1\nFeature 2',
+            is_active=True,
+        )
+
+    def test_pending_payment_order_cap(self):
+        from payments.models import PaymentOrder
+        self.client.login(username="p7_user", password="P7Password123!")
+
+        # Create 3 pending orders
+        for i in range(3):
+            PaymentOrder.objects.create(
+                user=self.user,
+                plan=self.plan,
+                amount=self.plan.price,
+                utr_number=f"11112222333{i}",
+                status='pending'
+            )
+
+        # GET checkout should redirect to payment_history with warning
+        res_get = self.client.get(reverse('checkout', kwargs={'plan_code': self.plan.code}))
+        self.assertEqual(res_get.status_code, 302)
+        self.assertIn(reverse('payment_history'), res_get.url)
+
+        # POST checkout should also reject and redirect to payment_history
+        res_post = self.client.post(
+            reverse('checkout', kwargs={'plan_code': self.plan.code}),
+            {'utr_number': '999988887777'}
+        )
+        self.assertEqual(res_post.status_code, 302)
+        self.assertIn(reverse('payment_history'), res_post.url)
+        self.assertEqual(PaymentOrder.objects.filter(user=self.user, status='pending').count(), 3)
+
+    def test_database_unique_constraint_email(self):
+        from django.db import IntegrityError
+        from datetime import date
+        with self.assertRaises(IntegrityError):
+            User.objects.create_user(
+                username="p7_duplicate_email",
+                email="P7_USER@EXAMPLE.COM",  # Case variation of p7_user@example.com
+                password="P7Password123!",
+                phone_number="9876543222",
+                gender="F",
+                date_of_birth=date(1995, 1, 1),
+            )
+
+    def test_database_unique_constraint_phone(self):
+        from django.db import IntegrityError
+        from datetime import date
+        with self.assertRaises(IntegrityError):
+            User.objects.create_user(
+                username="p7_duplicate_phone",
+                email="different_email@example.com",
+                password="P7Password123!",
+                phone_number="9876543111",  # Same as self.user.phone_number
+                gender="F",
+                date_of_birth=date(1995, 1, 1),
+            )
+
+    def test_profile_save_generic_error_and_no_leak(self):
+        from unittest.mock import patch
+        self.client.login(username="p7_user", password="P7Password123!")
+
+        with patch('users.forms.UserUpdateForm.save', side_effect=RuntimeError("Secret internal database server timeout on 192.168.1.55")):
+            res = self.client.post(
+                reverse('edit_profile'),
+                {
+                    'full_name': 'New Name',
+                    'email': 'p7_user@example.com',
+                    'gender': 'M',
+                    'phone_number': '9876543111',
+                    'bio': 'Updated bio',
+                },
+                follow=True
+            )
+            content = res.content.decode('utf-8')
+            # Must NOT leak the internal database error
+            self.assertNotIn("Secret internal database server timeout", content)
+            self.assertNotIn("192.168.1.55", content)
+            # Must display safe generic error
+            self.assertIn("An error occurred while saving your profile", content)
+
+    def test_profile_view_rate_limiting(self):
+        from datetime import date
+        other_user = User.objects.create_user(
+            username="p7_target",
+            email="p7_target@example.com",
+            password="P7Password123!",
+            is_active=True,
+            is_approved=True,
+            is_email_verified=True,
+            gender="F",
+            phone_number="9876543333",
+            date_of_birth=date(1996, 6, 21),
+            height_cm=165,
+            city=self.city,
+            caste_community=self.caste,
+        )
+
+        self.client.login(username="p7_user", password="P7Password123!")
+
+        from django.core.cache import cache
+        rate_key = f"profile_view_rate_{self.user.id}"
+        cache.set(rate_key, 120, timeout=3600)
+
+        # 121st view should be blocked
+        res = self.client.get(reverse('view_profile', kwargs={'user_id': other_user.id}))
+        self.assertEqual(res.status_code, 302)
+        self.assertIn(reverse('profile_list'), res.url)
+
+        # Staff user should be exempt
+        self.user.is_staff = True
+        self.user.save()
+        res_staff = self.client.get(reverse('view_profile', kwargs={'user_id': other_user.id}))
+        self.assertEqual(res_staff.status_code, 200)
+
+
+
 
 
 
