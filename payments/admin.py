@@ -18,46 +18,47 @@ class PaymentOrderAdmin(admin.ModelAdmin):
     actions = ['approve_and_activate_subscription', 'reject_payment_and_revoke']
 
     def save_model(self, request, obj, form, change):
-        super().save_model(request, obj, form, change)
-        if obj.status == 'completed':
-            obj.activate_subscription()
-        elif obj.status in ('rejected', 'superseded'):
-            if hasattr(obj.user, 'subscription'):
-                sub = obj.user.subscription
-                if sub.active_order_id == obj.id or sub.active_order == obj:
-                    other = PaymentOrder.objects.filter(
-                        user=obj.user,
-                        status='completed'
-                    ).exclude(id=obj.id).order_by('-verified_at', '-created_at').first()
-                    if other:
-                        other.activate_subscription()
-                    else:
-                        sub.reset_to_free()
+        if change and obj.pk:
+            old_obj = PaymentOrder.objects.filter(pk=obj.pk).first()
+            old_status = old_obj.status if old_obj else None
+            status_changed = bool(form.changed_data and 'status' in form.changed_data)
+
+            if status_changed and old_status:
+                new_status = obj.status
+                obj.status = old_status
+                super().save_model(request, obj, form, change)
+                obj.status = new_status
+                if new_status == 'completed' and old_status != 'completed':
+                    obj.approve()
+                elif new_status == 'rejected' and old_status != 'rejected':
+                    obj.reject()
+                else:
+                    obj.save(update_fields=['status'])
+            else:
+                super().save_model(request, obj, form, change)
+        else:
+            target_status = obj.status
+            obj.status = 'pending'
+            super().save_model(request, obj, form, change)
+            if target_status == 'completed':
+                obj.approve()
+            elif target_status == 'rejected':
+                obj.reject()
 
     @admin.action(description="Approve Selected Orders & Activate Subscriptions")
     def approve_and_activate_subscription(self, request, queryset):
         count = 0
         for order in queryset:
-            order.activate_subscription()
-            count += 1
+            if order.status != 'completed':
+                order.approve()
+                count += 1
         self.message_user(request, f"Successfully approved {count} payment order(s) and activated subscriptions.")
 
     @admin.action(description="Reject Selected Orders & Revoke Subscriptions")
     def reject_payment_and_revoke(self, request, queryset):
         count = 0
         for order in queryset:
-            order.status = 'rejected'
-            order.save()
-            if hasattr(order.user, 'subscription'):
-                sub = order.user.subscription
-                if sub.active_order_id == order.id or sub.active_order == order:
-                    other = PaymentOrder.objects.filter(
-                        user=order.user,
-                        status='completed'
-                    ).exclude(id=order.id).order_by('-verified_at', '-created_at').first()
-                    if other:
-                        other.activate_subscription()
-                    else:
-                        sub.reset_to_free()
-            count += 1
+            if order.status != 'rejected':
+                order.reject()
+                count += 1
         self.message_user(request, f"Marked {count} payment order(s) as rejected and updated active access.")
