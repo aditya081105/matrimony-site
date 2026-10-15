@@ -10,6 +10,7 @@ from django.core.files.base import ContentFile
 from datetime import date
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.db.models.functions import Lower
 from django.contrib.postgres.indexes import GinIndex
 
 class Caste(models.Model):
@@ -137,6 +138,18 @@ class CustomUser(AbstractUser):
             models.Index(fields=['-date_joined'], name='user_date_joined_idx'),
             GinIndex(fields=['full_name'], name='user_fn_trgm_idx', opclasses=['gin_trgm_ops']),
             GinIndex(fields=['occupation'], name='user_occ_trgm_idx', opclasses=['gin_trgm_ops']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                Lower('email'),
+                condition=~models.Q(email=''),
+                name='unique_lower_email'
+            ),
+            models.UniqueConstraint(
+                fields=['phone_number'],
+                condition=~models.Q(phone_number=''),
+                name='unique_phone_number'
+            ),
         ]
 
     def __str__(self):
