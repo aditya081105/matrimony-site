@@ -1362,6 +1362,141 @@ class Phase4VisibilityAndPrivacyTests(TestCase):
         self.assertNotContains(res, f"/admin/users/customuser/{self.member_female.id}/change/")
 
 
+class Phase5LockoutAndRateLimitingTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.user = User.objects.create_user(
+            username="victim_p5",
+            email="victim_p5@example.com",
+            password="StrongPassword123!",
+            is_approved=True,
+            is_email_verified=True,
+        )
+
+    def tearDown(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def test_ip_network_key_helper(self):
+        from core.utils import get_ip_network_key
+        # IPv4 unchanged
+        self.assertEqual(get_ip_network_key("203.0.113.195"), "203.0.113.195")
+        self.assertEqual(get_ip_network_key("127.0.0.1"), "127.0.0.1")
+
+        # IPv6 normalized to /64 subnet prefix
+        ip1 = "2001:db8:abcd:0012:0000:0000:0000:0001"
+        ip2 = "2001:db8:abcd:0012:ffff:ffff:ffff:ffff"
+        diff_subnet = "2001:db8:abcd:0099::1"
+
+        self.assertEqual(get_ip_network_key(ip1), "2001:db8:abcd:12::/64")
+        self.assertEqual(get_ip_network_key(ip2), "2001:db8:abcd:12::/64")
+        self.assertEqual(get_ip_network_key(ip1), get_ip_network_key(ip2))
+        self.assertNotEqual(get_ip_network_key(ip1), get_ip_network_key(diff_subnet))
+
+    def test_ipv6_64_subnet_login_lockout(self):
+        # 5 failed attempts rotating through different IPs within the same /64
+        for i in range(1, 6):
+            res = self.client.post(
+                reverse('login'),
+                {'username': 'victim_p5', 'password': 'WrongPassword123!'},
+                REMOTE_ADDR=f"2001:db8:abcd:12::{i}"
+            )
+            self.assertEqual(res.status_code, 200)
+
+        # 6th attempt from a brand-new IP in that same /64 must be locked
+        res_locked = self.client.post(
+            reverse('login'),
+            {'username': 'victim_p5', 'password': 'StrongPassword123!'},
+            REMOTE_ADDR="2001:db8:abcd:12::dead:beef"
+        )
+        self.assertEqual(res_locked.status_code, 200)
+        self.assertContains(res_locked, "temporarily locked")
+
+        # Attempt from a DIFFERENT /64 subnet must succeed
+        res_allowed = self.client.post(
+            reverse('login'),
+            {'username': 'victim_p5', 'password': 'StrongPassword123!'},
+            REMOTE_ADDR="2001:db8:abcd:99::1"
+        )
+        self.assertRedirects(res_allowed, reverse('home'))
+
+    def test_ip_wide_limit_raised_above_20_failures(self):
+        # 25 failed attempts with different usernames from the SAME shared carrier IP (e.g. 198.51.100.5)
+        for i in range(25):
+            res = self.client.post(
+                reverse('login'),
+                {'username': f'random_user_{i}', 'password': 'WrongPassword123!'},
+                REMOTE_ADDR='198.51.100.5'
+            )
+            self.assertEqual(res.status_code, 200)
+
+        # 26th attempt for our legitimate user with correct credentials from that SAME IP must NOT be locked out
+        res_legit = self.client.post(
+            reverse('login'),
+            {'username': 'victim_p5', 'password': 'StrongPassword123!'},
+            REMOTE_ADDR='198.51.100.5'
+        )
+        self.assertRedirects(res_legit, reverse('home'))
+
+    def test_account_level_attack_alert_without_denial_of_service(self):
+        from django.core.cache import cache
+        # Simulate distributed attack: 50 failed attempts across 50 different IPs
+        for i in range(1, 51):
+            ip = f"198.51.{i // 256}.{i % 256 + 1}"
+            self.client.post(
+                reverse('login'),
+                {'username': 'victim_p5', 'password': 'WrongPassword123!'},
+                REMOTE_ADDR=ip
+            )
+
+        # Verify account-level counter reached 50
+        self.assertGreaterEqual(cache.get("login_account_attempts_victim_p5", 0), 50)
+        self.assertTrue(cache.get("account_security_alert_victim_p5"))
+
+        # Legitimate user logs in with CORRECT password from their home IP -> MUST SUCCEED (No DoS)
+        res_success = self.client.post(
+            reverse('login'),
+            {'username': 'victim_p5', 'password': 'StrongPassword123!'},
+            REMOTE_ADDR='203.0.113.88',
+            follow=True
+        )
+        self.assertEqual(res_success.status_code, 200)
+        # Security notice message displayed to user
+        self.assertContains(res_success, "Security Notice")
+        # Counter and alert flag reset after successful legitimate login
+        self.assertIsNone(cache.get("account_security_alert_victim_p5"))
+        self.assertIsNone(cache.get("login_account_attempts_victim_p5"))
+
+    def test_contact_form_ipv6_64_subnet_rate_limiting(self):
+        # 3 submissions from 3 different IPs in the same /64
+        for i in range(1, 4):
+            res = self.client.post(
+                reverse('contact_us'),
+                {
+                    'name': f'Submitter {i}',
+                    'email': f'submitter{i}@example.com',
+                    'message': f'Message {i}',
+                },
+                REMOTE_ADDR=f"2001:db8:beef:42::{i}"
+            )
+            self.assertEqual(res.status_code, 200)
+
+        # 4th submission from another IP in that same /64 must be rate-limited
+        res_blocked = self.client.post(
+            reverse('contact_us'),
+            {
+                'name': 'Submitter 4',
+                'email': 'submitter4@example.com',
+                'message': 'Message 4',
+            },
+            REMOTE_ADDR="2001:db8:beef:42::feed:beef"
+        )
+        self.assertEqual(res_blocked.status_code, 200)
+        self.assertContains(res_blocked, "Too many messages sent from your IP")
+
+
+
 
 
 

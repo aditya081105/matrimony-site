@@ -18,7 +18,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
-from core.utils import get_client_ip
+from core.utils import get_client_ip, get_ip_network_key
 
 from django.contrib.admin.views.decorators import staff_member_required
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -434,7 +434,8 @@ def contact_view(request):
             return render(request, "users/contact.html", {"success": True})
 
         client_ip = get_client_ip(request) or "unknown"
-        rate_key = f"contact_rate_{client_ip}"
+        ip_key = get_ip_network_key(client_ip)
+        rate_key = f"contact_rate_{ip_key}"
         current_count = cache.get(rate_key, 0)
         if current_count >= 3:
             messages.error(request, "Too many messages sent from your IP. Please try again later.")
