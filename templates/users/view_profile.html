@@ -217,7 +217,7 @@
 
         <div class="col-md-6 mb-2">
             <strong>Education:</strong>
-            {{ profile_user.profile.education|default:"Not specified" }}
+            {{ profile_user.education|default:profile_user.profile.education|default:"Not specified" }}
         </div>
 
         <div class="col-md-6 mb-2">

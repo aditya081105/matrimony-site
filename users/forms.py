@@ -44,10 +44,40 @@ class UserRegisterForm(UserCreationForm):
         })
     )
 
+    education = forms.CharField(
+        max_length=100,
+        required=False,
+        label="Education / Degree",
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'e.g. B.Tech, MBA, MCA, MBBS, B.Com, etc.'
+        })
+    )
+
     occupation = forms.CharField(
         max_length=100,
         required=False,
-        widget=forms.TextInput(attrs={'class': 'form-control'})
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'e.g. Software Engineer, Business, Doctor'
+        })
+    )
+
+    city = forms.ModelChoiceField(
+        queryset=City.objects.all().order_by('name'),
+        required=False,
+        label="City / Hometown",
+        empty_label="Select City / Hometown (optional)",
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+
+    height_cm = forms.IntegerField(
+        required=False,
+        label="Height (cm)",
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'e.g. 170 (optional)'
+        })
     )
 
     caste = forms.CharField(
@@ -71,6 +101,25 @@ class UserRegisterForm(UserCreationForm):
         })
     )
 
+    profile_photo = forms.ImageField(
+        required=False,
+        label="Profile Picture",
+        widget=forms.FileInput(attrs={
+            'class': 'form-control',
+            'accept': 'image/*'
+        })
+    )
+
+    bio = forms.CharField(
+        required=False,
+        label="About Me (Bio)",
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 3,
+            'placeholder': 'Write a brief description about yourself, your values, and partner expectations (optional)'
+        })
+    )
+
     phone_number = forms.CharField(
         max_length=10,
         min_length=10,
@@ -81,12 +130,12 @@ class UserRegisterForm(UserCreationForm):
     )
 
     password1 = forms.CharField(
-        widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Create Password'}),
         help_text=""
     )
 
     password2 = forms.CharField(
-        widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Confirm Password'}),
         help_text=""
     )
 
@@ -126,6 +175,20 @@ class UserRegisterForm(UserCreationForm):
 
         return dob
 
+    def clean_height_cm(self):
+        height = self.cleaned_data.get("height_cm")
+        if height is not None and height <= 0:
+            raise forms.ValidationError("Height must be a positive number.")
+        if height is not None and (height < 50 or height > 300):
+            raise forms.ValidationError("Please enter a realistic height between 50 and 300 cm.")
+        return height
+
+    def clean_profile_photo(self):
+        photo = self.cleaned_data.get('profile_photo')
+        if photo and hasattr(photo, 'file') and 'profile_photo' in self.files:
+            photo = validate_image_file(photo, max_size_mb=5)
+        return photo
+
     class Meta:
         model = CustomUser
         fields = (
@@ -135,9 +198,14 @@ class UserRegisterForm(UserCreationForm):
             'gender',
             'phone_number',
             'date_of_birth',
+            'education',
             'occupation',
+            'city',
+            'height_cm',
             'caste',
             'sub_caste',
+            'profile_photo',
+            'bio',
         )
 
     def __init__(self, *args, **kwargs):
@@ -223,6 +291,8 @@ class UserUpdateForm(forms.ModelForm):
         height = self.cleaned_data.get("height_cm")
         if height is not None and height <= 0:
             raise forms.ValidationError("Height must be a positive number.")
+        if height is not None and (height < 50 or height > 300):
+            raise forms.ValidationError("Please enter a realistic height between 50 and 300 cm.")
         return height
 
     def clean_profile_photo(self):
@@ -241,6 +311,7 @@ class UserUpdateForm(forms.ModelForm):
             'gender',
             'phone_number',
             'date_of_birth',
+            'education',
             'occupation',
             'height_cm',
             'caste',
@@ -256,6 +327,10 @@ class UserUpdateForm(forms.ModelForm):
             'full_name': forms.TextInput(attrs={'class': 'form-control'}),
             'gender': forms.Select(attrs={'class': 'form-control'}),
             'phone_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'education': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g. B.Tech, MBA, MCA, MBBS, B.Com, etc.'
+            }),
             'occupation': forms.TextInput(attrs={'class': 'form-control'}),
             'height_cm': forms.NumberInput(attrs={'class': 'form-control'}),
             'caste': forms.TextInput(attrs={
