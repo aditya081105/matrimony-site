@@ -1766,6 +1766,7 @@ class Phase7PaymentCapsAndDBConstraintsTests(TestCase):
         self.user.save()
         res_staff = self.client.get(reverse('view_profile', kwargs={'user_id': other_user.id}))
         self.assertEqual(res_staff.status_code, 200)
+        cache.delete(rate_key)
 
 
 class Phase8DeploymentHardeningTests(TestCase):
@@ -1807,6 +1808,8 @@ class Phase8DeploymentHardeningTests(TestCase):
 
 class RegistrationWizardAndEducationTests(TestCase):
     def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
         from users.models import City
         self.city = City.objects.create(name="Varanasi")
 
