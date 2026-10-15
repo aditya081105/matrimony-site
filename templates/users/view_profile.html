@@ -35,6 +35,16 @@
                 {% include 'communications/includes/save_button.html' with target_id=profile_user.id is_saved=False %}
             {% endif %}
 
+            {% if is_blocked %}
+            <li>
+                <form method="POST" action="{% url 'unblock_user' profile_user.id %}" class="d-inline w-100">
+                    {% csrf_token %}
+                    <button type="submit" class="dropdown-item text-success border-0 bg-transparent">
+                        Unblock
+                    </button>
+                </form>
+            </li>
+            {% else %}
             <li>
                 <form method="POST" action="{% url 'block_user' profile_user.id %}" class="d-inline w-100">
                     {% csrf_token %}
@@ -43,6 +53,7 @@
                     </button>
                 </form>
             </li>
+            {% endif %}
             <li>
                 <a class="dropdown-item"
                    href="{% url 'report_user' profile_user.id %}">

@@ -1281,6 +1281,47 @@ class Phase4VisibilityAndPrivacyTests(TestCase):
         qs_blocked2 = visible_profiles(self.member_male)
         self.assertNotIn(self.member_female, qs_blocked2)
 
+        # Blocked profiles must also be excluded for admin viewers
+        Block.objects.all().delete()
+        qs_admin_before = visible_profiles(self.admin_user)
+        self.assertIn(self.member_female, qs_admin_before)
+        Block.objects.create(blocker=self.admin_user, blocked=self.member_female)
+        qs_admin_after = visible_profiles(self.admin_user)
+        self.assertNotIn(self.member_female, qs_admin_after)
+
+    def test_admin_matchmaking_feed_excludes_blocked_users(self):
+        from django.urls import reverse
+        from communications.models import Block
+
+        self.client.login(username="admin_p4", password="AdminPassword123!")
+        res = self.client.get(reverse('profile_list'))
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, self.member_female.full_name)
+
+        # Admin blocks the member
+        Block.objects.create(blocker=self.admin_user, blocked=self.member_female)
+        res_after = self.client.get(reverse('profile_list'))
+        self.assertEqual(res_after.status_code, 200)
+        self.assertNotContains(res_after, self.member_female.full_name)
+
+    def test_view_profile_shows_unblock_option_when_blocked_by_viewer(self):
+        from django.urls import reverse
+        from communications.models import Block
+
+        self.client.login(username="admin_p4", password="AdminPassword123!")
+        # Before block, shows Block option
+        res = self.client.get(reverse('view_profile', args=[self.member_female.id]))
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "Block")
+        self.assertNotContains(res, "Unblock")
+
+        # After block, shows Unblock option
+        Block.objects.create(blocker=self.admin_user, blocked=self.member_female)
+        res_blocked = self.client.get(reverse('view_profile', args=[self.member_female.id]))
+        self.assertEqual(res_blocked.status_code, 200)
+        self.assertContains(res_blocked, "Unblock")
+        self.assertNotContains(res_blocked, 'action="/interests/block/')
+
     def test_visibility_service_can_view(self):
         from users.visibility import can_view
         from communications.models import Block

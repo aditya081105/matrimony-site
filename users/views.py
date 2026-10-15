@@ -370,10 +370,18 @@ def view_profile(request, user_id):
         user=request.user
     ).values_list("saved_user_id", flat=True)
 
+    is_blocked = False
+    if request.user.is_authenticated:
+        is_blocked = Block.objects.filter(
+            blocker=request.user,
+            blocked=profile_user
+        ).exists()
+
     return render(request, "users/view_profile.html", {
         "profile_user": profile_user,
         "pending_request": pending_request,
         "saved_ids": saved_ids,
+        "is_blocked": is_blocked,
         **privacy_ctx,
     })
 
