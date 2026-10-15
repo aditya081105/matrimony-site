@@ -272,6 +272,124 @@ class CommunicationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Profile blocked")
 
+    def test_send_request_sticky_rejection(self):
+        # User 1 sends request to User 2, and User 2 rejects it
+        req = ContactRequest.objects.create(
+            sender=self.user1,
+            receiver=self.user2,
+            status="rejected",
+            attempt_count=1
+        )
+        # User 1 tries to send another request to User 2
+        response = self.client.post(reverse("send_request", args=[self.user2.id]))
+        self.assertEqual(response.status_code, 302)
+        # Request status must remain rejected and not reset to pending
+        req.refresh_from_db()
+        self.assertEqual(req.status, "rejected")
+
+    def test_cannot_send_request_to_unapproved_or_suspended_user(self):
+        unapproved = CustomUser.objects.create_user(
+            username="unapproved_target",
+            email="unapproved_target@test.com",
+            password="Test12345!",
+            is_approved=False,
+            is_active=True,
+            is_email_verified=True,
+            gender="F",
+            phone_number="8888888801",
+            date_of_birth="2000-01-01",
+            city=self.city,
+            profile_photo="test.jpg",
+        )
+        res = self.client.post(reverse("send_request", args=[unapproved.id]))
+        self.assertEqual(res.status_code, 302)
+        self.assertEqual(ContactRequest.objects.filter(receiver=unapproved).count(), 0)
+
+        suspended = CustomUser.objects.create_user(
+            username="suspended_target",
+            email="suspended_target@test.com",
+            password="Test12345!",
+            is_approved=True,
+            is_active=True,
+            is_suspended=True,
+            is_email_verified=True,
+            gender="F",
+            phone_number="8888888802",
+            date_of_birth="2000-01-01",
+            city=self.city,
+            profile_photo="test.jpg",
+        )
+        res2 = self.client.post(reverse("send_request", args=[suspended.id]))
+        self.assertEqual(res2.status_code, 302)
+        self.assertEqual(ContactRequest.objects.filter(receiver=suspended).count(), 0)
+
+    def test_duplicate_report_blocked(self):
+        from communications.models import Report
+        # First report
+        res1 = self.client.post(reverse("report_user", args=[self.user2.id]), {"reason": "Spam"})
+        self.assertEqual(res1.status_code, 302)
+        self.assertEqual(Report.objects.filter(reporter=self.user1, reported_user=self.user2).count(), 1)
+
+        # Second report by same user must be rejected
+        res2 = self.client.post(reverse("report_user", args=[self.user2.id]), {"reason": "Harassment"})
+        self.assertEqual(res2.status_code, 302)
+        self.assertEqual(Report.objects.filter(reporter=self.user1, reported_user=self.user2).count(), 1)
+
+    def test_reporting_requires_5_distinct_approved_reporters_to_suspend(self):
+        from communications.models import Report
+        # Target starts unsuspended
+        self.assertFalse(self.user2.is_suspended)
+
+        # Create 4 approved distinct reporters
+        reporters = []
+        for i in range(4):
+            rep = CustomUser.objects.create_user(
+                username=f"reporter_{i}",
+                email=f"reporter_{i}@test.com",
+                password="TestPassword123!",
+                is_approved=True,
+                is_active=True,
+                is_email_verified=True,
+                gender="M",
+                phone_number=f"777777770{i}",
+            )
+            reporters.append(rep)
+
+        # User 1 reports User 2
+        self.client.post(reverse("report_user", args=[self.user2.id]), {"reason": "Violation"})
+        self.user2.refresh_from_db()
+        self.assertFalse(self.user2.is_suspended)
+
+        # 3 more distinct reporters report User 2 (total 4 distinct)
+        for rep in reporters[:3]:
+            c = Client()
+            c.login(username=rep.username, password="TestPassword123!")
+            c.post(reverse("report_user", args=[self.user2.id]), {"reason": "Violation"})
+
+        self.user2.refresh_from_db()
+        self.assertFalse(self.user2.is_suspended)
+
+        # 5th distinct approved reporter reports User 2 -> auto suspended
+        c5 = Client()
+        c5.login(username=reporters[3].username, password="TestPassword123!")
+        c5.post(reverse("report_user", args=[self.user2.id]), {"reason": "Violation"})
+
+        self.user2.refresh_from_db()
+        self.assertTrue(self.user2.is_suspended)
+
+    def test_reporting_cannot_suspend_admin(self):
+        admin = CustomUser.objects.create_superuser(
+            username="immune_admin",
+            email="immune_admin@test.com",
+            password="AdminPassword123!",
+            is_staff=True,
+            is_superuser=True
+        )
+        res = self.client.post(reverse("report_user", args=[admin.id]), {"reason": "Spam"})
+        self.assertEqual(res.status_code, 302)
+        admin.refresh_from_db()
+        self.assertFalse(admin.is_suspended)
+
 
 @skipUnlessDBFeature('has_select_for_update')
 class CommunicationConcurrencyTests(TransactionTestCase):

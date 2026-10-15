@@ -17,6 +17,8 @@ from django.core.signing import TimestampSigner, BadSignature, SignatureExpired
 from django.conf import settings
 
 from django.contrib.admin.views.decorators import staff_member_required
+from django.utils.http import url_has_allowed_host_and_scheme
+from users.decorators import active_member_required
 from .models import CustomUser, Caste, City, Profile
 from .forms import UserRegisterForm, UserUpdateForm
 from core.services import send_verification_email
@@ -53,16 +55,9 @@ def register(request):
 
 from django.db.models import Q
 
-@login_required(login_url='login')
+@active_member_required
 def profile_list(request):
     is_admin = bool(request.user.is_staff or request.user.is_superuser)
-
-    if not is_admin:
-        if not request.user.is_approved:
-            return render(request, 'users/pending_approval.html')
-
-        if not request.user.is_email_verified:
-            return render(request, "users/verify_email_required.html")
 
     from core.caching import get_cached_cities, get_cached_castes
     cities = get_cached_cities()
@@ -134,8 +129,13 @@ def profile_list(request):
                 Q(sub_caste__icontains=caste_query) |
                 Q(caste_community__name__icontains=caste_query)
             )
-    if request.GET.get('city'):
-        profiles = profiles.filter(city_id=request.GET.get('city'))
+    city_param = (request.GET.get('city') or '').strip()
+    if city_param:
+        try:
+            city_id = int(city_param)
+            profiles = profiles.filter(city_id=city_id)
+        except (ValueError, TypeError):
+            pass
     if request.GET.get('min_height'):
         try:
             min_h = int(request.GET.get('min_height'))
@@ -164,10 +164,11 @@ def profile_list(request):
         try:
             max_age = int(request.GET.get('max_age'))
             try:
-                min_dob = date(today.year - max_age, today.month, today.day)
+                # Age <= max_age means the person has not yet reached their (max_age + 1)th birthday
+                min_dob = date(today.year - (max_age + 1), today.month, today.day)
             except ValueError:
-                min_dob = date(today.year - max_age, today.month, 28)
-            profiles = profiles.filter(date_of_birth__gte=min_dob)
+                min_dob = date(today.year - (max_age + 1), today.month, 28)
+            profiles = profiles.filter(date_of_birth__gt=min_dob)
         except (ValueError, TypeError):
             pass
 
@@ -281,7 +282,7 @@ def privacy_view(request):
 def about_view(request):
     return render(request, 'users/about.html')
 
-@login_required
+@active_member_required
 def my_matches(request):
     matches = ContactRequest.objects.filter(
         status='accepted'
@@ -314,44 +315,44 @@ def my_matches(request):
 
     matched_users = [
         u for u in matched_users
-        if u.id not in blocked_ids
+        if u.id not in blocked_ids and u.is_active and not u.is_suspended
     ]
 
     return render(request, 'users/my_matches.html', {
         'matched_users': matched_users
     })
 
-@login_required
+@active_member_required
 def view_profile(request, user_id):
 
     profile_user = get_object_or_404(CustomUser, id=user_id)
     is_viewer_admin = bool(request.user.is_staff or request.user.is_superuser)
     is_target_admin = bool(profile_user.is_staff or profile_user.is_superuser)
 
-    # Hide admin/staff accounts from non-admin viewers
+    # 1. Hide admin/staff accounts from non-admin viewers: 404 eliminates enumeration oracle
     if is_target_admin and not is_viewer_admin:
-        messages.error(request, "Profile unavailable.")
-        return redirect("profile_list")
+        raise Http404("Profile not found.")
 
-    # Security: unapproved profiles must not be exposed to other non-staff users
+    # 2. Deactivated accounts unavailable to non-admin viewers
+    if not profile_user.is_active and not is_viewer_admin:
+        raise Http404("Profile not found.")
+
+    # 3. Unapproved accounts unavailable to other non-staff users
     if not profile_user.is_approved and not is_viewer_admin and profile_user != request.user:
-        messages.error(request, "This profile is pending approval.")
-        return redirect("profile_list")
+        raise Http404("Profile not found.")
 
-    # Suspended profiles unavailable to regular users (admins can view for moderation)
+    # 4. Suspended profiles unavailable to regular users (admins can view for moderation)
     if profile_user.is_suspended and not is_viewer_admin:
-        messages.error(request, "Profile unavailable.")
-        return redirect("profile_list")
+        raise Http404("Profile not found.")
 
-    # Blocked profiles check for non-staff viewers
+    # 5. Blocked profiles unavailable to non-staff viewers
     if not is_viewer_admin:
         if (
             Block.objects.filter(blocker=profile_user, blocked=request.user).exists()
             or
             Block.objects.filter(blocker=request.user, blocked=profile_user).exists()
         ):
-            messages.error(request, "Profile unavailable.")
-            return redirect("profile_list")
+            raise Http404("Profile not found.")
 
     # accepted match
     is_matched = ContactRequest.objects.filter(
@@ -484,8 +485,23 @@ def verify_email(request, token):
     signer = TimestampSigner()
 
     try:
-        user_id = signer.unsign(token, max_age=86400)  # Valid for 24 hours
-        user = CustomUser.objects.get(id=user_id)
+        unsigned_value = signer.unsign(token, max_age=86400)  # Valid for 24 hours
+
+        # Payload format: "{user_id}:{user_email}"
+        if ":" in str(unsigned_value):
+            user_id_str, token_email = str(unsigned_value).split(":", 1)
+            user = CustomUser.objects.get(id=int(user_id_str))
+
+            # Verify that the token corresponds to the user's CURRENT email address
+            if (user.email or '').strip().lower() != token_email.strip().lower():
+                messages.error(
+                    request,
+                    "This verification link was issued for a previous email address. Please request a new verification email."
+                )
+                return redirect("resend_verification")
+        else:
+            # Backwards compatibility fallback for any legacy single-id tokens
+            user = CustomUser.objects.get(id=int(unsigned_value))
 
         if user.is_email_verified:
             messages.success(request, "Email already verified.")
@@ -500,7 +516,7 @@ def verify_email(request, token):
         messages.error(request, "This verification link has expired (valid for 24 hours). Please request a new one.")
         return redirect("resend_verification")
 
-    except (BadSignature, CustomUser.DoesNotExist):
+    except (BadSignature, CustomUser.DoesNotExist, ValueError):
         messages.error(request, "Invalid or unrecognized verification link.")
         return redirect("home")
     
@@ -522,7 +538,7 @@ def resend_verification_email(request):
             f"A verification email was sent recently to {request.user.email}. Please check your inbox and spam folder. You can request another email in {wait_seconds} seconds."
         )
         referer = request.META.get('HTTP_REFERER')
-        if referer and request.get_host() in referer:
+        if referer and url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}):
             return redirect(referer)
         return redirect("home")
 
@@ -541,7 +557,7 @@ def resend_verification_email(request):
         )
 
     referer = request.META.get('HTTP_REFERER')
-    if referer and request.get_host() in referer:
+    if referer and url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}):
         return redirect(referer)
     return redirect("home")
 

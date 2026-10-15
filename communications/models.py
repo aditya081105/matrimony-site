@@ -53,6 +53,9 @@ class Report(models.Model):
     reason = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        unique_together = ('reporter', 'reported_user')
+
 class RequestAttempt(models.Model):
     sender = models.ForeignKey(
         CustomUser,

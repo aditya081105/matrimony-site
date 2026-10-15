@@ -14,6 +14,7 @@ class SearchTests(TestCase):
             occupation="Software Engineer",
             is_approved=True,
             is_active=True,
+            is_email_verified=True,
         )
         self.user2 = CustomUser.objects.create_user(
             username="user_search2",
@@ -24,6 +25,7 @@ class SearchTests(TestCase):
             occupation="Doctor",
             is_approved=True,
             is_active=True,
+            is_email_verified=True,
         )
         self.client.login(username="user_search1", password="TestPassword123!")
 
@@ -110,3 +112,23 @@ class SearchTests(TestCase):
         self.assertTemplateNotUsed(response, 'base.html')
         self.assertContains(response, "Pooja Verma")
         self.assertContains(response, 'contact-action-')
+
+    def test_search_blocked_for_unverified_user(self):
+        self.user1.is_email_verified = False
+        self.user1.save()
+        response = self.client.get(reverse('search_profiles'))
+        self.assertContains(response, "Verify Your Email")
+        self.assertNotContains(response, "Pooja Verma")
+
+    def test_search_blocked_for_unapproved_user(self):
+        self.user1.is_approved = False
+        self.user1.save()
+        response = self.client.get(reverse('search_profiles'))
+        self.assertContains(response, "Pending Approval")
+        self.assertNotContains(response, "Pooja Verma")
+
+    def test_search_blocked_for_suspended_user(self):
+        self.user1.is_suspended = True
+        self.user1.save()
+        response = self.client.get(reverse('search_profiles'))
+        self.assertEqual(response.status_code, 302)
