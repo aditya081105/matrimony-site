@@ -256,16 +256,7 @@ def edit_profile(request):
                     except Exception as e:
                         print(f"Email error on update: {e}")
 
-                name_changed = (old_name != user.full_name)
-                gender_changed = (old_gender != user.gender)
-                photo_changed = bool('profile_photo' in request.FILES or request.POST.get('profile_photo-clear') or request.POST.get('remove_profile_photo'))
-
-                if name_changed or gender_changed or photo_changed:
-                    user.is_approved = False
-                    user.needs_review = True
-                    user.save(update_fields=['is_approved', 'needs_review'])
-                    messages.warning(request, "Your profile changes (name, gender, or photo) require re-approval by our moderation team.")
-                elif form.has_changed():
+                if form.has_changed():
                     user.needs_review = True
                     user.save(update_fields=['needs_review'])
 
