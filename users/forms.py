@@ -154,7 +154,7 @@ class UserRegisterForm(UserCreationForm):
             raise forms.ValidationError("Please enter a valid, active mobile number.")
 
         if CustomUser.objects.filter(phone_number=phone).exists():
-            raise forms.ValidationError("If this mobile number is already registered, please log in or reset your password.")
+            raise forms.ValidationError("This mobile number is already registered. Please log in or reset your password.")
 
         return phone
     

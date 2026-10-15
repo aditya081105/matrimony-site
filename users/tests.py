@@ -1950,4 +1950,29 @@ class RegistrationWizardAndEducationTests(TestCase):
         self.assertEqual(res_view.status_code, 200)
         self.assertContains(res_view, "M.Com Gold Medalist")
 
+    def test_already_registered_error_messages_without_if(self):
+        from users.validators import validate_unique_and_legitimate_email
+        from users.forms import UserRegisterForm
+        from django.core.exceptions import ValidationError
+
+        User.objects.create_user(
+            username="existinguser",
+            password="StrongPass123!",
+            email="existing@gmail.com",
+            phone_number="9876543210",
+        )
+
+        with self.assertRaises(ValidationError) as ctx:
+            validate_unique_and_legitimate_email("existing@gmail.com")
+        self.assertIn("This email address is already registered.", str(ctx.exception))
+        self.assertNotIn("If this email", str(ctx.exception))
+
+        # Test phone number on form
+        form = UserRegisterForm(data={'phone_number': '9876543210'})
+        form.is_valid()
+        self.assertIn('phone_number', form.errors)
+        self.assertIn("This mobile number is already registered.", str(form.errors['phone_number']))
+        self.assertNotIn("If this mobile", str(form.errors['phone_number']))
+
+
 

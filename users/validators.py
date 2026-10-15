@@ -193,7 +193,7 @@ def validate_unique_and_legitimate_email(email: str, exclude_user_id=None) -> st
 
     if qs.filter(email__iexact=email).exists():
         raise ValidationError(
-            "If this email address is already registered, please log in or reset your password."
+            "This email address is already registered. Please log in or reset your password."
         )
 
     # Prevent Gmail / Googlemail dot-variation duplicates (e.g. a.b@gmail.com vs ab@gmail.com)
@@ -209,7 +209,7 @@ def validate_unique_and_legitimate_email(email: str, exclude_user_id=None) -> st
                 ex_canonical = ex_local.split("+")[0].replace(".", "")
                 if ex_canonical == canonical_local:
                     raise ValidationError(
-                        "If this email address is already registered, please log in or reset your password."
+                        "This email address is already registered. Please log in or reset your password."
                     )
 
     return email
