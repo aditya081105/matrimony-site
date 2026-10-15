@@ -1,11 +1,15 @@
 import re
+import logging
 from django import forms
+from django.contrib import messages
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.core.cache import cache
-from core.utils import get_client_ip
+from core.utils import get_client_ip, get_ip_network_key
 from .models import CustomUser, Profile, Caste, City
 from .validators import validate_unique_and_legitimate_email, validate_image_file
 from datetime import date
+
+logger = logging.getLogger(__name__)
 
 # =========================
 # REGISTER FORM
@@ -436,40 +440,58 @@ class PasswordResetSetNewForm(forms.Form):
         return cleaned_data
 
 
+IP_LOGIN_FAIL_LIMIT = 100        # Relaxed from 20 to 100 to protect carrier CGNAT / mobile NAT pools
+PAIR_LOGIN_FAIL_LIMIT = 5        # 5 consecutive failed attempts per (username, IP) pair
+ACCOUNT_ATTACK_ALERT_LIMIT = 50  # 50 failed attempts per username across all IPs triggers security alert/throttling
+
+
 class RateLimitedAuthenticationForm(AuthenticationForm):
     """
     Protects user accounts against credential brute-force attacks.
-    Enforces a temporary 15-minute lock after 5 consecutive failed attempts
-    for the specific (username, IP) pair. This prevents an external attacker
-    from locking out legitimate account owners from their own devices/IPs.
-    Also enforces an IP-level threshold to block high-frequency password spraying.
+    Enforces:
+    1. A temporary 15-minute lock after 5 consecutive failed attempts
+       for the specific (username, IP/subnet) pair.
+    2. An IP network-level threshold (100 failures) with IPv6 /64 prefix aggregation,
+       preventing IPv6 address hopping while safely accommodating shared mobile CGNAT pools.
+    3. An account-level attack tracker (50 failures/hour per username across all IPs)
+       that alerts and tracks high-frequency attacks without creating a hard Denial-of-Service
+       lockout against the legitimate account owner.
     """
     def clean(self):
         username = (self.cleaned_data.get('username') or '').strip().lower()
         client_ip = get_client_ip(self.request) if self.request else 'unknown'
+        ip_key = get_ip_network_key(client_ip)
 
-        if client_ip:
-            ip_lock_key = f"login_ip_lock_{client_ip}"
+        if ip_key:
+            ip_lock_key = f"login_ip_lock_{ip_key}"
             if cache.get(ip_lock_key):
                 raise forms.ValidationError(
                     "Too many failed login attempts from this network. Please try again in 15 minutes."
                 )
 
-        if username and client_ip:
-            pair_lock_key = f"login_lock_{username}_{client_ip}"
+        if username and ip_key:
+            pair_lock_key = f"login_lock_{username}_{ip_key}"
             if cache.get(pair_lock_key):
                 raise forms.ValidationError(
                     "This account is temporarily locked due to multiple failed login attempts. Please try again in 15 minutes."
                 )
 
+        if username:
+            account_attempts = cache.get(f"login_account_attempts_{username}", 0)
+            if account_attempts >= ACCOUNT_ATTACK_ALERT_LIMIT:
+                cache.set(f"account_security_alert_{username}", True, timeout=86400)
+                logger.warning(
+                    f"High-frequency failed login attempts ({account_attempts}) detected for account '{username}'."
+                )
+
         try:
             return super().clean()
         except forms.ValidationError as e:
-            if client_ip:
-                ip_attempt_key = f"login_ip_attempts_{client_ip}"
+            if ip_key:
+                ip_attempt_key = f"login_ip_attempts_{ip_key}"
                 ip_attempts = cache.get(ip_attempt_key, 0) + 1
-                if ip_attempts >= 20:
-                    cache.set(f"login_ip_lock_{client_ip}", True, timeout=900)
+                if ip_attempts >= IP_LOGIN_FAIL_LIMIT:
+                    cache.set(f"login_ip_lock_{ip_key}", True, timeout=900)
                     cache.delete(ip_attempt_key)
                     raise forms.ValidationError(
                         "Too many failed login attempts from this network. Access temporarily suspended for 15 minutes."
@@ -477,23 +499,45 @@ class RateLimitedAuthenticationForm(AuthenticationForm):
                 else:
                     cache.set(ip_attempt_key, ip_attempts, timeout=900)
 
-            if username and client_ip:
-                pair_attempt_key = f"login_attempts_{username}_{client_ip}"
+            if username and ip_key:
+                pair_attempt_key = f"login_attempts_{username}_{ip_key}"
                 attempts = cache.get(pair_attempt_key, 0) + 1
-                if attempts >= 5:
-                    cache.set(f"login_lock_{username}_{client_ip}", True, timeout=900)  # 15 min lock
+                if attempts >= PAIR_LOGIN_FAIL_LIMIT:
+                    cache.set(f"login_lock_{username}_{ip_key}", True, timeout=900)  # 15 min lock
                     cache.delete(pair_attempt_key)
                     raise forms.ValidationError(
                         "Too many failed login attempts. This account is temporarily locked for 15 minutes."
                     )
                 else:
                     cache.set(pair_attempt_key, attempts, timeout=900)
+
+            if username:
+                account_attempt_key = f"login_account_attempts_{username}"
+                account_attempts = cache.get(account_attempt_key, 0) + 1
+                cache.set(account_attempt_key, account_attempts, timeout=3600)  # 1-hour window
+                if account_attempts >= ACCOUNT_ATTACK_ALERT_LIMIT:
+                    cache.set(f"account_security_alert_{username}", True, timeout=86400)
+                    logger.warning(
+                        f"Distributed brute-force attack threshold reached for user '{username}' ({account_attempts} attempts)."
+                    )
+
             raise e
 
     def confirm_login_allowed(self, user):
         super().confirm_login_allowed(user)
         username = user.get_username().strip().lower()
         client_ip = get_client_ip(self.request) if self.request else 'unknown'
-        if client_ip:
-            cache.delete(f"login_attempts_{username}_{client_ip}")
-            cache.delete(f"login_lock_{username}_{client_ip}")
+        ip_key = get_ip_network_key(client_ip)
+        if ip_key:
+            cache.delete(f"login_attempts_{username}_{ip_key}")
+            cache.delete(f"login_lock_{username}_{ip_key}")
+
+        if username:
+            if cache.get(f"account_security_alert_{username}"):
+                if self.request:
+                    messages.warning(
+                        self.request,
+                        "Security Notice: Multiple failed login attempts were recently detected on your account."
+                    )
+                cache.delete(f"account_security_alert_{username}")
+            cache.delete(f"login_account_attempts_{username}")
