@@ -5,10 +5,11 @@ from django.db import connection
 from django.db.models import Q, Case, When, Value, IntegerField
 from django.utils import timezone
 from users.models import CustomUser
+from users.decorators import active_member_required
 from communications.models import Block, ContactRequest, SavedProfile
 
 
-@login_required
+@active_member_required
 def search_view(request):
     query = request.GET.get('q', '').strip()
     profiles = CustomUser.objects.none()

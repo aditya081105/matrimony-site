@@ -102,6 +102,9 @@ class UserRegisterForm(UserCreationForm):
         if len(set(phone)) == 1 or phone in ('1234567890', '0123456789'):
             raise forms.ValidationError("Please enter a valid, active mobile number.")
 
+        if CustomUser.objects.filter(phone_number=phone).exists():
+            raise forms.ValidationError("This mobile number is already registered. Please log in or use a different number.")
+
         return phone
     
     def clean_date_of_birth(self):
@@ -190,6 +193,13 @@ class UserUpdateForm(forms.ModelForm):
 
         if len(set(phone)) == 1 or phone in ('1234567890', '0123456789'):
             raise forms.ValidationError("Please enter a valid, active mobile number.")
+
+        exclude_id = self.instance.pk if self.instance and self.instance.pk else None
+        qs = CustomUser.objects.filter(phone_number=phone)
+        if exclude_id:
+            qs = qs.exclude(pk=exclude_id)
+        if qs.exists():
+            raise forms.ValidationError("This mobile number is already registered by another account.")
 
         return phone
 

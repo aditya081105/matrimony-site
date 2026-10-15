@@ -13,6 +13,8 @@ class PaymentTests(TestCase):
             full_name="Buyer One",
             gender="M",
             phone_number="9876543210",
+            is_approved=True,
+            is_email_verified=True,
         )
         self.client.login(username="buyer1", password="TestPassword123!")
 
@@ -148,3 +150,21 @@ class PaymentTests(TestCase):
         self.user.refresh_from_db()
         self.assertFalse(self.user.subscription.is_active)
         self.assertEqual(self.user.subscription.plan_type, 'Free')
+
+    def test_unapproved_user_blocked_from_checkout(self):
+        self.user.is_approved = False
+        self.user.save()
+        response = self.client.get(reverse('checkout', args=['gold']))
+        self.assertContains(response, "Pending Approval")
+
+    def test_unverified_user_blocked_from_checkout(self):
+        self.user.is_email_verified = False
+        self.user.save()
+        response = self.client.get(reverse('checkout', args=['gold']))
+        self.assertContains(response, "Verify Your Email")
+
+    def test_suspended_user_blocked_from_checkout(self):
+        self.user.is_suspended = True
+        self.user.save()
+        response = self.client.get(reverse('checkout', args=['gold']))
+        self.assertEqual(response.status_code, 302)

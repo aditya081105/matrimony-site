@@ -85,7 +85,8 @@ def send_verification_email(request, user):
     In production: executes asynchronously via ThreadPoolExecutor so HTTP workers are never blocked.
     """
     signer = TimestampSigner()
-    token = signer.sign(user.id)
+    payload = f"{user.id}:{(user.email or '').strip().lower()}"
+    token = signer.sign(payload)
     verify_link = request.build_absolute_uri(
         reverse("verify_email", args=[token])
     )

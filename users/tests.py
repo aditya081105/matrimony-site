@@ -207,8 +207,8 @@ class UserModelTest(TestCase):
 
         self.client.login(username="normal_viewer", password="TestPass123!")
         response = self.client.get(reverse('view_profile', args=[unapproved.id]))
-        # Must redirect back to profile list and not expose details
-        self.assertEqual(response.status_code, 302)
+        # Must return 404 to prevent enumeration of unapproved accounts
+        self.assertEqual(response.status_code, 404)
 
     def test_verify_email_with_timestamp_signer(self):
         from django.urls import reverse
@@ -361,9 +361,9 @@ class UserModelTest(TestCase):
         profile_ids = [p.id for p in res.context['page_obj']]
         self.assertNotIn(admin_user.id, profile_ids)
 
-        # 2. Regular user cannot view admin profile directly
+        # 2. Regular user cannot view admin profile directly (returns 404 to prevent staff ID enumeration oracle)
         view_res = self.client.get(reverse('view_profile', args=[admin_user.id]))
-        self.assertEqual(view_res.status_code, 302)
+        self.assertEqual(view_res.status_code, 404)
 
     def test_admin_viewer_can_view_all_profiles_with_contact_details(self):
         from django.urls import reverse
@@ -659,6 +659,163 @@ class ImageSecurityUploadTest(TestCase):
         self.assertFalse(bool(u3.profile_photo))
         # Second photo must now also be deleted from disk
         self.assertFalse(default_storage.exists(second_photo))
+
+    def test_phone_number_uniqueness_on_registration_and_update(self):
+        from users.forms import UserRegisterForm, UserUpdateForm
+        User.objects.create_user(
+            username="existing_phone_user",
+            email="existing_phone@test.com",
+            password="TestPassword123!",
+            phone_number="9876543299",
+            is_approved=True
+        )
+
+        # 1. Registration with duplicate phone
+        reg_form = UserRegisterForm(data={
+            'username': 'new_candidate',
+            'full_name': 'New Candidate',
+            'email': 'new_candidate@test.com',
+            'phone_number': '9876543299',
+            'password': 'StrongPassword123!',
+            'confirm_password': 'StrongPassword123!',
+            'gender': 'M',
+            'profile_for': 'Self',
+            'community': 'hindu',
+            'religion': 'Hindu',
+            'mother_tongue': 'Hindi',
+        })
+        self.assertFalse(reg_form.is_valid())
+        self.assertIn("phone_number", reg_form.errors)
+
+        # 2. Update profile with duplicate phone
+        other_user = User.objects.create_user(
+            username="other_candidate",
+            email="other_candidate@test.com",
+            password="TestPassword123!",
+            phone_number="9876543288",
+            is_approved=True
+        )
+        update_form = UserUpdateForm(
+            data={
+                'full_name': 'Other Candidate',
+                'email': 'other_candidate@test.com',
+                'gender': 'M',
+                'phone_number': '9876543299'
+            },
+            instance=other_user
+        )
+        self.assertFalse(update_form.is_valid())
+        self.assertIn("phone_number", update_form.errors)
+
+    def test_email_verification_token_mismatched_email_rejected(self):
+        from core.services import send_verification_email
+        from django.core.signing import TimestampSigner
+
+        test_user = User.objects.create_user(
+            username="token_binding_user",
+            email="original@example.com",
+            password="TestPassword123!",
+            is_approved=True,
+            is_email_verified=False
+        )
+
+        signer = TimestampSigner()
+        # Token generated for original email
+        token = signer.sign(f"{test_user.id}:{test_user.email.strip().lower()}")
+
+        # User's email changes before token is clicked
+        test_user.email = "changed@example.com"
+        test_user.save()
+
+        # Visiting verification link with stale token must reject verification
+        res = self.client.get(reverse('verify_email', args=[token]))
+        self.assertEqual(res.status_code, 302)
+        test_user.refresh_from_db()
+        self.assertFalse(test_user.is_email_verified)
+
+    def test_resend_verification_open_redirect_prevented(self):
+        active_user = User.objects.create_user(
+            username="redirect_test_user",
+            email="redirect_user@example.com",
+            password="TestPassword123!",
+            is_approved=True,
+            is_email_verified=False
+        )
+        self.client.login(username="redirect_test_user", password="TestPassword123!")
+
+        # Insecure substring attempt: evil.com/?x=testserver
+        response = self.client.get(
+            reverse('resend_verification'),
+            HTTP_REFERER="https://attacker-evil.com/phish?x=testserver"
+        )
+        self.assertEqual(response.status_code, 302)
+        # Must redirect safely to local view, never to external attacker site
+        self.assertFalse(response['Location'].startswith("https://attacker-evil.com"))
+
+    def test_matchmaking_city_filter_invalid_type_does_not_500(self):
+        active_user = User.objects.create_user(
+            username="filter_safety_user",
+            email="filtersafety@example.com",
+            password="TestPassword123!",
+            is_approved=True,
+            is_email_verified=True,
+            gender='M'
+        )
+        self.client.login(username="filter_safety_user", password="TestPassword123!")
+
+        # String city ID
+        res1 = self.client.get(reverse('profile_list'), {'city': 'abc'})
+        self.assertEqual(res1.status_code, 200)
+
+        # Float city ID
+        res2 = self.client.get(reverse('profile_list'), {'city': '1.5'})
+        self.assertEqual(res2.status_code, 200)
+
+    def test_matchmaking_age_filter_bounds_inclusive(self):
+        from datetime import date
+        today = date.today()
+        # Exactly 30 years old today
+        dob_30 = date(today.year - 30, today.month, today.day)
+        # Exactly 31 years old today
+        dob_31 = date(today.year - 31, today.month, today.day)
+
+        p30 = User.objects.create_user(
+            username="candidate_30",
+            email="candidate30@example.com",
+            password="TestPassword123!",
+            full_name="Candidate 30",
+            gender='F',
+            date_of_birth=dob_30,
+            is_approved=True,
+            is_email_verified=True,
+        )
+        p31 = User.objects.create_user(
+            username="candidate_31",
+            email="candidate31@example.com",
+            password="TestPassword123!",
+            full_name="Candidate 31",
+            gender='F',
+            date_of_birth=dob_31,
+            is_approved=True,
+            is_email_verified=True,
+        )
+
+        viewer = User.objects.create_user(
+            username="age_filter_viewer",
+            email="ageviewer@example.com",
+            password="TestPassword123!",
+            gender='M',
+            is_approved=True,
+            is_email_verified=True
+        )
+        self.client.login(username="age_filter_viewer", password="TestPassword123!")
+
+        # Query max_age=30: candidate_30 must be included, candidate_31 must be excluded
+        res = self.client.get(reverse('profile_list'), {'max_age': '30', 'gender': 'F'})
+        self.assertEqual(res.status_code, 200)
+        names = [p.full_name for p in res.context['page_obj']]
+        self.assertIn("Candidate 30", names)
+        self.assertNotIn("Candidate 31", names)
 
 
 

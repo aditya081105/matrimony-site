@@ -72,7 +72,10 @@ def plans_view(request):
     })
 
 
-@login_required
+from users.decorators import active_member_required
+
+
+@active_member_required
 def checkout_view(request, plan_code):
     plan = get_object_or_404(Plan, code=plan_code, is_active=True)
 
@@ -156,7 +159,7 @@ def checkout_view(request, plan_code):
     })
 
 
-@login_required
+@active_member_required
 def payment_history_view(request):
     orders = PaymentOrder.objects.filter(user=request.user).select_related('plan').order_by('-created_at')
     user_sub = getattr(request.user, 'subscription', None)

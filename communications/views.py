@@ -12,7 +12,8 @@ from .models import ContactRequest, SavedProfile
 from users.models import CustomUser
 from django.contrib.auth import get_user_model
 from django.db.models import Q
-from django.db import transaction
+from django.db import transaction, IntegrityError
+from users.decorators import active_member_required
 
 from django.utils.http import url_has_allowed_host_and_scheme
 
@@ -26,40 +27,10 @@ def safe_redirect(request, fallback="profile_list"):
     return redirect(fallback)
 
 
-@login_required
+@active_member_required
 @require_POST
 def send_request(request, user_id):
     is_htmx = bool(request.headers.get('HX-Request'))
-
-    if request.user.is_suspended:
-        if is_htmx:
-            return render(request, "communications/includes/contact_button.html", {
-                "target_user": CustomUser(id=user_id),
-                "status": "none",
-                "error_message": "Your account has been suspended."
-            })
-        messages.error(request, "Your account has been suspended.")
-        return redirect("home")
-
-    if not request.user.is_approved:
-        if is_htmx:
-            return render(request, "communications/includes/contact_button.html", {
-                "target_user": CustomUser(id=user_id),
-                "status": "none",
-                "error_message": "Your account is pending approval."
-            })
-        messages.error(request, "Your account is pending approval.")
-        return redirect('home')
-    
-    if not request.user.is_email_verified:
-        if is_htmx:
-            return render(request, "communications/includes/contact_button.html", {
-                "target_user": CustomUser(id=user_id),
-                "status": "none",
-                "error_message": "Verify your email first."
-            })
-        messages.error(request, "Verify your email first.")
-        return redirect("home")
 
     if not all([
         request.user.date_of_birth,
@@ -78,14 +49,34 @@ def send_request(request, user_id):
 
     receiver = get_object_or_404(CustomUser, id=user_id)
 
-    if receiver.is_staff or receiver.is_superuser:
+    # Prevent sending request to yourself
+    if receiver == request.user:
+        return redirect("profile_list")
+
+    # Regular users cannot send requests to staff, inactive, unapproved, or suspended accounts
+    if not (request.user.is_staff or request.user.is_superuser):
+        if receiver.is_staff or receiver.is_superuser or not receiver.is_active or not receiver.is_approved or receiver.is_suspended:
+            if is_htmx:
+                return render(request, "communications/includes/contact_button.html", {
+                    "target_user": receiver,
+                    "status": "none",
+                    "error_message": "This account is unavailable."
+                })
+            messages.error(request, "This account is unavailable.")
+            return redirect('profile_list')
+
+    # Sticky rejection check: prevent re-sending immediately if previously rejected
+    existing_req = ContactRequest.objects.filter(
+        sender=request.user, receiver=receiver
+    ).first()
+    if existing_req and existing_req.status == 'rejected':
         if is_htmx:
             return render(request, "communications/includes/contact_button.html", {
                 "target_user": receiver,
-                "status": "none",
-                "error_message": "This account is unavailable."
+                "status": "rejected",
+                "error_message": "Your contact request was declined by this member."
             })
-        messages.error(request, "This account is unavailable.")
+        messages.info(request, "Your contact request was declined by this member.")
         return redirect('profile_list')
 
     if ContactRequest.objects.filter(
@@ -101,20 +92,6 @@ def send_request(request, user_id):
             })
         messages.info(request, "You are already matched with this user.")
         return redirect("profile_list")
-
-    # Prevent sending request to yourself
-    if receiver == request.user:
-        return redirect("profile_list")
-
-    if receiver.is_suspended:
-        if is_htmx:
-            return render(request, "communications/includes/contact_button.html", {
-                "target_user": receiver,
-                "status": "none",
-                "error_message": "This account is unavailable."
-            })
-        messages.error(request, "This account is unavailable.")
-        return redirect('profile_list')
 
     with transaction.atomic():
         # Acquire row-level lock on sender to serialize concurrent requests and prevent quota races
@@ -139,15 +116,28 @@ def send_request(request, user_id):
             messages.error(request, "You cannot interact with this user.")
             return redirect('profile_list')
 
-        # Prevent duplicate requests in same direction
-        if ContactRequest.objects.filter(sender=request.user, receiver=receiver, status='pending').exists():
-            if is_htmx:
-                return render(request, "communications/includes/contact_button.html", {
-                    "target_user": receiver,
-                    "status": "pending"
-                })
-            messages.info(request, "You have already sent a pending request to this user.")
-            return redirect("profile_list")
+        # Check sticky rejection under lock
+        existing_under_lock = ContactRequest.objects.select_for_update().filter(
+            sender=request.user, receiver=receiver
+        ).first()
+        if existing_under_lock:
+            if existing_under_lock.status == 'rejected':
+                if is_htmx:
+                    return render(request, "communications/includes/contact_button.html", {
+                        "target_user": receiver,
+                        "status": "rejected",
+                        "error_message": "Your contact request was declined by this member."
+                    })
+                messages.info(request, "Your contact request was declined by this member.")
+                return redirect('profile_list')
+            if existing_under_lock.status == 'pending':
+                if is_htmx:
+                    return render(request, "communications/includes/contact_button.html", {
+                        "target_user": receiver,
+                        "status": "pending"
+                    })
+                messages.info(request, "You have already sent a pending request to this user.")
+                return redirect("profile_list")
 
         # If receiver already sent a request to request.user, auto-accept and connect both
         incoming = ContactRequest.objects.select_for_update().filter(
@@ -253,7 +243,7 @@ def send_request(request, user_id):
     messages.success(request, f"Contact request sent to {receiver.full_name}.")
     return safe_redirect(request, "profile_list")
 
-@login_required
+@active_member_required
 @require_POST
 def update_request(request, request_id, action):
     with transaction.atomic():
@@ -294,7 +284,7 @@ def update_request(request, request_id, action):
         return render(request, 'communications/includes/request_action_status.html', {'contact_request': contact_request})
     return redirect('received_requests')
 
-@login_required
+@active_member_required
 def received_requests(request):
     requests = request.user.received_requests.filter(
         status='pending'
@@ -304,7 +294,7 @@ def received_requests(request):
         'requests': requests
     })
 
-@login_required
+@active_member_required
 @require_POST
 def unmatch(request, user_id):
     target = get_object_or_404(CustomUser, id=user_id)
@@ -322,7 +312,7 @@ def unmatch(request, user_id):
     messages.success(request, "Match removed.")
     return redirect('profile_list')
 
-@login_required
+@active_member_required
 @require_POST
 def cancel_request(request, user_id):
     receiver = get_object_or_404(CustomUser, id=user_id)
@@ -341,14 +331,9 @@ def cancel_request(request, user_id):
     messages.success(request, "Request cancelled.")
     return safe_redirect(request, 'profile_list')
 
-@login_required
+@active_member_required
 @require_POST
 def block_user(request, user_id):
-
-    if request.user.is_suspended:
-        messages.error(request, "Your account has been suspended.")
-        return redirect("home")
-    
     target = get_object_or_404(CustomUser, id=user_id)
 
     if target.is_staff or target.is_superuser:
@@ -392,41 +377,57 @@ def block_user(request, user_id):
     messages.success(request, "User blocked.")
     return redirect('profile_list')
 
-@login_required
+@active_member_required
 def report_user(request, user_id):
-
-    if request.user.is_suspended:
-        messages.error(request, "Your account has been suspended.")
-        return redirect("home")
-
     target = get_object_or_404(CustomUser, id=user_id)
 
     if target.is_staff or target.is_superuser:
         messages.error(request, "This account is unavailable.")
         return redirect('profile_list')
 
+    if target == request.user:
+        messages.error(request, "You cannot report your own account.")
+        return redirect('profile_list')
+
+    if not target.is_active:
+        messages.error(request, "This account is unavailable.")
+        return redirect('profile_list')
+
     if request.method == "POST":
+        if Report.objects.filter(reporter=request.user, reported_user=target).exists():
+            messages.info(request, "You have already submitted a report for this profile.")
+            return redirect('profile_list')
+
         reason = request.POST.get("reason", "").strip()
 
-        Report.objects.create(
-            reporter=request.user,
-            reported_user=target,
-            reason=reason
-        )
+        try:
+            with transaction.atomic():
+                Report.objects.create(
+                    reporter=request.user,
+                    reported_user=target,
+                    reason=reason
+                )
 
-        ActivityLog.objects.create(
-            user=request.user,
-            target_user=target,
-            action='report_user'
-        )
+                ActivityLog.objects.create(
+                    user=request.user,
+                    target_user=target,
+                    action='report_user'
+                )
 
-        report_count = Report.objects.filter(
-            reported_user=target
-        ).count()
+                # Count distinct approved, active, non-suspended reporters only
+                distinct_reporters_count = Report.objects.filter(
+                    reported_user=target,
+                    reporter__is_approved=True,
+                    reporter__is_active=True,
+                    reporter__is_suspended=False
+                ).values('reporter').distinct().count()
 
-        if report_count >= 5:
-            target.is_suspended = True
-            target.save()
+                if distinct_reporters_count >= 5 and not (target.is_staff or target.is_superuser):
+                    target.is_suspended = True
+                    target.save(update_fields=['is_suspended'])
+        except IntegrityError:
+            messages.info(request, "You have already submitted a report for this profile.")
+            return redirect('profile_list')
 
         messages.success(request, "User reported to administrators.")
         return redirect('profile_list')
@@ -435,7 +436,7 @@ def report_user(request, user_id):
         "target": target
     })
 
-@login_required
+@active_member_required
 def blocked_users(request):
     blocked = Block.objects.filter(
         blocker=request.user
@@ -445,8 +446,7 @@ def blocked_users(request):
         'blocked_users': blocked
     })
 
-
-@login_required
+@active_member_required
 @require_POST
 def unblock_user(request, user_id):
     Block.objects.filter(
@@ -457,17 +457,16 @@ def unblock_user(request, user_id):
     messages.success(request, "User unblocked.")
     return redirect('blocked_users')
 
-@login_required
+@active_member_required
 @require_POST
 def toggle_save(request, user_id):
-
-    if request.user.is_suspended:
-        messages.error(request, "Your account has been suspended.")
-        return redirect("home")
-
     target = get_object_or_404(CustomUser, id=user_id)
 
     if (target.is_staff or target.is_superuser) and not (request.user.is_staff or request.user.is_superuser):
+        messages.error(request, "This account is unavailable.")
+        return redirect('profile_list')
+
+    if not target.is_active or not target.is_approved or target.is_suspended:
         messages.error(request, "This account is unavailable.")
         return redirect('profile_list')
 
@@ -487,10 +486,8 @@ def toggle_save(request, user_id):
 
     return safe_redirect(request, "profile_list")
 
-
-@login_required
+@active_member_required
 def saved_profiles(request):
-
     blocked_by_me = Block.objects.filter(
         blocker=request.user
     ).values_list("blocked_id", flat=True)
@@ -503,7 +500,13 @@ def saved_profiles(request):
 
     saved = SavedProfile.objects.filter(
         user=request.user
-    ).exclude(saved_user_id__in=blocked_ids).select_related("saved_user")
+    ).exclude(
+        saved_user_id__in=blocked_ids
+    ).filter(
+        saved_user__is_active=True,
+        saved_user__is_approved=True,
+        saved_user__is_suspended=False
+    ).select_related("saved_user")
 
     users = [s.saved_user for s in saved]
 
