@@ -14,6 +14,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.db import transaction, IntegrityError
 from users.decorators import active_member_required
+from users.visibility import visible_profiles, can_view
 
 from django.utils.http import url_has_allowed_host_and_scheme
 
@@ -53,17 +54,16 @@ def send_request(request, user_id):
     if receiver == request.user:
         return redirect("profile_list")
 
-    # Regular users cannot send requests to staff, inactive, unapproved, or suspended accounts
-    if not (request.user.is_staff or request.user.is_superuser):
-        if receiver.is_staff or receiver.is_superuser or not receiver.is_active or not receiver.is_approved or receiver.is_suspended:
-            if is_htmx:
-                return render(request, "communications/includes/contact_button.html", {
-                    "target_user": receiver,
-                    "status": "none",
-                    "error_message": "This account is unavailable."
-                })
-            messages.error(request, "This account is unavailable.")
-            return redirect('profile_list')
+    # Regular users cannot send requests to staff, inactive, unapproved, suspended, or blocked accounts
+    if not can_view(request.user, receiver):
+        if is_htmx:
+            return render(request, "communications/includes/contact_button.html", {
+                "target_user": receiver,
+                "status": "none",
+                "error_message": "This account is unavailable."
+            })
+        messages.error(request, "This account is unavailable.")
+        return redirect('profile_list')
 
     # Sticky rejection check: prevent re-sending immediately if previously rejected
     existing_req = ContactRequest.objects.filter(
@@ -490,11 +490,7 @@ def unblock_user(request, user_id):
 def toggle_save(request, user_id):
     target = get_object_or_404(CustomUser, id=user_id)
 
-    if (target.is_staff or target.is_superuser) and not (request.user.is_staff or request.user.is_superuser):
-        messages.error(request, "This account is unavailable.")
-        return redirect('profile_list')
-
-    if not target.is_active or not target.is_approved or target.is_suspended:
+    if not can_view(request.user, target):
         messages.error(request, "This account is unavailable.")
         return redirect('profile_list')
 
@@ -516,24 +512,9 @@ def toggle_save(request, user_id):
 
 @active_member_required
 def saved_profiles(request):
-    blocked_by_me = Block.objects.filter(
-        blocker=request.user
-    ).values_list("blocked_id", flat=True)
-
-    blocked_me = Block.objects.filter(
-        blocked=request.user
-    ).values_list("blocker_id", flat=True)
-
-    blocked_ids = list(blocked_by_me) + list(blocked_me)
-
     saved = SavedProfile.objects.filter(
-        user=request.user
-    ).exclude(
-        saved_user_id__in=blocked_ids
-    ).filter(
-        saved_user__is_active=True,
-        saved_user__is_approved=True,
-        saved_user__is_suspended=False
+        user=request.user,
+        saved_user__in=visible_profiles(request.user)
     ).select_related("saved_user")
 
     users = [s.saved_user for s in saved]
