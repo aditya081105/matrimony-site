@@ -73,15 +73,37 @@ class PaymentOrder(models.Model):
         ]
 
     def __str__(self):
-        return f"Order #{self.id} - {self.user.username} - {self.plan.name} (₹{self.amount}) [{self.status}]"
+        username = self.user.username if self.user else "Deleted User"
+        plan_name = self.plan.name if self.plan else "No Plan"
+        return f"Order #{self.id} - {username} - {plan_name} (₹{self.amount}) [{self.status}]"
 
-    def activate_subscription(self):
-        """Activates or extends user subscription upon payment verification."""
+    def approve(self):
+        """
+        Approves order and activates/extends user subscription idempotently.
+        Guarded with atomic transaction and row-level lock.
+        """
         from django.db import transaction
         from users.models import Subscription
 
         now = timezone.now()
         with transaction.atomic():
+            if not self.pk:
+                self.save()
+
+            locked_order = PaymentOrder.objects.select_for_update().get(pk=self.pk)
+            if locked_order.status == 'completed':
+                self.status = 'completed'
+                self.verified_at = locked_order.verified_at
+                return
+
+            if not self.user:
+                locked_order.status = 'completed'
+                locked_order.verified_at = now
+                locked_order.save(update_fields=['status', 'verified_at'])
+                self.status = 'completed'
+                self.verified_at = now
+                return
+
             sub, _ = Subscription.objects.select_for_update().get_or_create(user=self.user)
 
             # Mark all other completed orders for this user as superseded
@@ -90,7 +112,7 @@ class PaymentOrder(models.Model):
                 status='completed'
             ).exclude(id=self.id).update(status='superseded')
 
-            # Extend previous end date only if renewing the exact same plan; otherwise start fresh from today
+            # Extend previous end date only if renewing the exact same plan with active unexpired subscription
             if sub.is_active and (sub.plan == self.plan or sub.plan_type == self.plan.name) and sub.expires_at and sub.expires_at > now:
                 sub.expires_at = sub.expires_at + timedelta(days=self.plan.duration_days)
             else:
@@ -99,12 +121,89 @@ class PaymentOrder(models.Model):
             sub.is_active = True
             sub.plan = self.plan
             sub.plan_type = self.plan.name
-            sub.active_order = self
+            sub.active_order = locked_order
             sub.save()
+
+            locked_order.status = 'completed'
+            locked_order.verified_at = now
+            locked_order.save(update_fields=['status', 'verified_at'])
 
             self.status = 'completed'
             self.verified_at = now
-            self.save(update_fields=['status', 'verified_at'])
+
+    def reject(self):
+        """
+        Rejects order and revokes or resets active subscription idempotently.
+        Guarded with atomic transaction and row-level lock.
+        """
+        from django.db import transaction
+
+        with transaction.atomic():
+            if not self.pk:
+                self.save()
+
+            locked_order = PaymentOrder.objects.select_for_update().get(pk=self.pk)
+            if locked_order.status == 'rejected':
+                self.status = 'rejected'
+                return
+
+            was_completed = (locked_order.status == 'completed')
+            locked_order.status = 'rejected'
+            locked_order.save(update_fields=['status'])
+            self.status = 'rejected'
+
+            if was_completed and self.user:
+                from users.models import Subscription
+                sub = Subscription.objects.select_for_update().filter(user=self.user).first()
+                if sub and (sub.active_order_id == self.id or sub.active_order == self):
+                    sync_user_subscription_from_orders(self.user, exclude_order_id=self.id)
+
+    def activate_subscription(self):
+        """Backward-compatible delegation to approve()."""
+        return self.approve()
+
+
+def sync_user_subscription_from_orders(user, exclude_order_id=None):
+    """
+    Recalculates active subscription state from the user's latest valid verified order.
+    Used when an active order is rejected or deleted.
+    """
+    from users.models import Subscription
+    if not user:
+        return
+
+    sub = Subscription.objects.select_for_update().filter(user=user).first()
+    if not sub:
+        return
+
+    now = timezone.now()
+
+    qs = PaymentOrder.objects.filter(
+        user=user,
+        status__in=['completed', 'superseded']
+    )
+    if exclude_order_id:
+        qs = qs.exclude(id=exclude_order_id)
+
+    latest_order = qs.order_by('-verified_at', '-created_at').first()
+
+    if latest_order and latest_order.verified_at:
+        order_expiry = latest_order.verified_at + timedelta(days=latest_order.plan.duration_days)
+        if order_expiry > now:
+            PaymentOrder.objects.filter(user=user, status='completed').exclude(id=latest_order.id).update(status='superseded')
+            latest_order.status = 'completed'
+            latest_order.save(update_fields=['status'])
+
+            sub.is_active = True
+            sub.plan = latest_order.plan
+            sub.plan_type = latest_order.plan.name
+            sub.active_order = latest_order
+            sub.expires_at = order_expiry
+            sub.save()
+            return
+
+    # No valid unexpired order found -> reset to free
+    sub.reset_to_free()
 
 
 from django.db.models.signals import post_delete
@@ -113,17 +212,10 @@ from django.dispatch import receiver
 
 @receiver(post_delete, sender=PaymentOrder)
 def handle_payment_order_deleted(sender, instance, **kwargs):
-    if hasattr(instance.user, 'subscription'):
+    if instance.user and hasattr(instance.user, 'subscription'):
         sub = instance.user.subscription
         if sub.active_order_id == instance.id or sub.active_order == instance:
-            latest_completed = PaymentOrder.objects.filter(
-                user=instance.user,
-                status='completed'
-            ).order_by('-verified_at', '-created_at').first()
-            if latest_completed:
-                latest_completed.activate_subscription()
-            else:
-                sub.reset_to_free()
+            sync_user_subscription_from_orders(instance.user, exclude_order_id=instance.id)
 
 
 @receiver(post_delete, sender=Plan)
@@ -133,15 +225,7 @@ def handle_plan_deleted(sender, instance, **kwargs):
         models.Q(plan=instance) | models.Q(plan_type=instance.name)
     )
     for sub in subs:
-        latest_completed = PaymentOrder.objects.filter(
-            user=sub.user,
-            status='completed',
-            plan__isnull=False
-        ).exclude(plan=instance).order_by('-verified_at', '-created_at').first()
-        if latest_completed:
-            latest_completed.activate_subscription()
-        else:
-            sub.reset_to_free()
+        sync_user_subscription_from_orders(sub.user)
 
 
 @receiver([models.signals.post_save, models.signals.post_delete], sender=Plan)
