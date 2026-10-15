@@ -122,37 +122,41 @@ def profile_list(request):
     if request.GET.get('min_height'):
         try:
             min_h = int(request.GET.get('min_height'))
-            profiles = profiles.filter(height_cm__gte=min_h)
-        except (ValueError, TypeError):
+            if 0 <= min_h <= 300:
+                profiles = profiles.filter(height_cm__gte=min_h)
+        except (ValueError, TypeError, OverflowError):
             pass
     if request.GET.get('max_height'):
         try:
             max_h = int(request.GET.get('max_height'))
-            profiles = profiles.filter(height_cm__lte=max_h)
-        except (ValueError, TypeError):
+            if 0 <= max_h <= 300:
+                profiles = profiles.filter(height_cm__lte=max_h)
+        except (ValueError, TypeError, OverflowError):
             pass
 
     today = date.today()
     if request.GET.get('min_age'):
         try:
             min_age = int(request.GET.get('min_age'))
-            try:
-                max_dob = date(today.year - min_age, today.month, today.day)
-            except ValueError:
-                max_dob = date(today.year - min_age, today.month, 28)
-            profiles = profiles.filter(date_of_birth__lte=max_dob)
-        except (ValueError, TypeError):
+            if 0 <= min_age <= 120:
+                try:
+                    max_dob = date(today.year - min_age, today.month, today.day)
+                except ValueError:
+                    max_dob = date(today.year - min_age, today.month, 28)
+                profiles = profiles.filter(date_of_birth__lte=max_dob)
+        except (ValueError, TypeError, OverflowError):
             pass
     if request.GET.get('max_age'):
         try:
             max_age = int(request.GET.get('max_age'))
-            try:
-                # Age <= max_age means the person has not yet reached their (max_age + 1)th birthday
-                min_dob = date(today.year - (max_age + 1), today.month, today.day)
-            except ValueError:
-                min_dob = date(today.year - (max_age + 1), today.month, 28)
-            profiles = profiles.filter(date_of_birth__gt=min_dob)
-        except (ValueError, TypeError):
+            if 0 <= max_age <= 120:
+                try:
+                    # Age <= max_age means the person has not yet reached their (max_age + 1)th birthday
+                    min_dob = date(today.year - (max_age + 1), today.month, today.day)
+                except ValueError:
+                    min_dob = date(today.year - (max_age + 1), today.month, 28)
+                profiles = profiles.filter(date_of_birth__gt=min_dob)
+        except (ValueError, TypeError, OverflowError):
             pass
 
     # Pagination
