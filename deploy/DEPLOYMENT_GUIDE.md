@@ -4,21 +4,46 @@ This document defines the step-by-step deployment and verification process for d
 
 ---
 
-## 1. Pre-Deployment Database Backup
+## 1. Automated Nightly & Pre-Deployment Database Backups
 
-Always take a full SQL snapshot before pulling code updates or running migrations:
+### A. Automated Nightly Backup Script
+An automated backup script is maintained in `deploy/scripts/backup_db.sh`. It creates gzipped SQL dumps, verifies dump validity, and automatically rotates backups older than 14 days.
 
+Install as a nightly root cron job:
 ```bash
-# Define backup timestamp
-TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-BACKUP_DIR="/var/backups/poorvanchal"
-sudo mkdir -p "$BACKUP_DIR"
+# Add to /etc/crontab or root crontab (runs daily at 2:30 AM)
+30 2 * * * /var/www/poorvanchalmatrimony/deploy/scripts/backup_db.sh >> /var/log/poorvanchal/backup.log 2>&1
+```
 
-# PostgreSQL snapshot
-sudo -u postgres pg_dump poorvanchal_db | gzip > "$BACKUP_DIR/poorvanchal_db_${TIMESTAMP}.sql.gz"
+### B. Manual / Pre-Deployment Backup
+Always execute a snapshot before pulling code updates or running migrations:
+```bash
+/var/www/poorvanchalmatrimony/deploy/scripts/backup_db.sh
+```
 
-# Verify backup was created and has non-zero size
-ls -lh "$BACKUP_DIR/poorvanchal_db_${TIMESTAMP}.sql.gz"
+### C. Backup Verification & Restore Testing
+To verify backup integrity by restoring to an isolated temporary test database:
+```bash
+LATEST_BACKUP=$(ls -t /var/backups/poorvanchal/db/poorvanchal_db_*.sql.gz | head -n 1)
+
+# Create temporary restore target
+sudo -u postgres createdb poorvanchal_restore_test
+
+# Restore gzipped snapshot
+gunzip -c "$LATEST_BACKUP" | sudo -u postgres psql poorvanchal_restore_test
+
+# Verify data integrity
+sudo -u postgres psql poorvanchal_restore_test -c "SELECT count(*) AS user_count FROM users_customuser;"
+
+# Cleanup temporary test database
+sudo -u postgres dropdb poorvanchal_restore_test
+```
+
+### D. Off-Server Backup Sync
+To pull backups off the VPS to a secure off-site machine or local storage:
+```bash
+# From your local workstation or backup server:
+scp -i ~/.ssh/instance_key opc@140.238.167.173:/var/backups/poorvanchal/db/*.sql.gz ./local_backups/
 ```
 
 ---

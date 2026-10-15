@@ -1978,4 +1978,76 @@ class RegistrationWizardAndEducationTests(TestCase):
         self.assertNotIn("If this mobile", str(form.errors['phone_number']))
 
 
+class NeedsReviewAdminApprovalTests(TestCase):
+    def setUp(self):
+        self.staff_admin = User.objects.create_user(
+            username="staff_admin",
+            password="AdminPassword123!",
+            is_staff=True,
+            is_approved=True,
+            is_email_verified=True,
+        )
+        self.regular_user = User.objects.create_user(
+            username="regular_user",
+            password="UserPassword123!",
+            is_staff=False,
+            is_approved=True,
+            is_email_verified=True,
+        )
+        self.edited_user = User.objects.create_user(
+            username="edited_user",
+            password="UserPassword123!",
+            is_approved=True,
+            is_phone_verified=True,
+            is_email_verified=True,
+            needs_review=True,
+        )
+        self.unapproved_user = User.objects.create_user(
+            username="unapproved_user",
+            password="UserPassword123!",
+            is_approved=False,
+            is_phone_verified=False,
+            is_email_verified=False,
+            needs_review=False,
+        )
+
+    def test_admin_dashboard_shows_edited_and_unapproved_users(self):
+        self.client.login(username="staff_admin", password="AdminPassword123!")
+        res = self.client.get(reverse('admin_dashboard'))
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "edited_user")
+        self.assertContains(res, "unapproved_user")
+        self.assertContains(res, "Edited (Needs Review)")
+
+    def test_admin_dashboard_filter_edited_only(self):
+        self.client.login(username="staff_admin", password="AdminPassword123!")
+        res = self.client.get(reverse('admin_dashboard') + "?filter=edited")
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "edited_user")
+        self.assertNotContains(res, "unapproved_user")
+
+    def test_admin_clear_review_approves_edit(self):
+        self.client.login(username="staff_admin", password="AdminPassword123!")
+        res = self.client.post(reverse('admin_clear_review', args=[self.edited_user.id]))
+        self.assertRedirects(res, reverse('admin_dashboard'))
+        self.edited_user.refresh_from_db()
+        self.assertFalse(self.edited_user.needs_review)
+
+    def test_admin_verify_user_clears_needs_review(self):
+        self.client.login(username="staff_admin", password="AdminPassword123!")
+        res = self.client.post(reverse('admin_verify_user', args=[self.edited_user.id]))
+        self.assertRedirects(res, reverse('admin_dashboard'))
+        self.edited_user.refresh_from_db()
+        self.assertFalse(self.edited_user.needs_review)
+        self.assertTrue(self.edited_user.is_approved)
+
+    def test_regular_user_cannot_access_admin_endpoints(self):
+        self.client.login(username="regular_user", password="UserPassword123!")
+        res1 = self.client.get(reverse('admin_dashboard'))
+        self.assertEqual(res1.status_code, 302)
+        res2 = self.client.post(reverse('admin_clear_review', args=[self.edited_user.id]))
+        self.assertEqual(res2.status_code, 302)
+
+
+
 

@@ -91,11 +91,11 @@
         {% endif %}
 
         <div class="d-flex align-items-center justify-content-center flex-wrap gap-2 mb-1">
-            <h3 class="fw-bold mb-0">{{ profile_user.full_name }}</h3>
+            <h3 class="fw-bold mb-0 notranslate">{{ profile_user.full_name }}</h3>
             {% include 'includes/tier_badge.html' with badge_user=profile_user size='lg' %}
         </div>
 
-        <p class="text-muted small mb-2">
+        <p class="text-muted small mb-2 notranslate">
             @{{ profile_user.username }}
         </p>
 
@@ -237,7 +237,7 @@
         <div class="col-md-6 mb-2">
             <strong>Father's Name:</strong>
             {% if is_allowed %}
-                {{ profile_user.father_name|default:profile_user.profile.father_name|default:"Not specified" }}
+                <span class="notranslate">{{ profile_user.father_name|default:profile_user.profile.father_name|default:"Not specified" }}</span>
             {% else %}
                 <span class="text-muted fst-italic">Visible upon mutual match</span>
             {% endif %}
@@ -246,7 +246,7 @@
         <div class="col-md-6 mb-2">
             <strong>Mother's Name:</strong>
             {% if is_allowed %}
-                {{ profile_user.mother_name|default:profile_user.profile.mother_name|default:"Not specified" }}
+                <span class="notranslate">{{ profile_user.mother_name|default:profile_user.profile.mother_name|default:"Not specified" }}</span>
             {% else %}
                 <span class="text-muted fst-italic">Visible upon mutual match</span>
             {% endif %}
@@ -254,7 +254,7 @@
 
         <div class="col-md-6 mb-2">
             <strong>Hometown / City:</strong>
-            {{ profile_user.city|default:profile_user.profile.city_hometown|default:"Not specified" }}
+            <span class="notranslate">{{ profile_user.city|default:profile_user.profile.city_hometown|default:"Not specified" }}</span>
         </div>
 
     </div>
@@ -265,19 +265,19 @@
     <h6 class="fw-semibold mb-3">Contact Details</h6>
 
     {% if is_allowed %}
-    <div class="row small mb-4">
+    <div class="row small mb-4 notranslate">
 
         <div class="col-md-6 mb-2">
-            <strong>Phone:</strong> {{ profile_user.phone_number }}
+            <strong>Phone:</strong> <span class="notranslate">{{ profile_user.phone_number }}</span>
         </div>
 
         <div class="col-md-6 mb-2">
-            <strong>Email:</strong> {{ profile_user.email }}
+            <strong>Email:</strong> <span class="notranslate">{{ profile_user.email }}</span>
         </div>
 
         <div class="col-md-12 mb-2">
             <strong>Address:</strong>
-            {{ profile_user.address|default:profile_user.profile.address|default:"Not specified" }}
+            <span class="notranslate">{{ profile_user.address|default:profile_user.profile.address|default:"Not specified" }}</span>
         </div>
 
     </div>
@@ -293,7 +293,7 @@
     <!-- ABOUT -->
     <h6 class="fw-semibold mb-2">About</h6>
 
-    <p class="small text-muted">
+    <p class="small text-muted notranslate">
         {{ profile_user.bio|default:profile_user.profile.bio|default:"No bio added yet." }}
     </p>
 

@@ -15,7 +15,7 @@ class SubscriptionInline(admin.StackedInline):
 
 @admin.action(description="Approve selected users")
 def approve_users(modeladmin, request, queryset):
-    queryset.update(is_approved=True)
+    queryset.update(is_approved=True, needs_review=False)
 
 
 @admin.action(description="Mark selected users as email verified")
@@ -30,18 +30,23 @@ def verify_phone_users(modeladmin, request, queryset):
 
 @admin.action(description="Fully Approve & Verify (Profile + Phone + Email)")
 def fully_verify_users(modeladmin, request, queryset):
-    queryset.update(is_approved=True, is_phone_verified=True, is_email_verified=True)
+    queryset.update(is_approved=True, is_phone_verified=True, is_email_verified=True, needs_review=False)
+
+
+@admin.action(description="Mark profile edits as reviewed")
+def mark_reviewed(modeladmin, request, queryset):
+    queryset.update(needs_review=False)
 
 
 class CustomUserAdmin(UserAdmin):
     model = CustomUser
-    list_display = ('username', 'full_name', 'phone_number', 'caste', 'sub_caste', 'is_approved', 'is_phone_verified', 'is_email_verified', 'is_premium', 'is_staff')
-    list_filter = ('is_approved', 'is_phone_verified', 'is_email_verified', 'is_staff')
+    list_display = ('username', 'full_name', 'phone_number', 'caste', 'sub_caste', 'is_approved', 'needs_review', 'is_phone_verified', 'is_email_verified', 'is_premium', 'is_staff')
+    list_filter = ('is_approved', 'needs_review', 'is_phone_verified', 'is_email_verified', 'is_staff')
     search_fields = ('username', 'full_name', 'email', 'phone_number', 'caste', 'sub_caste')
-    actions = [approve_users, verify_phone_users, verify_users, fully_verify_users]
+    actions = [approve_users, verify_phone_users, verify_users, fully_verify_users, mark_reviewed]
     inlines = [SubscriptionInline]
     fieldsets = UserAdmin.fieldsets + (
-        ("Approval & Verification", {"fields": ("is_approved", "is_phone_verified", "is_email_verified")}),
+        ("Approval & Verification", {"fields": ("is_approved", "needs_review", "is_phone_verified", "is_email_verified")}),
         ("Community & Profile Details", {"fields": ("caste", "sub_caste", "caste_community", "city", "education", "occupation", "height_cm", "date_of_birth")}),
     )
 

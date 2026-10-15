@@ -130,13 +130,13 @@
 
                 <div class="flex-grow-1 overflow-hidden pe-3">
                     <h6 class="fw-semibold mb-0 d-flex align-items-center flex-wrap gap-1 text-truncate">
-                        <a href="{% url 'view_profile' profile.id %}" class="text-dark text-decoration-none">
+                        <a href="{% url 'view_profile' profile.id %}" class="text-dark text-decoration-none notranslate">
                             {{ profile.full_name }}
                         </a>
                         {% include 'includes/tier_badge.html' with badge_user=profile %}
                     </h6>
 
-                    <div class="small text-muted mb-1 text-truncate">
+                    <div class="small text-muted mb-1 text-truncate notranslate">
                         @{{ profile.username }}
                     </div>
 
