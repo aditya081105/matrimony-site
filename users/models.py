@@ -78,6 +78,7 @@ class CustomUser(AbstractUser):
     address = models.CharField(max_length=255, blank=True)
 
     is_approved = models.BooleanField(default=False)
+    needs_review = models.BooleanField(default=False)
     is_suspended = models.BooleanField(default=False)
     is_email_verified = models.BooleanField(default=False)
     is_phone_verified = models.BooleanField(default=False)
