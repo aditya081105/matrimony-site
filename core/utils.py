@@ -1,3 +1,6 @@
+import ipaddress
+
+
 def get_client_ip(request):
     """
     Extracts the trusted client IP address.
@@ -12,3 +15,24 @@ def get_client_ip(request):
     if x_real_ip:
         return x_real_ip.strip()
     return (request.META.get('REMOTE_ADDR') or '').strip()
+
+
+def get_ip_network_key(ip_str: str) -> str:
+    """
+    Normalizes an IP address into a rate-limiting key.
+    For IPv4: returns the single IP string (e.g. 203.0.113.195).
+    For IPv6: masks to the /64 subnet prefix (e.g. 2001:db8:1234:5678::/64)
+    because end users and mobile carriers are delegated at least a /64,
+    preventing attackers from rotating through addresses in the same prefix.
+    """
+    if not ip_str or ip_str == 'unknown':
+        return 'unknown'
+    try:
+        ip = ipaddress.ip_address(ip_str)
+        if ip.version == 6:
+            net = ipaddress.ip_network(f"{ip}/64", strict=False)
+            return str(net)
+        return str(ip)
+    except ValueError:
+        return ip_str
+
