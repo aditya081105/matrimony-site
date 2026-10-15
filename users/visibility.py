@@ -12,37 +12,21 @@ def visible_profiles(viewer) -> QuerySet:
 
     Rules:
     1. If viewer is unauthenticated, returns none.
-    2. If viewer is staff or superuser:
-       - Returns all members excluding self and other staff/superusers (for member browsing/moderation).
-    3. If viewer is a regular member:
-       - Must exclude self.
-       - Must exclude staff/superusers.
-       - Must exclude inactive, unapproved, and suspended accounts.
-       - Must exclude any user who has blocked the viewer, or whom the viewer has blocked.
+    2. Must exclude self.
+    3. Must exclude staff/superusers.
+    4. Must exclude any user who has blocked the viewer, or whom the viewer has blocked (bidirectional).
+    5. Non-admin viewers must also exclude inactive, unapproved, and suspended accounts.
     """
     if not viewer or not viewer.is_authenticated:
         return User.objects.none()
 
     is_viewer_admin = bool(viewer.is_staff or viewer.is_superuser)
 
-    if is_viewer_admin:
-        return User.objects.exclude(
-            id=viewer.id
-        ).exclude(
-            is_staff=True
-        ).exclude(
-            is_superuser=True
-        )
-
     blocked_by_me = Block.objects.filter(blocker=viewer).values_list("blocked_id", flat=True)
     blocked_me = Block.objects.filter(blocked=viewer).values_list("blocker_id", flat=True)
     blocked_ids = set(blocked_by_me) | set(blocked_me)
 
-    return User.objects.filter(
-        is_active=True,
-        is_approved=True,
-        is_suspended=False
-    ).exclude(
+    base_qs = User.objects.exclude(
         id__in=blocked_ids
     ).exclude(
         id=viewer.id
@@ -50,6 +34,15 @@ def visible_profiles(viewer) -> QuerySet:
         is_staff=True
     ).exclude(
         is_superuser=True
+    )
+
+    if is_viewer_admin:
+        return base_qs
+
+    return base_qs.filter(
+        is_active=True,
+        is_approved=True,
+        is_suspended=False
     )
 
 
