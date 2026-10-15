@@ -18,6 +18,8 @@ RestartSec=3
 KillMode=mixed
 TimeoutStopSec=5
 PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=full
 
 [Install]
 WantedBy=multi-user.target

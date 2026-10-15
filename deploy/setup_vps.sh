@@ -69,6 +69,10 @@ if [ ! -f "$APP_DIR/.env" ]; then
     sed -i "s|change-this-to-a-secure-random-50-character-secret-in-production|$RANDOM_SECRET|g" "$APP_DIR/.env"
 fi
 
+# Harden sensitive environment secret permissions
+chown "$USER":"$USER" "$APP_DIR/.env"
+chmod 600 "$APP_DIR/.env"
+
 echo "==> [5/7] Collecting static assets and applying database migrations..."
 if [ -f "$APP_DIR/.env" ]; then
     "$APP_DIR/venv/bin/python" "$APP_DIR/manage.py" collectstatic --noinput
@@ -86,11 +90,18 @@ sudo systemctl restart poorvanchal.service
 echo "==> [7/7] Configuring Nginx server block..."
 if [ -d "/etc/nginx/conf.d" ]; then
     sudo cp "$APP_DIR/deploy/nginx/poorvanchalmatrimony.social.conf" "/etc/nginx/conf.d/poorvanchalmatrimony.social.conf"
+    if [ -f "$APP_DIR/deploy/nginx/cloudflare_realip.conf" ]; then
+        sudo cp "$APP_DIR/deploy/nginx/cloudflare_realip.conf" "/etc/nginx/conf.d/cloudflare_realip.conf"
+    fi
 fi
 if [ -d "/etc/nginx/sites-available" ]; then
     sudo cp "$APP_DIR/deploy/nginx/poorvanchalmatrimony.social.conf" "/etc/nginx/sites-available/poorvanchalmatrimony.social.conf"
     if [ ! -f "/etc/nginx/sites-enabled/poorvanchalmatrimony.social.conf" ]; then
         sudo ln -s "/etc/nginx/sites-available/poorvanchalmatrimony.social.conf" "/etc/nginx/sites-enabled/poorvanchalmatrimony.social.conf"
+    fi
+    if [ -f "$APP_DIR/deploy/nginx/cloudflare_realip.conf" ]; then
+        sudo cp "$APP_DIR/deploy/nginx/cloudflare_realip.conf" "/etc/nginx/conf.d/cloudflare_realip.conf" 2>/dev/null || \
+        sudo cp "$APP_DIR/deploy/nginx/cloudflare_realip.conf" "/etc/nginx/snippets/cloudflare_realip.conf" 2>/dev/null || true
     fi
 fi
 
