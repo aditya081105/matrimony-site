@@ -37,6 +37,7 @@ class CustomUser(AbstractUser):
 
     date_of_birth = models.DateField(null=True, blank=True)
     occupation = models.CharField(max_length=100, blank=True)
+    education = models.CharField(max_length=100, blank=True, verbose_name="Education / Degree")
 
     height_cm = models.PositiveIntegerField(null=True, blank=True)
 

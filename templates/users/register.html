@@ -1,95 +1,475 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block content %}
 
-<div class="d-flex justify-content-center align-items-center" style="min-height:80vh;">
+<div class="row justify-content-center py-4">
+    <div class="col-lg-7 col-md-9 col-12">
 
-<div class="card shadow-sm border-0 rounded-4 p-4" style="width:100%; max-width:420px;">
+        <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+            <!-- Header -->
+            <div class="card-header bg-dark text-white text-center py-4">
+                <h3 class="fw-bold mb-1">Create Profile</h3>
+                <p class="text-white-50 small mb-0">Join Poorvanchal Matrimony in 2 simple steps</p>
+            </div>
 
-<div class="text-center mb-4">
-<h3 class="fw-bold">Create Profile</h3>
-<p class="text-muted small">
-Join Poorvanchal Matrimony
-</p>
+            <div class="card-body p-4 p-md-5">
+
+                <!-- Progress / Step Pills -->
+                <div class="wizard-steps mb-4">
+                    <div class="d-flex align-items-center justify-content-between position-relative mb-2">
+                        <!-- Progress bar background -->
+                        <div class="progress position-absolute w-100" style="height: 3px; z-index: 1;">
+                            <div id="wizardProgressBar" class="progress-bar bg-dark" role="progressbar" style="width: 50%;" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+
+                        <!-- Step 1 Indicator -->
+                        <button type="button" id="step1Indicator" class="btn btn-sm btn-dark rounded-circle shadow-sm position-relative fw-bold" style="width: 36px; height: 36px; z-index: 2;" title="Step 1: Account &amp; Identity">
+                            1
+                        </button>
+
+                        <!-- Step 2 Indicator -->
+                        <button type="button" id="step2Indicator" class="btn btn-sm btn-outline-secondary rounded-circle shadow-sm position-relative fw-bold bg-white" style="width: 36px; height: 36px; z-index: 2;" title="Step 2: Matrimonial Details">
+                            2
+                        </button>
+                    </div>
+
+                    <div class="d-flex justify-content-between small text-muted px-1">
+                        <span id="step1Label" class="fw-bold text-dark">1. Account &amp; Identity</span>
+                        <span id="step2Label" class="fw-semibold text-muted">2. Matrimonial Details</span>
+                    </div>
+                </div>
+
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger rounded-3 mb-4">
+                    {% for error in form.non_field_errors %}
+                        <div>{{ error }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Client-side step validation notice box -->
+                <div id="stepValidationAlert" class="alert alert-danger rounded-3 d-none mb-3 py-2 small"></div>
+
+                <form method="POST" enctype="multipart/form-data" id="registerForm" novalidate>
+                    {% csrf_token %}
+
+                    <datalist id="caste-suggestions">
+                        <option value="Rajput">
+                        <option value="Brahmin">
+                        <option value="Bhumihar">
+                        <option value="Yadav">
+                        <option value="Kushwaha">
+                        <option value="Kurmi">
+                        <option value="Bania / Gupta">
+                        <option value="Kayastha">
+                        <option value="Paswan">
+                        <option value="Ravidas">
+                        <option value="Nishad / Mallah">
+                        <option value="Teli">
+                        <option value="Kanu / Halwai">
+                        <option value="Prajapati / Kumhar">
+                        <option value="Vishwakarma / Badhai">
+                        <option value="Nai / Thakur">
+                        <option value="Lohar">
+                        <option value="Ansari">
+                        <option value="Syed">
+                        <option value="Sheikh">
+                        <option value="Pathan">
+                        <option value="Siddiqui">
+                    </datalist>
+
+                    <!-- ============================================== -->
+                    <!-- STEP 1: Account Credentials & Identity         -->
+                    <!-- ============================================== -->
+                    <div id="step1Container">
+                        <div class="mb-3">
+                            <h5 class="fw-bold text-dark mb-1">Step 1: Account &amp; Identity</h5>
+                            <p class="text-muted small">Enter your login details and core personal identity.</p>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.username.id_for_label }}" class="form-label fw-semibold">
+                                    Username <span class="text-danger">*</span>
+                                </label>
+                                {{ form.username }}
+                                {% if form.username.errors %}
+                                    <div class="text-danger small mt-1">{{ form.username.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="{{ form.full_name.id_for_label }}" class="form-label fw-semibold">
+                                    Full Name <span class="text-danger">*</span>
+                                </label>
+                                {{ form.full_name }}
+                                {% if form.full_name.errors %}
+                                    <div class="text-danger small mt-1">{{ form.full_name.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="{{ form.gender.id_for_label }}" class="form-label fw-semibold">
+                                    Gender <span class="text-danger">*</span>
+                                </label>
+                                {{ form.gender }}
+                                {% if form.gender.errors %}
+                                    <div class="text-danger small mt-1">{{ form.gender.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="{{ form.date_of_birth.id_for_label }}" class="form-label fw-semibold">
+                                    Date of Birth <span class="text-danger">*</span>
+                                </label>
+                                {{ form.date_of_birth }}
+                                {% if form.date_of_birth.errors %}
+                                    <div class="text-danger small mt-1">{{ form.date_of_birth.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="{{ form.phone_number.id_for_label }}" class="form-label fw-semibold">
+                                    Phone Number <span class="text-danger">*</span>
+                                </label>
+                                {{ form.phone_number }}
+                                {% if form.phone_number.errors %}
+                                    <div class="text-danger small mt-1">{{ form.phone_number.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="{{ form.email.id_for_label }}" class="form-label fw-semibold">
+                                    Email Address <span class="text-danger">*</span>
+                                </label>
+                                {{ form.email }}
+                                <div class="form-text text-muted" style="font-size: 0.78rem;">
+                                    Accepted: Gmail, Outlook, Yahoo, Apple, Rediffmail, Zoho, etc.
+                                </div>
+                                {% if form.email.errors %}
+                                    <div class="text-danger small mt-1">{{ form.email.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="{{ form.password1.id_for_label }}" class="form-label fw-semibold">
+                                    Create Password <span class="text-danger">*</span>
+                                </label>
+                                {{ form.password1 }}
+                                {% if form.password1.errors %}
+                                    <div class="text-danger small mt-1">{{ form.password1.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="{{ form.password2.id_for_label }}" class="form-label fw-semibold">
+                                    Confirm Password <span class="text-danger">*</span>
+                                </label>
+                                {{ form.password2 }}
+                                {% if form.password2.errors %}
+                                    <div class="text-danger small mt-1">{{ form.password2.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mt-4 pt-2">
+                            <button type="button" id="goToStep2Btn" class="btn btn-dark w-100 py-2 fw-semibold rounded-pill shadow-sm">
+                                Next: Matrimonial Details &rarr;
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ============================================== -->
+                    <!-- STEP 2: Matrimonial & Profile Details          -->
+                    <!-- ============================================== -->
+                    <div id="step2Container" class="d-none">
+                        <div class="mb-3">
+                            <h5 class="fw-bold text-dark mb-1">Step 2: Matrimonial Details</h5>
+                            <p class="text-muted small">Fill your education, career, and community info now so your profile stands out immediately.</p>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.education.id_for_label }}" class="form-label fw-semibold">
+                                    Education / Degree
+                                </label>
+                                {{ form.education }}
+                                {% if form.education.errors %}
+                                    <div class="text-danger small mt-1">{{ form.education.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="{{ form.occupation.id_for_label }}" class="form-label fw-semibold">
+                                    Occupation
+                                </label>
+                                {{ form.occupation }}
+                                {% if form.occupation.errors %}
+                                    <div class="text-danger small mt-1">{{ form.occupation.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="{{ form.city.id_for_label }}" class="form-label fw-semibold">
+                                    City / Hometown
+                                </label>
+                                {{ form.city }}
+                                {% if form.city.errors %}
+                                    <div class="text-danger small mt-1">{{ form.city.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="{{ form.height_cm.id_for_label }}" class="form-label fw-semibold">
+                                    Height (cm)
+                                </label>
+                                {{ form.height_cm }}
+                                {% if form.height_cm.errors %}
+                                    <div class="text-danger small mt-1">{{ form.height_cm.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="{{ form.caste.id_for_label }}" class="form-label fw-semibold">
+                                    Caste / Community
+                                </label>
+                                {{ form.caste }}
+                                {% if form.caste.errors %}
+                                    <div class="text-danger small mt-1">{{ form.caste.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="{{ form.sub_caste.id_for_label }}" class="form-label fw-semibold">
+                                    Sub-Caste / Gotra
+                                </label>
+                                {{ form.sub_caste }}
+                                {% if form.sub_caste.errors %}
+                                    <div class="text-danger small mt-1">{{ form.sub_caste.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-12">
+                                <label for="{{ form.profile_photo.id_for_label }}" class="form-label fw-semibold">
+                                    Profile Picture <span class="text-muted small fw-normal">(Optional)</span>
+                                </label>
+                                {{ form.profile_photo }}
+                                <div class="form-text small text-muted">Upload a clear photo (JPG, PNG, WEBP, max 5MB).</div>
+                                {% if form.profile_photo.errors %}
+                                    <div class="text-danger small mt-1">{{ form.profile_photo.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-12">
+                                <label for="{{ form.bio.id_for_label }}" class="form-label fw-semibold">
+                                    About Me (Bio) <span class="text-muted small fw-normal">(Optional)</span>
+                                </label>
+                                {{ form.bio }}
+                                {% if form.bio.errors %}
+                                    <div class="text-danger small mt-1">{{ form.bio.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-3 mt-4 pt-2">
+                            <button type="button" id="backToStep1Btn" class="btn btn-outline-secondary px-4 py-2 fw-semibold rounded-pill">
+                                &larr; Back
+                            </button>
+                            <button type="submit" id="submitRegisterBtn" class="btn btn-dark flex-grow-1 py-2 fw-semibold rounded-pill shadow-sm">
+                                Complete Registration
+                            </button>
+                        </div>
+                    </div>
+
+                </form>
+
+                <div class="text-center mt-4">
+                    <small class="text-muted">
+                        Already have an account?
+                        <a href="{% url 'login' %}" class="text-dark fw-bold text-decoration-none">
+                            Login here
+                        </a>
+                    </small>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
 </div>
 
-<form method="POST">
-{% csrf_token %}
-<datalist id="caste-suggestions">
-    <option value="Rajput">
-    <option value="Brahmin">
-    <option value="Bhumihar">
-    <option value="Yadav">
-    <option value="Kushwaha">
-    <option value="Kurmi">
-    <option value="Bania / Gupta">
-    <option value="Kayastha">
-    <option value="Paswan">
-    <option value="Ravidas">
-    <option value="Nishad / Mallah">
-    <option value="Teli">
-    <option value="Kanu / Halwai">
-    <option value="Prajapati / Kumhar">
-    <option value="Vishwakarma / Badhai">
-    <option value="Nai / Thakur">
-    <option value="Lohar">
-    <option value="Ansari">
-    <option value="Syed">
-    <option value="Sheikh">
-    <option value="Pathan">
-    <option value="Siddiqui">
-</datalist>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const step1Container = document.getElementById('step1Container');
+    const step2Container = document.getElementById('step2Container');
+    const goToStep2Btn = document.getElementById('goToStep2Btn');
+    const backToStep1Btn = document.getElementById('backToStep1Btn');
+    const step1Indicator = document.getElementById('step1Indicator');
+    const step2Indicator = document.getElementById('step2Indicator');
+    const step1Label = document.getElementById('step1Label');
+    const step2Label = document.getElementById('step2Label');
+    const progressBar = document.getElementById('wizardProgressBar');
+    const alertBox = document.getElementById('stepValidationAlert');
 
-{% for field in form %}
+    function showAlert(msg) {
+        if (!alertBox) return;
+        alertBox.textContent = msg;
+        alertBox.classList.remove('d-none');
+        alertBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
 
-<div class="mb-3">
+    function hideAlert() {
+        if (!alertBox) return;
+        alertBox.classList.add('d-none');
+        alertBox.textContent = '';
+    }
 
-<label class="form-label">
-    {% if field.name == "password1" %}
-        Enter Password
-    {% elif field.name == "password2" %}
-        Retype Password
+    function showStep1() {
+        if (!step1Container || !step2Container) return;
+        step2Container.classList.add('d-none');
+        step1Container.classList.remove('d-none');
+        if (progressBar) progressBar.style.width = '50%';
+        if (step1Indicator) step1Indicator.className = 'btn btn-sm btn-dark rounded-circle shadow-sm position-relative fw-bold';
+        if (step2Indicator) step2Indicator.className = 'btn btn-sm btn-outline-secondary rounded-circle shadow-sm position-relative fw-bold bg-white';
+        if (step1Label) step1Label.className = 'fw-bold text-dark';
+        if (step2Label) step2Label.className = 'fw-semibold text-muted';
+        hideAlert();
+    }
+
+    function showStep2() {
+        if (!step1Container || !step2Container) return;
+        step1Container.classList.add('d-none');
+        step2Container.classList.remove('d-none');
+        if (progressBar) progressBar.style.width = '100%';
+        if (step1Indicator) step1Indicator.className = 'btn btn-sm btn-outline-dark rounded-circle shadow-sm position-relative fw-bold bg-white';
+        if (step2Indicator) step2Indicator.className = 'btn btn-sm btn-dark rounded-circle shadow-sm position-relative fw-bold';
+        if (step1Label) step1Label.className = 'fw-semibold text-muted';
+        if (step2Label) step2Label.className = 'fw-bold text-dark';
+        hideAlert();
+    }
+
+    function validateStep1() {
+        hideAlert();
+
+        const username = document.getElementById('{{ form.username.id_for_label }}');
+        const fullName = document.getElementById('{{ form.full_name.id_for_label }}');
+        const gender = document.getElementById('{{ form.gender.id_for_label }}');
+        const dob = document.getElementById('{{ form.date_of_birth.id_for_label }}');
+        const phone = document.getElementById('{{ form.phone_number.id_for_label }}');
+        const email = document.getElementById('{{ form.email.id_for_label }}');
+        const pass1 = document.getElementById('{{ form.password1.id_for_label }}');
+        const pass2 = document.getElementById('{{ form.password2.id_for_label }}');
+
+        if (!username || !username.value.trim()) {
+            showAlert('Please enter a username.');
+            if (username) username.focus();
+            return false;
+        }
+
+        if (!fullName || !fullName.value.trim()) {
+            showAlert('Please enter your full name.');
+            if (fullName) fullName.focus();
+            return false;
+        }
+
+        if (!gender || !gender.value) {
+            showAlert('Please select your gender.');
+            if (gender) gender.focus();
+            return false;
+        }
+
+        if (!dob || !dob.value) {
+            showAlert('Please enter your date of birth.');
+            if (dob) dob.focus();
+            return false;
+        }
+
+        const birthDate = new Date(dob.value);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        if (age < 18) {
+            showAlert('You must be at least 18 years old to register.');
+            dob.focus();
+            return false;
+        }
+
+        const phoneVal = (phone ? phone.value : '').trim();
+        if (!phoneVal || !/^[6-9]\d{9}$/.test(phoneVal)) {
+            showAlert('Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.');
+            if (phone) phone.focus();
+            return false;
+        }
+
+        const emailVal = (email ? email.value : '').trim();
+        if (!emailVal || !emailVal.includes('@')) {
+            showAlert('Please enter a valid email address.');
+            if (email) email.focus();
+            return false;
+        }
+
+        if (!pass1 || !pass1.value) {
+            showAlert('Please enter a password.');
+            if (pass1) pass1.focus();
+            return false;
+        }
+
+        if (!pass2 || !pass2.value) {
+            showAlert('Please confirm your password.');
+            if (pass2) pass2.focus();
+            return false;
+        }
+
+        if (pass1.value !== pass2.value) {
+            showAlert('The two passwords do not match. Please re-enter.');
+            pass2.focus();
+            return false;
+        }
+
+        return true;
+    }
+
+    if (goToStep2Btn) {
+        goToStep2Btn.addEventListener('click', function() {
+            if (validateStep1()) {
+                showStep2();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        });
+    }
+
+    if (backToStep1Btn) {
+        backToStep1Btn.addEventListener('click', function() {
+            showStep1();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    }
+
+    if (step1Indicator) {
+        step1Indicator.addEventListener('click', function() {
+            showStep1();
+        });
+    }
+
+    if (step2Indicator) {
+        step2Indicator.addEventListener('click', function() {
+            if (validateStep1()) {
+                showStep2();
+            }
+        });
+    }
+
+    // Auto-open Step 2 if server errors exist on Step 2 fields
+    {% if form.education.errors or form.occupation.errors or form.city.errors or form.height_cm.errors or form.caste.errors or form.sub_caste.errors or form.profile_photo.errors or form.bio.errors %}
+        showStep2();
     {% else %}
-        {{ field.label }}
+        showStep1();
     {% endif %}
-</label>
-
-{{ field }}
-
-{% if field.name == "email" %}
-<div class="form-text text-muted" style="font-size: 0.8rem;">
-    Accepted: Gmail, Outlook, Yahoo, Apple, Rediffmail, Zoho, Proton, and institutional domains.
-</div>
-{% endif %}
-
-{% if field.errors %}
-<div class="text-danger small">
-{{ field.errors|striptags }}
-</div>
-{% endif %}
-
-</div>
-
-{% endfor %}
-<button type="submit"
-class="btn btn-dark w-100 rounded-pill mt-2">
-Create Profile
-</button>
-
-</form>
-
-<div class="text-center mt-3">
-
-<small>
-Already registered?
-<a href="{% url 'login' %}">
-Login
-</a>
-</small>
-
-</div>
-
-</div>
-</div>
+});
+</script>
 
 {% endblock %}

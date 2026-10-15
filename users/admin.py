@@ -42,7 +42,7 @@ class CustomUserAdmin(UserAdmin):
     inlines = [SubscriptionInline]
     fieldsets = UserAdmin.fieldsets + (
         ("Approval & Verification", {"fields": ("is_approved", "is_phone_verified", "is_email_verified")}),
-        ("Community & Profile Details", {"fields": ("caste", "sub_caste", "caste_community", "city", "occupation", "height_cm", "date_of_birth")}),
+        ("Community & Profile Details", {"fields": ("caste", "sub_caste", "caste_community", "city", "education", "occupation", "height_cm", "date_of_birth")}),
     )
 
 

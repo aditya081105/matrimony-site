@@ -32,8 +32,11 @@ from .forms import UserRegisterForm, UserUpdateForm
 from core.services import send_verification_email
 
 def register(request):
+    if request.user.is_authenticated:
+        return redirect("home")
+
     if request.method == 'POST':
-        form = UserRegisterForm(request.POST)
+        form = UserRegisterForm(request.POST, request.FILES)
         if form.is_valid():
             user = form.save()
             user.is_active = True # Allow login immediately
