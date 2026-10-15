@@ -390,6 +390,71 @@ class CommunicationTests(TestCase):
         admin.refresh_from_db()
         self.assertFalse(admin.is_suspended)
 
+    def test_unmatch_only_works_for_accepted_match(self):
+        # User 1 has rejected request to User 2
+        req = ContactRequest.objects.create(
+            sender=self.user1,
+            receiver=self.user2,
+            status="rejected",
+            attempt_count=1
+        )
+        # Attempt to call unmatch to wipe rejection
+        res = self.client.post(reverse("unmatch", args=[self.user2.id]))
+        self.assertEqual(res.status_code, 302)
+        # Rejected request must NOT be deleted
+        self.assertTrue(ContactRequest.objects.filter(id=req.id, status="rejected").exists())
+
+    def test_block_preserves_sticky_rejection(self):
+        # User 1's request to User 2 was rejected
+        req = ContactRequest.objects.create(
+            sender=self.user1,
+            receiver=self.user2,
+            status="rejected",
+            attempt_count=1
+        )
+        # User 1 blocks User 2
+        self.client.post(reverse("block_user", args=[self.user2.id]))
+        # Rejected request must NOT be deleted
+        self.assertTrue(ContactRequest.objects.filter(id=req.id, status="rejected").exists())
+
+        # User 1 unblocks User 2
+        self.client.post(reverse("unblock_user", args=[self.user2.id]))
+        # Sending request again must STILL be blocked by sticky rejection
+        res = self.client.post(reverse("send_request", args=[self.user2.id]))
+        self.assertEqual(res.status_code, 302)
+        req.refresh_from_db()
+        self.assertEqual(req.status, "rejected")
+
+    def test_suspended_user_pending_request_cannot_be_accepted_and_hidden_from_received(self):
+        # User 2 sends request to User 1
+        req = ContactRequest.objects.create(
+            sender=self.user2,
+            receiver=self.user1,
+            status="pending"
+        )
+        # User 2 gets suspended
+        self.user2.is_suspended = True
+        self.user2.save()
+
+        # 1. Received requests list must not show suspended sender
+        res_list = self.client.get(reverse("received_requests"))
+        self.assertEqual(res_list.status_code, 200)
+        self.assertNotIn(req, res_list.context["requests"])
+
+        # 2. Attempting to accept request must fail
+        res_accept = self.client.post(reverse("update_request", args=[req.id, "accept"]))
+        self.assertEqual(res_accept.status_code, 302)
+        req.refresh_from_db()
+        self.assertEqual(req.status, "pending")  # Must NOT be accepted
+
+    def test_report_reason_length_capped(self):
+        from communications.models import Report
+        long_reason = "A" * 2500
+        res = self.client.post(reverse("report_user", args=[self.user2.id]), {"reason": long_reason})
+        self.assertEqual(res.status_code, 302)
+        report = Report.objects.get(reporter=self.user1, reported_user=self.user2)
+        self.assertLessEqual(len(report.reason), 1000)
+
 
 @skipUnlessDBFeature('has_select_for_update')
 class CommunicationConcurrencyTests(TransactionTestCase):

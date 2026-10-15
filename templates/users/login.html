@@ -14,8 +14,12 @@
         </div>
 
         {% if form.errors %}
-        <div class="alert alert-danger text-center small">
-        Invalid username or password
+        <div class="alert alert-danger text-center small mb-3">
+            {% for error in form.non_field_errors %}
+                <div>{{ error }}</div>
+            {% empty %}
+                Invalid username or password
+            {% endfor %}
         </div>
         {% endif %}
 

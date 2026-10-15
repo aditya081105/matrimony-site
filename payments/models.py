@@ -39,7 +39,9 @@ class PaymentOrder(models.Model):
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='payment_orders'
     )
     plan = models.ForeignKey(

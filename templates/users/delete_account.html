@@ -14,12 +14,16 @@
 
     <form method="POST">
         {% csrf_token %}
+        <div class="mb-3 text-start">
+            <label for="password" class="form-label small fw-semibold text-secondary">Enter your current password to confirm</label>
+            <input type="password" name="password" id="password" class="form-control" required placeholder="Current Password" autocomplete="current-password">
+        </div>
         <button type="submit" class="btn btn-danger px-4">
-            Confirm Delete
+            Confirm Delete Account
         </button>
     </form>
 
-    <a href="{{ request.META.HTTP_REFERER|default:'/' }}"
+    <a href="{% url 'profile_list' %}"
         class="btn btn-outline-secondary mt-3">
         Cancel
     </a>
