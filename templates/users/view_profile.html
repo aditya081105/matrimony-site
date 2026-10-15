@@ -52,7 +52,7 @@
             {% if is_viewer_admin %}
                 <li><hr class="dropdown-divider"></li>
                 <li>
-                    <a class="dropdown-item fw-semibold text-primary" href="/admin/users/customuser/{{ profile_user.id }}/change/" target="_blank">
+                    <a class="dropdown-item fw-semibold text-primary" href="{% url 'admin:users_customuser_change' profile_user.id %}" target="_blank">
                         Open in Django Admin
                     </a>
                 </li>
@@ -172,8 +172,17 @@
 
         <div class="col-md-6 mb-2">
             <strong>Date of Birth:</strong>
-            {{ profile_user.date_of_birth|default:"Not specified" }}
-            {% if profile_user.age %}({{ profile_user.age }} yrs old){% endif %}
+            {% if is_allowed %}
+                {{ profile_user.date_of_birth|default:"Not specified" }}
+                {% if profile_user.age %}({{ profile_user.age }} yrs old){% endif %}
+            {% else %}
+                {% if profile_user.age %}
+                    {{ profile_user.age }} yrs old
+                {% else %}
+                    Not specified
+                {% endif %}
+                <span class="text-muted small ms-1">(Exact date private)</span>
+            {% endif %}
         </div>
 
         <div class="col-md-6 mb-2">
@@ -216,12 +225,20 @@
 
         <div class="col-md-6 mb-2">
             <strong>Father's Name:</strong>
-            {{ profile_user.father_name|default:profile_user.profile.father_name|default:"Not specified" }}
+            {% if is_allowed %}
+                {{ profile_user.father_name|default:profile_user.profile.father_name|default:"Not specified" }}
+            {% else %}
+                <span class="text-muted fst-italic">Visible upon mutual match</span>
+            {% endif %}
         </div>
 
         <div class="col-md-6 mb-2">
             <strong>Mother's Name:</strong>
-            {{ profile_user.mother_name|default:profile_user.profile.mother_name|default:"Not specified" }}
+            {% if is_allowed %}
+                {{ profile_user.mother_name|default:profile_user.profile.mother_name|default:"Not specified" }}
+            {% else %}
+                <span class="text-muted fst-italic">Visible upon mutual match</span>
+            {% endif %}
         </div>
 
         <div class="col-md-6 mb-2">

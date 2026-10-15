@@ -1197,5 +1197,171 @@ class Phase3SecurityAndModerationTests(TestCase):
         self.assertIn("resolution is too large", str(ctx.exception).lower())
 
 
+class Phase4VisibilityAndPrivacyTests(TestCase):
+    def setUp(self):
+        from datetime import date
+        self.member_male = User.objects.create_user(
+            username="member_m",
+            email="member_m@example.com",
+            password="Password123!",
+            full_name="Male Member",
+            gender="M",
+            phone_number="9876543201",
+            date_of_birth=date(1995, 5, 15),
+            father_name="Father Male",
+            mother_name="Mother Male",
+            address="123 Civil Lines, Varanasi",
+            is_approved=True,
+            is_email_verified=True,
+            is_suspended=False,
+        )
+        self.member_female = User.objects.create_user(
+            username="member_f",
+            email="member_f@example.com",
+            password="Password123!",
+            full_name="Female Member",
+            gender="F",
+            phone_number="9876543202",
+            date_of_birth=date(1998, 8, 20),
+            father_name="Father Female",
+            mother_name="Mother Female",
+            address="456 Cantt Road, Lucknow",
+            is_approved=True,
+            is_email_verified=True,
+            is_suspended=False,
+        )
+        self.admin_user = User.objects.create_superuser(
+            username="admin_p4",
+            email="admin_p4@example.com",
+            password="AdminPassword123!",
+            is_staff=True,
+            is_superuser=True,
+        )
+        self.suspended_target = User.objects.create_user(
+            username="suspended_target_p4",
+            email="susp_target_p4@example.com",
+            password="Password123!",
+            full_name="Suspended Person",
+            gender="F",
+            is_approved=True,
+            is_email_verified=True,
+            is_suspended=True,
+        )
+        self.unapproved_target = User.objects.create_user(
+            username="unapproved_target_p4",
+            email="unapproved_p4@example.com",
+            password="Password123!",
+            full_name="Unapproved Person",
+            gender="F",
+            is_approved=False,
+            is_email_verified=True,
+            is_suspended=False,
+        )
+
+    def test_visibility_service_visible_profiles_filtering(self):
+        from users.visibility import visible_profiles
+        from communications.models import Block
+
+        # Female member is visible to male member
+        qs_m = visible_profiles(self.member_male)
+        self.assertIn(self.member_female, qs_m)
+        self.assertNotIn(self.member_male, qs_m)
+        self.assertNotIn(self.admin_user, qs_m)
+        self.assertNotIn(self.suspended_target, qs_m)
+        self.assertNotIn(self.unapproved_target, qs_m)
+
+        # When blocked, female member is excluded
+        Block.objects.create(blocker=self.member_male, blocked=self.member_female)
+        qs_blocked = visible_profiles(self.member_male)
+        self.assertNotIn(self.member_female, qs_blocked)
+
+        # Also excluded if female member blocked male member
+        Block.objects.all().delete()
+        Block.objects.create(blocker=self.member_female, blocked=self.member_male)
+        qs_blocked2 = visible_profiles(self.member_male)
+        self.assertNotIn(self.member_female, qs_blocked2)
+
+    def test_visibility_service_can_view(self):
+        from users.visibility import can_view
+        from communications.models import Block
+
+        # Normal view of approved member
+        self.assertTrue(can_view(self.member_male, self.member_female))
+        self.assertTrue(can_view(self.member_male, self.member_male))
+
+        # Cannot view staff account
+        self.assertFalse(can_view(self.member_male, self.admin_user))
+
+        # Cannot view suspended or unapproved account
+        self.assertFalse(can_view(self.member_male, self.suspended_target))
+        self.assertFalse(can_view(self.member_male, self.unapproved_target))
+
+        # Admin can view anyone (for moderation)
+        self.assertTrue(can_view(self.admin_user, self.suspended_target))
+        self.assertTrue(can_view(self.admin_user, self.unapproved_target))
+
+        # Blocked accounts cannot view each other
+        Block.objects.create(blocker=self.member_male, blocked=self.member_female)
+        self.assertFalse(can_view(self.member_male, self.member_female))
+        self.assertFalse(can_view(self.member_female, self.member_male))
+
+    def test_unmatched_user_cannot_see_parental_names_exact_dob_or_contact(self):
+        from django.urls import reverse
+        self.client.login(username="member_m", password="Password123!")
+        res = self.client.get(reverse('view_profile', args=[self.member_female.id]))
+        self.assertEqual(res.status_code, 200)
+
+        # Contact details must be hidden
+        self.assertNotContains(res, "9876543202")
+        self.assertNotContains(res, "member_f@example.com")
+        self.assertNotContains(res, "456 Cantt Road")
+
+        # Parental names must be hidden
+        self.assertNotContains(res, "Father Female")
+        self.assertNotContains(res, "Mother Female")
+        self.assertContains(res, "Visible upon mutual match")
+
+        # Exact DOB must be hidden; only age should show
+        self.assertNotContains(res, "Aug. 20, 1998")
+        self.assertNotContains(res, "1998-08-20")
+        self.assertContains(res, f"{self.member_female.age} yrs old")
+
+    def test_matched_user_sees_parental_names_exact_dob_and_contact(self):
+        from django.urls import reverse
+        from communications.models import ContactRequest
+
+        # Create accepted mutual match
+        ContactRequest.objects.create(
+            sender=self.member_male,
+            receiver=self.member_female,
+            status="accepted"
+        )
+
+        self.client.login(username="member_m", password="Password123!")
+        res = self.client.get(reverse('view_profile', args=[self.member_female.id]))
+        self.assertEqual(res.status_code, 200)
+
+        # Contact details visible
+        self.assertContains(res, "9876543202")
+        self.assertContains(res, "member_f@example.com")
+        self.assertContains(res, "456 Cantt Road")
+
+        # Parental names visible
+        self.assertContains(res, "Father Female")
+        self.assertContains(res, "Mother Female")
+
+        # Exact DOB visible
+        self.assertContains(res, "Aug. 20, 1998")
+
+    def test_admin_viewer_dropdown_links_to_secure_admin_panel(self):
+        from django.urls import reverse
+        self.client.login(username="admin_p4", password="AdminPassword123!")
+        res = self.client.get(reverse('view_profile', args=[self.member_female.id]))
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, f"/secure-admin-panel/users/customuser/{self.member_female.id}/change/")
+        self.assertNotContains(res, f"/admin/users/customuser/{self.member_female.id}/change/")
+
+
+
 
 

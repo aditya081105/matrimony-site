@@ -6,6 +6,7 @@ from django.db.models import Q, Case, When, Value, IntegerField
 from django.utils import timezone
 from users.models import CustomUser
 from users.decorators import active_member_required
+from users.visibility import visible_profiles
 from communications.models import Block, ContactRequest, SavedProfile
 
 
@@ -15,34 +16,7 @@ def search_view(request):
     profiles = CustomUser.objects.none()
 
     if query:
-        is_admin = bool(request.user.is_staff or request.user.is_superuser)
-
-        if is_admin:
-            base_qs = CustomUser.objects.exclude(
-                id=request.user.id
-            ).exclude(
-                is_staff=True
-            ).exclude(
-                is_superuser=True
-            )
-        else:
-            blocked_by_me = Block.objects.filter(blocker=request.user).values_list("blocked_id", flat=True)
-            blocked_me = Block.objects.filter(blocked=request.user).values_list("blocker_id", flat=True)
-            blocked_ids = set(blocked_by_me) | set(blocked_me)
-
-            base_qs = CustomUser.objects.filter(
-                is_active=True,
-                is_approved=True,
-                is_suspended=False
-            ).exclude(
-                id__in=blocked_ids
-            ).exclude(
-                id=request.user.id
-            ).exclude(
-                is_staff=True
-            ).exclude(
-                is_superuser=True
-            )
+        base_qs = visible_profiles(request.user)
 
         now = timezone.now()
         active_sub_filter = Q(subscription__is_active=True) & (
