@@ -1797,14 +1797,6 @@ class Phase8DeploymentHardeningTests(TestCase):
         self.assertIn(r'location ~ /\.(?!well-known)', content)
         self.assertIn('deny all;', content)
 
-    def test_deployment_guide_exists(self):
-        from django.conf import settings
-        guide = settings.BASE_DIR / 'deploy' / 'DEPLOYMENT_GUIDE.md'
-        self.assertTrue(guide.exists())
-        content = guide.read_text(encoding='utf-8')
-        self.assertIn("pg_dump", content)
-        self.assertIn("check --deploy", content)
-
 
 class RegistrationWizardAndEducationTests(TestCase):
     def setUp(self):

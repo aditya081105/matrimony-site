@@ -50,8 +50,8 @@ A full-stack community matrimonial web platform built with Django 6, PostgreSQL,
 - **State Mutation Protection:** All state-modifying actions (`send_request`, `update_request`, `cancel_request`, `unmatch`, `block_user`, `unblock_user`, `toggle_save`) strictly enforce HTTP POST with CSRF tokens (`@require_POST`), preventing GET-based CSRF and link pre-fetching attacks.
 - **Secure Email Verification & Timing-Safe Resets:** Verification links use Django's `TimestampSigner` with a 24-hour expiration window (`max_age=86400`) and rate-limiting cooldown. Password reset codes use 6-digit tokens compared via `secrets.compare_digest` with 5-attempt throttling.
 
-### 6. Production Hardening & Operational Runbook
-A complete operational checklist and runbook is provided in [`deploy/DEPLOYMENT_GUIDE.md`](deploy/DEPLOYMENT_GUIDE.md), detailing:
+### 6. Production Hardening & Operational Standards
+Production operational hardening details:
 - **Systemd Process Sandboxing:** Gunicorn runs under a dedicated service (`poorvanchal.service`) with `NoNewPrivileges=true`, `PrivateTmp=true`, `ProtectSystem=full`, and restrictive umask `0027`.
 - **Persistent SELinux Policies:** Configured with `etc_t` file context on production `.env` (`chmod 600`) to permit systemd `EnvironmentFile` reading without triggering AVC denials under enforcing mode.
 - **TLS 1.3 & Reverse Proxy Security:** Nginx configured with automated Certbot SSL certificates, Cloudflare real-IP restoration (`set_real_ip_from`), HSTS (`max-age=31536000`), secure cookies (`SESSION_COOKIE_SECURE = True`), and strict deployment security checks (`manage.py check --deploy --fail-level WARNING`).
