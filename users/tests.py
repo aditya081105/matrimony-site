@@ -1150,7 +1150,7 @@ class Phase3SecurityAndModerationTests(TestCase):
         res = self.client.get(reverse('edit_profile'))
         self.assertEqual(res.status_code, 200)
 
-    def test_critical_name_change_resets_approval(self):
+    def test_profile_update_preserves_approval_and_flags_needs_review(self):
         self.client.login(username="approved_mod_user", password="ModPassword123!")
         res = self.client.post(reverse('edit_profile'), {
             'full_name': 'Changed Full Name',
@@ -1162,7 +1162,8 @@ class Phase3SecurityAndModerationTests(TestCase):
         self.assertEqual(res.status_code, 302)
         self.approved_user.refresh_from_db()
         self.assertEqual(self.approved_user.full_name, 'Changed Full Name')
-        self.assertFalse(self.approved_user.is_approved)
+        self.assertTrue(self.approved_user.is_approved)
+        self.assertTrue(self.approved_user.needs_review)
 
     def test_non_critical_bio_change_preserves_approval_and_flags_needs_review(self):
         self.client.login(username="approved_mod_user", password="ModPassword123!")
