@@ -7,9 +7,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     {% load static %}
-    <link rel="icon" href="{% static 'images/favicon.svg' %}" type="image/svg+xml">
-    <link rel="icon" href="{% static 'images/favicon.png' %}" type="image/png">
-    <link rel="apple-touch-icon" href="{% static 'images/logo.png' %}">
+    <link rel="icon" href="{% static 'images/favicon.svg' %}?v=2" type="image/svg+xml">
+    <link rel="icon" href="{% static 'images/favicon.png' %}?v=2" type="image/png">
+    <link rel="shortcut icon" href="{% static 'images/favicon.ico' %}?v=2">
+    <link rel="apple-touch-icon" href="{% static 'images/logo.png' %}?v=2">
 
     <!-- Bootstrap CDN (keep until local file added) -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
@@ -328,7 +329,7 @@
         <!-- ================= DESKTOP NAVBAR (MD and UP) ================= -->
         <div class="container d-none d-md-flex align-items-center justify-content-between px-3 px-lg-4">
             <a class="navbar-brand logo-font fs-3 text-white d-flex align-items-center" href="{% url 'home' %}">
-                <img src="{% static 'images/favicon.svg' %}" width="34" height="34" class="me-2 rounded-2 shadow-sm border border-white border-opacity-25" alt="P">
+                <img src="{% static 'images/favicon.svg' %}?v=2" width="34" height="34" class="me-2 rounded-2 shadow-sm border border-white border-opacity-25" alt="P">
                 Poorvanchal Matrimony®
             </a>
 
@@ -341,7 +342,7 @@
                 </a>
 
                 <!-- Language Selector (Bilingual: ENG / हि) -->
-                <div class="dropdown">
+                <div class="dropdown notranslate">
                     <button class="btn btn-outline-light btn-sm rounded-pill px-2.5 py-1 dropdown-toggle d-flex align-items-center gap-1"
                             type="button"
                             data-bs-toggle="dropdown"
@@ -493,7 +494,7 @@
             <!-- Mobile Top Row: Site Name on Left, Search & Burger on Right -->
             <div class="d-flex align-items-center justify-content-between w-100">
                 <a class="navbar-brand logo-font m-0 text-white d-flex align-items-center" href="{% url 'home' %}" style="font-size: 1.28rem; letter-spacing: 0.3px;">
-                    <img src="{% static 'images/favicon.svg' %}" width="26" height="26" class="me-2 rounded-2 shadow-sm border border-white border-opacity-25" alt="P">
+                    <img src="{% static 'images/favicon.svg' %}?v=2" width="26" height="26" class="me-2 rounded-2 shadow-sm border border-white border-opacity-25" alt="P">
                     Poorvanchal Matrimony®
                 </a>
 
@@ -533,7 +534,7 @@
             <!-- Mobile Sub Row: Lang Switcher on Left, Badge & Profile on Right (Below Search & Burger) -->
             <div class="d-flex align-items-center justify-content-between w-100 pt-1 mt-1" style="border-top: 1px solid rgba(255,255,255,0.18);">
                 <!-- Language Selector -->
-                <div class="dropdown">
+                <div class="dropdown notranslate">
                     <button class="btn btn-outline-light btn-sm rounded-pill px-2.5 py-0.5 dropdown-toggle d-flex align-items-center gap-1"
                             type="button"
                             data-bs-toggle="dropdown"
@@ -738,97 +739,276 @@
         }
     });
 
-    function googleTranslateElementInit() {
-        new google.translate.TranslateElement({
-            pageLanguage: 'en',
-            includedLanguages: 'hi,en',
-            autoDisplay: false
-        }, 'google_translate_element');
-    }
+    const MatrimonyTranslator = (function() {
+        const GLOSSARY = {
+            "Poorvanchal Matrimony": "पूर्वांचल मैट्रिमोनी",
+            "Where Families Connect With Trust": "जहां परिवार विश्वास से जुड़ते हैं",
+            "A secure and respectful matrimonial platform built for our hometown community.": "हमारे गृहनगर समुदाय के लिए बनाया गया एक सुरक्षित और सम्मानजनक वैवाहिक मंच।",
+            "Home": "होम",
+            "Matchmaking": "मैचमेकिंग",
+            "Search Profiles": "प्रोफ़ाइल खोजें",
+            "Search": "खोजें",
+            "Membership": "सदस्यता",
+            "Membership Plans": "सदस्यता योजनाएं",
+            "Login": "लॉग इन",
+            "Register": "रजिस्टर करें",
+            "Logout": "लॉग आउट",
+            "My Profile": "मेरी प्रोफ़ाइल",
+            "Edit Profile": "प्रोफ़ाइल संपादित करें",
+            "Dashboard": "डैशबोर्ड",
+            "Settings": "सेटिंग्स",
+            "Change Password": "पासवर्ड बदलें",
+            "Admin Approved Profiles": "व्यवस्थापक द्वारा स्वीकृत प्रोफाइल",
+            "Every profile is reviewed before becoming visible to ensure authenticity and trust.": "प्रामाणिकता और विश्वास सुनिश्चित करने के लिए दृश्यमान होने से पहले प्रत्येक प्रोफ़ाइल की समीक्षा की जाती है।",
+            "Privacy First": "गोपनीयता पहले",
+            "Contact details remain locked until both families mutually accept an interest.": "जब तक दोनों परिवार परस्पर सहमति नहीं देते, संपर्क विवरण सुरक्षित रहते हैं।",
+            "Verified Contacts": "सत्यापित संपर्क",
+            "Direct contact details are only shared after mutual family consent.": "सीधे संपर्क विवरण केवल दोनों परिवारों की सहमति के बाद ही साझा किए जाते हैं।",
+            "Create Profile": "प्रोफ़ाइल बनाएं",
+            "Browse Profiles": "प्रोफ़ाइल देखें",
+            "Featured Matches": "विशेष मैच",
+            "Find Your Life Partner": "अपना जीवनसाथी खोजें",
+            "About Us": "हमारे बारे में",
+            "Contact Us": "संपर्क करें",
+            "Privacy Policy": "गोपनीयता नीति",
+            "Terms of Service": "सेवा की शर्तें",
+            "Quick Links": "त्वरित लिंक",
+            "All Rights Reserved": "सर्वाधिकार सुरक्षित",
+            "Resend Email": "ईमेल पुनः भेजें",
+            "Email not verified": "ईमेल सत्यापित नहीं है",
+            "Please check your inbox or click to resend verification.": "कृपया अपना इनबॉक्स जांचें या सत्यापन पुनः भेजने के लिए क्लिक करें।",
+            "Age": "आयु",
+            "Height": "कद",
+            "Religion": "धर्म",
+            "Caste": "जाति",
+            "Education": "शिक्षा",
+            "Profession": "व्यवसाय",
+            "Occupation": "व्यवसाय",
+            "Location": "स्थान",
+            "City": "शहर",
+            "State": "राज्य",
+            "Income": "वार्षिक आय",
+            "Annual Income": "वार्षिक आय",
+            "Mother Tongue": "मातृभाषा",
+            "Marital Status": "वैवाहिक स्थिति",
+            "View Profile": "प्रोफ़ाइल देखें",
+            "Send Interest": "रुचि भेजें",
+            "Interest Sent": "रुचि भेजी गई",
+            "Shortlist": "शॉर्टलिस्ट",
+            "Shortlisted": "शॉर्टलिस्ट किया गया",
+            "Looking for": "तलाश है",
+            "Never Married": "अविवाहित",
+            "Divorced": "तलाकशुदा",
+            "Widowed": "विधवा/विधुर",
+            "Awaiting Divorce": "तलाक प्रक्रियाधीन",
+            "Hindu": "हिंदू",
+            "Muslim": "मुस्लिम",
+            "Sikh": "सिख",
+            "Christian": "ईसाई",
+            "Jain": "जैन",
+            "Buddhist": "बौद्ध",
+            "Not specified": "निर्दिष्ट नहीं"
+        };
+
+        const cache = new Map();
+        for (const [k, v] of Object.entries(GLOSSARY)) {
+            cache.set(k.trim(), v);
+        }
+
+        let currentLang = 'en';
+        let isTranslating = false;
+        let observer = null;
+
+        function isExcluded(el) {
+            if (!el) return true;
+            if (el.closest && el.closest('.notranslate')) return true;
+            const tag = el.tagName;
+            return ['SCRIPT', 'STYLE', 'SVG', 'NOSCRIPT', 'CODE', 'PRE'].includes(tag);
+        }
+
+        function getEligibleTextNodes(root) {
+            const scope = root || document.body;
+            if (!scope) return [];
+            const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT, {
+                acceptNode: function(node) {
+                    if (isExcluded(node.parentElement)) return NodeFilter.FILTER_REJECT;
+                    const text = node.textContent.trim();
+                    if (!text || /^\d+$/.test(text) || text.length <= 1) return NodeFilter.FILTER_REJECT;
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            });
+            const nodes = [];
+            while (walker.nextNode()) nodes.push(walker.currentNode);
+            return nodes;
+        }
+
+        async function fetchBatch(batch) {
+            if (!batch.length) return;
+            try {
+                const q = encodeURIComponent(batch.join('\n'));
+                const res = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=hi&dt=t&q=' + q);
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data && data[0]) {
+                    data[0].forEach(item => {
+                        const trans = item[0] ? item[0].replace(/\n$/, '').trim() : '';
+                        const orig = item[1] ? item[1].replace(/\n$/, '').trim() : '';
+                        if (orig && trans) {
+                            cache.set(orig, trans);
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error('Translation network error:', e);
+            }
+        }
+
+        async function translateNodes(nodes) {
+            const missing = [];
+            nodes.forEach(n => {
+                if (n.__origText === undefined) {
+                    n.__origText = n.textContent;
+                }
+                const trimmed = n.__origText.trim();
+                if (cache.has(trimmed)) {
+                    n.textContent = n.__origText.replace(trimmed, cache.get(trimmed));
+                } else if (trimmed.length > 1 && !/^[\d\W]+$/.test(trimmed)) {
+                    missing.push(trimmed);
+                }
+            });
+
+            const uniqueMissing = [...new Set(missing)];
+            const batchSize = 30;
+            for (let i = 0; i < uniqueMissing.length; i += batchSize) {
+                await fetchBatch(uniqueMissing.slice(i, i + batchSize));
+            }
+
+            nodes.forEach(n => {
+                if (n.__origText !== undefined) {
+                    const trimmed = n.__origText.trim();
+                    if (cache.has(trimmed)) {
+                        n.textContent = n.__origText.replace(trimmed, cache.get(trimmed));
+                    }
+                }
+            });
+
+            // Handle input placeholders
+            document.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(inp => {
+                if (inp.closest && inp.closest('.notranslate')) return;
+                if (inp.__origPh === undefined) {
+                    inp.__origPh = inp.placeholder;
+                }
+                const pht = inp.__origPh.trim();
+                if (cache.has(pht)) {
+                    inp.placeholder = cache.get(pht);
+                }
+            });
+        }
+
+        async function applyHindi(root) {
+            if (isTranslating) return;
+            isTranslating = true;
+            try {
+                const nodes = getEligibleTextNodes(root);
+                await translateNodes(nodes);
+            } finally {
+                isTranslating = false;
+            }
+        }
+
+        function restoreEnglish(root) {
+            const nodes = getEligibleTextNodes(root);
+            nodes.forEach(n => {
+                if (n.__origText !== undefined) {
+                    n.textContent = n.__origText;
+                }
+            });
+            document.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(inp => {
+                if (inp.__origPh !== undefined) {
+                    inp.placeholder = inp.__origPh;
+                }
+            });
+        }
+
+        function updateLanguageUI(lang) {
+            document.querySelectorAll('.current-lang-text').forEach(function(el) {
+                el.textContent = (lang === 'hi' ? 'हि' : 'ENG');
+            });
+        }
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            updateLanguageUI(lang);
+            try {
+                localStorage.setItem('site_lang', lang);
+                document.cookie = 'site_lang=' + lang + '; path=/; max-age=31536000; SameSite=Lax';
+                document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            } catch (e) {}
+
+            if (lang === 'hi') {
+                applyHindi();
+                setupObserver();
+            } else {
+                if (observer) {
+                    observer.disconnect();
+                    observer = null;
+                }
+                restoreEnglish();
+            }
+        }
+
+        let debounceTimer = null;
+        function setupObserver() {
+            if (observer || !window.MutationObserver) return;
+            observer = new MutationObserver(mutations => {
+                if (currentLang !== 'hi' || isTranslating) return;
+                let shouldUpdate = false;
+                for (const m of mutations) {
+                    if (m.addedNodes.length > 0) {
+                        shouldUpdate = true;
+                        break;
+                    }
+                }
+                if (shouldUpdate) {
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(() => {
+                        if (currentLang === 'hi') applyHindi();
+                    }, 200);
+                }
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+        }
+
+        function init() {
+            let savedLang = 'en';
+            try {
+                savedLang = localStorage.getItem('site_lang');
+                if (!savedLang) {
+                    const match = document.cookie.match(/(?:^|;\s*)site_lang=([^;]+)/);
+                    if (match) savedLang = match[1];
+                }
+            } catch (e) {}
+
+            if (savedLang === 'hi') {
+                setLanguage('hi');
+            } else {
+                updateLanguageUI('en');
+            }
+        }
+
+        return {
+            init,
+            setLanguage
+        };
+    })();
 
     function setSiteLanguage(lang) {
-        // Update visible UI text immediately
-        document.querySelectorAll('.current-lang-text').forEach(function(el) {
-            el.textContent = (lang === 'hi' ? 'हि' : 'ENG');
-        });
-
-        // Set googtrans cookies across host and root domain
-        var host = window.location.hostname;
-        var hostParts = host.split('.');
-        var rootDomain = hostParts.length > 1 ? '.' + hostParts.slice(-2).join('.') : host;
-
-        if (lang === 'en') {
-            document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-            document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + host + ';';
-            document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + rootDomain + ';';
-            document.cookie = 'googtrans=/en/en; path=/;';
-            document.cookie = 'googtrans=/en/en; path=/; domain=' + host + ';';
-        } else {
-            var cookieVal = '/en/' + lang;
-            document.cookie = 'googtrans=' + cookieVal + '; path=/;';
-            document.cookie = 'googtrans=' + cookieVal + '; path=/; domain=' + host + ';';
-            if (hostParts.length > 1) {
-                document.cookie = 'googtrans=' + cookieVal + '; path=/; domain=' + rootDomain + ';';
-            }
-        }
-
-        // Trigger Google Translate in-place without page reload
-        var attempts = 0;
-        var triggerInterval = setInterval(function() {
-            attempts++;
-            var combo = document.querySelector('.goog-te-combo');
-            if (combo) {
-                clearInterval(triggerInterval);
-                if (lang === 'en') {
-                    var hasEn = false;
-                    for (var i = 0; i < combo.options.length; i++) {
-                        if (combo.options[i].value === 'en') { hasEn = true; break; }
-                    }
-                    combo.value = hasEn ? 'en' : '';
-                } else {
-                    combo.value = lang;
-                }
-                combo.dispatchEvent(new Event('change'));
-            }
-            if (attempts > 30) {
-                clearInterval(triggerInterval);
-            }
-        }, 100);
+        MatrimonyTranslator.setLanguage(lang);
     }
 
-    // Keep body at top: 0
-    setInterval(function() {
-        if (document.body && document.body.style.top && document.body.style.top !== '0px') {
-            document.body.style.top = '0px';
-        }
-    }, 250);
-
-    // On load: synchronize language from cookie
     document.addEventListener("DOMContentLoaded", function() {
-        var isHindi = document.cookie.indexOf('googtrans=/en/hi') !== -1;
-        if (isHindi) {
-            document.querySelectorAll('.current-lang-text').forEach(function(el) {
-                el.textContent = 'हि';
-            });
-            var initAttempts = 0;
-            var initTimer = setInterval(function() {
-                initAttempts++;
-                var combo = document.querySelector('.goog-te-combo');
-                if (combo) {
-                    clearInterval(initTimer);
-                    if (combo.value !== 'hi') {
-                        combo.value = 'hi';
-                        combo.dispatchEvent(new Event('change'));
-                    }
-                }
-                if (initAttempts > 40) {
-                    clearInterval(initTimer);
-                }
-            }, 100);
-        }
+        MatrimonyTranslator.init();
     });
 </script>
-<div id="google_translate_element" style="position:fixed; left:-9999px; top:-9999px; width:1px; height:1px; opacity:0; pointer-events:none;"></div>
-<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
 </html>
