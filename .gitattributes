@@ -8,8 +8,13 @@
 *.md text eol=lf
 *.yml text eol=lf
 *.conf text eol=lf
+*.svg text eol=lf
 *.png binary
 *.jpg binary
 *.jpeg binary
-*.svg text eol=lf
+*.gif binary
+*.ico binary
+*.webp binary
 *.key binary
+*.db binary
+*.sqlite3 binary
