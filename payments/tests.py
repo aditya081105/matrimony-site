@@ -313,3 +313,67 @@ class PaymentStateMachineTests(TestCase):
         self.assertIn("Deleted User", order_str)
         self.assertIn("Silver Plan", order_str)
 
+    def test_reject_fallback_to_expired_order_resets_to_free(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        now = timezone.now()
+
+        # Order 1: Silver approved 40 days ago (30-day plan, so expired 10 days ago)
+        order1 = PaymentOrder.objects.create(
+            user=self.user, plan=self.silver, amount=self.silver.price, status='pending'
+        )
+        order1.approve()
+        order1.verified_at = now - timedelta(days=40)
+        order1.save(update_fields=['verified_at'])
+
+        # Order 2: Gold approved today
+        order2 = PaymentOrder.objects.create(
+            user=self.user, plan=self.gold, amount=self.gold.price, status='pending'
+        )
+        order2.approve()
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.subscription.is_active)
+        self.assertEqual(self.user.subscription.plan_type, self.gold.name)
+
+        # Reject Order 2: since Order 1 is expired, subscription must reset to Free!
+        order2.reject()
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.subscription.is_active)
+        self.assertEqual(self.user.subscription.plan_type, 'Free')
+        self.assertIsNone(self.user.subscription.expires_at)
+
+    def test_reject_fallback_to_valid_order_preserves_original_expiry(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        now = timezone.now()
+
+        # Order 1: Silver approved 10 days ago (30-day plan, so 20 days left)
+        order1 = PaymentOrder.objects.create(
+            user=self.user, plan=self.silver, amount=self.silver.price, status='pending'
+        )
+        order1.approve()
+        order1.verified_at = now - timedelta(days=10)
+        order1.save(update_fields=['verified_at'])
+        expected_expiry = order1.verified_at + timedelta(days=self.silver.duration_days)
+
+        # Order 2: Gold approved today
+        order2 = PaymentOrder.objects.create(
+            user=self.user, plan=self.gold, amount=self.gold.price, status='pending'
+        )
+        order2.approve()
+
+        # Reject Order 2: fallback to Order 1 with its original expiry (not extending or restarting today)
+        order2.reject()
+        self.user.refresh_from_db()
+        order1.refresh_from_db()
+        self.assertEqual(order1.status, 'completed')
+        self.assertTrue(self.user.subscription.is_active)
+        self.assertEqual(self.user.subscription.plan_type, self.silver.name)
+        self.assertEqual(self.user.subscription.active_order, order1)
+        self.assertAlmostEqual(
+            (self.user.subscription.expires_at - expected_expiry).total_seconds(),
+            0,
+            delta=2
+        )
+
+
