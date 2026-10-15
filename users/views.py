@@ -391,11 +391,16 @@ def view_profile(request, user_id):
 
 @login_required
 def delete_account(request):
-
     if request.method == "POST":
+        password = request.POST.get("password", "")
+        if not password or not request.user.check_password(password):
+            messages.error(request, "Incorrect password. Account deletion cancelled.")
+            return render(request, 'users/delete_account.html')
+
         user = request.user
         logout(request)
         user.delete()
+        messages.success(request, "Your account has been deleted successfully.")
         return redirect('home')
 
     return render(request, 'users/delete_account.html')
@@ -488,20 +493,20 @@ def verify_email(request, token):
         unsigned_value = signer.unsign(token, max_age=86400)  # Valid for 24 hours
 
         # Payload format: "{user_id}:{user_email}"
-        if ":" in str(unsigned_value):
-            user_id_str, token_email = str(unsigned_value).split(":", 1)
-            user = CustomUser.objects.get(id=int(user_id_str))
+        if ":" not in str(unsigned_value):
+            messages.error(request, "Invalid or unrecognized verification link.")
+            return redirect("home")
 
-            # Verify that the token corresponds to the user's CURRENT email address
-            if (user.email or '').strip().lower() != token_email.strip().lower():
-                messages.error(
-                    request,
-                    "This verification link was issued for a previous email address. Please request a new verification email."
-                )
-                return redirect("resend_verification")
-        else:
-            # Backwards compatibility fallback for any legacy single-id tokens
-            user = CustomUser.objects.get(id=int(unsigned_value))
+        user_id_str, token_email = str(unsigned_value).split(":", 1)
+        user = CustomUser.objects.get(id=int(user_id_str))
+
+        # Verify that the token corresponds to the user's CURRENT email address
+        if (user.email or '').strip().lower() != token_email.strip().lower():
+            messages.error(
+                request,
+                "This verification link was issued for a previous email address. Please request a new verification email."
+            )
+            return redirect("resend_verification")
 
         if user.is_email_verified:
             messages.success(request, "Email already verified.")

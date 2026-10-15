@@ -216,18 +216,39 @@ class UserModelTest(TestCase):
 
         unverified = User.objects.create_user(
             username="signer_test_user",
+            email="signer@example.com",
             password="TestPass123!",
             is_approved=True,
             is_email_verified=False
         )
 
         signer = TimestampSigner()
-        valid_token = signer.sign(unverified.id)
+        valid_token = signer.sign(f"{unverified.id}:{unverified.email}")
 
         response = self.client.get(reverse('verify_email', args=[valid_token]))
         self.assertEqual(response.status_code, 302)
         unverified.refresh_from_db()
         self.assertTrue(unverified.is_email_verified)
+
+    def test_legacy_bare_id_token_rejected(self):
+        from django.urls import reverse
+        from django.core.signing import TimestampSigner
+
+        unverified = User.objects.create_user(
+            username="legacy_token_user",
+            email="legacy@example.com",
+            password="TestPass123!",
+            is_approved=True,
+            is_email_verified=False
+        )
+
+        signer = TimestampSigner()
+        legacy_token = signer.sign(unverified.id)  # Bare ID without email binding
+
+        response = self.client.get(reverse('verify_email', args=[legacy_token]))
+        self.assertEqual(response.status_code, 302)
+        unverified.refresh_from_db()
+        self.assertFalse(unverified.is_email_verified)
 
     def test_contact_form_submission(self):
         from django.urls import reverse
@@ -816,6 +837,135 @@ class ImageSecurityUploadTest(TestCase):
         names = [p.full_name for p in res.context['page_obj']]
         self.assertIn("Candidate 30", names)
         self.assertNotIn("Candidate 31", names)
+
+    def test_phone_number_rejects_non_ascii_digits(self):
+        from users.forms import UserRegisterForm, UserUpdateForm
+        # Registration with unicode superscripts
+        reg_form = UserRegisterForm(data={
+            'username': 'unicode_candidate',
+            'full_name': 'Unicode Candidate',
+            'email': 'unicode@test.com',
+            'phone_number': '9\u00B2\u00B2\u00B2\u00B2\u00B2\u00B2\u00B2\u00B2\u00B2',  # 9²²²²²²²²²
+            'password': 'StrongPassword123!',
+            'confirm_password': 'StrongPassword123!',
+            'gender': 'M',
+            'profile_for': 'Self',
+            'community': 'hindu',
+            'religion': 'Hindu',
+            'mother_tongue': 'Hindi',
+        })
+        self.assertFalse(reg_form.is_valid())
+        self.assertIn("phone_number", reg_form.errors)
+
+        # Profile update with non-ASCII digits
+        u = User.objects.create_user(
+            username="update_non_ascii_user",
+            email="updnonascii@test.com",
+            password="StrongPassword123!",
+            phone_number="9876543201",
+            is_approved=True
+        )
+        update_form = UserUpdateForm(
+            data={
+                'full_name': 'Update Candidate',
+                'email': 'updnonascii@test.com',
+                'gender': 'M',
+                'phone_number': '9\u00B2\u00B2\u00B2\u00B2\u00B2\u00B2\u00B2\u00B2\u00B2'
+            },
+            instance=u
+        )
+        self.assertFalse(update_form.is_valid())
+        self.assertIn("phone_number", update_form.errors)
+
+    def test_login_rate_limiting_locks_account_after_5_failures(self):
+        from django.core.cache import cache
+        test_login_user = User.objects.create_user(
+            username="lockout_victim",
+            email="lockout@example.com",
+            password="RealPassword123!",
+            is_approved=True,
+            is_email_verified=True
+        )
+
+        # Clean cache keys before test
+        cache.delete("login_attempts_lockout_victim")
+        cache.delete("login_lock_lockout_victim")
+
+        # 5 failed attempts with wrong password
+        for _ in range(5):
+            res = self.client.post(reverse('login'), {
+                'username': 'lockout_victim',
+                'password': 'WrongPassword123!'
+            })
+            self.assertEqual(res.status_code, 200)
+
+        # 6th attempt with REAL password must be blocked because the account is locked
+        res_locked = self.client.post(reverse('login'), {
+            'username': 'lockout_victim',
+            'password': 'RealPassword123!'
+        })
+        self.assertEqual(res_locked.status_code, 200)
+        self.assertContains(res_locked, "temporarily locked")
+
+        # Cleanup
+        cache.delete("login_attempts_lockout_victim")
+        cache.delete("login_lock_lockout_victim")
+
+    def test_delete_account_requires_correct_password(self):
+        del_user = User.objects.create_user(
+            username="account_to_delete",
+            email="delete_me@example.com",
+            password="SecretPassword123!",
+            is_approved=True,
+            is_email_verified=True
+        )
+        self.client.login(username="account_to_delete", password="SecretPassword123!")
+
+        # 1. POST without password fails
+        res_no_pwd = self.client.post(reverse('delete_account'), {})
+        self.assertEqual(res_no_pwd.status_code, 200)
+        self.assertTrue(User.objects.filter(username="account_to_delete").exists())
+
+        # 2. POST with wrong password fails
+        res_wrong_pwd = self.client.post(reverse('delete_account'), {'password': 'WrongPassword!'})
+        self.assertEqual(res_wrong_pwd.status_code, 200)
+        self.assertTrue(User.objects.filter(username="account_to_delete").exists())
+
+        # 3. POST with correct password succeeds
+        res_correct = self.client.post(reverse('delete_account'), {'password': 'SecretPassword123!'})
+        self.assertEqual(res_correct.status_code, 302)
+        self.assertFalse(User.objects.filter(username="account_to_delete").exists())
+
+    def test_payment_order_preserved_when_user_deleted(self):
+        from payments.models import Plan, PaymentOrder
+        pay_user = User.objects.create_user(
+            username="payment_audit_user",
+            email="audit@example.com",
+            password="Password123!",
+            is_approved=True,
+            is_email_verified=True
+        )
+        plan, _ = Plan.objects.get_or_create(
+            code="gold",
+            defaults={'name': 'Gold Plan', 'price': 399.00, 'duration_days': 90}
+        )
+        order = PaymentOrder.objects.create(
+            user=pay_user,
+            plan=plan,
+            amount=399.00,
+            utr_number="UTR123456789",
+            status="completed"
+        )
+
+        order_id = order.id
+        # Delete user
+        pay_user.delete()
+
+        # Payment order must survive deletion with user set to null
+        order.refresh_from_db()
+        self.assertIsNone(order.user)
+        self.assertEqual(order.amount, 399.00)
+        self.assertEqual(order.utr_number, "UTR123456789")
 
 
 

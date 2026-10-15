@@ -1,5 +1,7 @@
+import re
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from django.core.cache import cache
 from .models import CustomUser, Profile, Caste, City
 from .validators import validate_unique_and_legitimate_email, validate_image_file
 from datetime import date
@@ -90,14 +92,9 @@ class UserRegisterForm(UserCreationForm):
     def clean_phone_number(self):
         phone = (self.cleaned_data.get('phone_number') or '').strip()
 
-        if not phone.isdigit():
-            raise forms.ValidationError("Enter digits only.")
-
-        if len(phone) != 10:
-            raise forms.ValidationError("Enter a valid 10-digit mobile number.")
-
-        if phone[0] not in ('6', '7', '8', '9'):
-            raise forms.ValidationError("Enter a valid Indian mobile number starting with 6, 7, 8, or 9.")
+        # Strictly enforce ASCII digits and Indian mobile prefixes (6-9)
+        if not re.fullmatch(r"[6-9][0-9]{9}", phone):
+            raise forms.ValidationError("Enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.")
 
         if len(set(phone)) == 1 or phone in ('1234567890', '0123456789'):
             raise forms.ValidationError("Please enter a valid, active mobile number.")
@@ -182,14 +179,9 @@ class UserUpdateForm(forms.ModelForm):
     def clean_phone_number(self):
         phone = (self.cleaned_data.get('phone_number') or '').strip()
 
-        if not phone.isdigit():
-            raise forms.ValidationError("Enter digits only.")
-
-        if len(phone) != 10:
-            raise forms.ValidationError("Enter a valid 10-digit mobile number.")
-
-        if phone[0] not in ('6', '7', '8', '9'):
-            raise forms.ValidationError("Enter a valid Indian mobile number starting with 6, 7, 8, or 9.")
+        # Strictly enforce ASCII digits and Indian mobile prefixes (6-9)
+        if not re.fullmatch(r"[6-9][0-9]{9}", phone):
+            raise forms.ValidationError("Enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.")
 
         if len(set(phone)) == 1 or phone in ('1234567890', '0123456789'):
             raise forms.ValidationError("Please enter a valid, active mobile number.")
@@ -441,3 +433,40 @@ class PasswordResetSetNewForm(forms.Form):
             elif self.user:
                 validate_password(p1, user=self.user)
         return cleaned_data
+
+
+class RateLimitedAuthenticationForm(AuthenticationForm):
+    """
+    Protects user accounts against credential brute-force attacks.
+    Enforces a temporary 15-minute lock after 5 consecutive failed attempts on any account.
+    """
+    def clean(self):
+        username = (self.cleaned_data.get('username') or '').strip().lower()
+        if username:
+            lock_key = f"login_lock_{username}"
+            if cache.get(lock_key):
+                raise forms.ValidationError(
+                    "This account is temporarily locked due to multiple failed login attempts. Please try again in 15 minutes."
+                )
+
+        try:
+            return super().clean()
+        except forms.ValidationError as e:
+            if username:
+                attempt_key = f"login_attempts_{username}"
+                attempts = cache.get(attempt_key, 0) + 1
+                if attempts >= 5:
+                    cache.set(f"login_lock_{username}", True, timeout=900)  # 15 min lock
+                    cache.delete(attempt_key)
+                    raise forms.ValidationError(
+                        "Too many failed login attempts. This account is temporarily locked for 15 minutes."
+                    )
+                else:
+                    cache.set(attempt_key, attempts, timeout=900)
+            raise e
+
+    def confirm_login_allowed(self, user):
+        super().confirm_login_allowed(user)
+        username = user.get_username().strip().lower()
+        cache.delete(f"login_attempts_{username}")
+        cache.delete(f"login_lock_{username}")

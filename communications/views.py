@@ -260,6 +260,18 @@ def update_request(request, request_id, action):
             return redirect('received_requests')
 
         if action == 'accept':
+            # Block accepting requests from suspended, deactivated, or unapproved senders
+            if not contact_request.sender.is_active or not contact_request.sender.is_approved or contact_request.sender.is_suspended:
+                if request.headers.get('HX-Request'):
+                    return HttpResponse(
+                        '<div class="alert alert-secondary py-1 px-3 small rounded-pill mb-0">'
+                        'This member account is no longer available.'
+                        '</div>',
+                        status=400
+                    )
+                messages.error(request, "This member account is no longer available.")
+                return redirect('received_requests')
+
             contact_request.status = 'accepted'
             ContactRequest.objects.filter(
                 sender=request.user,
@@ -286,8 +298,12 @@ def update_request(request, request_id, action):
 
 @active_member_required
 def received_requests(request):
+    # Hide pending requests from inactive, unapproved, or suspended senders
     requests = request.user.received_requests.filter(
-        status='pending'
+        status='pending',
+        sender__is_active=True,
+        sender__is_approved=True,
+        sender__is_suspended=False
     ).select_related('sender').order_by('-created_at')
 
     return render(request, 'communications/received_requests.html', {
@@ -298,10 +314,20 @@ def received_requests(request):
 @require_POST
 def unmatch(request, user_id):
     target = get_object_or_404(CustomUser, id=user_id)
-    ContactRequest.objects.filter(
+
+    # Only allow unmatch if an accepted connection currently exists (cannot wipe rejected status)
+    matched_requests = ContactRequest.objects.filter(
+        status='accepted'
+    ).filter(
         Q(sender=request.user, receiver=target) |
         Q(sender=target, receiver=request.user)
-    ).delete()
+    )
+
+    if not matched_requests.exists():
+        messages.error(request, "You are not currently matched with this member.")
+        return redirect('profile_list')
+
+    matched_requests.delete()
 
     ActivityLog.objects.create(
         user=request.user,
@@ -348,11 +374,11 @@ def block_user(request, user_id):
         blocked=target
     )
 
-    # Delete any existing requests in both directions
+    # Delete pending or accepted requests in both directions, but PRESERVE sticky rejected status
     ContactRequest.objects.filter(
         Q(sender=request.user, receiver=target) |
         Q(sender=target, receiver=request.user)
-    ).delete()
+    ).exclude(status='rejected').delete()
 
     # Remove bookmarks in both directions
     SavedProfile.objects.filter(
@@ -398,7 +424,9 @@ def report_user(request, user_id):
             messages.info(request, "You have already submitted a report for this profile.")
             return redirect('profile_list')
 
-        reason = request.POST.get("reason", "").strip()
+        # Limit reason length to 1000 characters to prevent memory/DB bloat
+        raw_reason = request.POST.get("reason", "").strip()
+        reason = raw_reason[:1000]
 
         try:
             with transaction.atomic():
