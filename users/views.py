@@ -237,9 +237,23 @@ def home(request):
 
 @login_required
 def edit_profile(request):
+    if getattr(request.user, 'is_suspended', False):
+        messages.error(request, "Your account has been suspended.")
+        return redirect('home')
 
     if request.method == 'POST':
+        if 'profile_photo' in request.FILES:
+            upload_key = f"photo_upload_rate_{request.user.id}"
+            recent_uploads = cache.get(upload_key, 0)
+            if recent_uploads >= 10:
+                messages.error(request, "You have reached the photo upload rate limit. Please try again in an hour.")
+                return render(request, 'users/edit_profile.html', {'form': UserUpdateForm(instance=request.user)})
+            cache.set(upload_key, recent_uploads + 1, timeout=3600)
+
         old_email = (request.user.email or '').strip().lower()
+        old_name = request.user.full_name
+        old_gender = request.user.gender
+
         form = UserUpdateForm(request.POST, request.FILES, instance=request.user)
 
         if form.is_valid():
@@ -255,6 +269,20 @@ def edit_profile(request):
                         messages.info(request, f"Your email address was changed. A verification link has been sent to {user.email}.")
                     except Exception as e:
                         print(f"Email error on update: {e}")
+
+                name_changed = (old_name != user.full_name)
+                gender_changed = (old_gender != user.gender)
+                photo_changed = bool('profile_photo' in request.FILES or request.POST.get('profile_photo-clear') or request.POST.get('remove_profile_photo'))
+
+                if name_changed or gender_changed or photo_changed:
+                    user.is_approved = False
+                    user.needs_review = True
+                    user.save(update_fields=['is_approved', 'needs_review'])
+                    messages.warning(request, "Your profile changes (name, gender, or photo) require re-approval by our moderation team.")
+                elif form.has_changed():
+                    user.needs_review = True
+                    user.save(update_fields=['needs_review'])
+
                 messages.success(request, "Profile updated successfully.")
                 return redirect('my_profile')
             except Exception as e:

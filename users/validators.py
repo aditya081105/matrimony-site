@@ -238,16 +238,26 @@ def validate_image_file(photo, max_size_mb=5):
     from io import BytesIO
     from django.core.files.uploadedfile import InMemoryUploadedFile
     import uuid
+    import warnings
+
+    # Set strict decompression bomb threshold and treat warnings as errors
+    Image.MAX_IMAGE_PIXELS = 16_000_000
+    warnings.simplefilter('error', Image.DecompressionBombWarning)
 
     # Header and magic byte integrity verification
     try:
         img = Image.open(photo)
+        width, height = img.size
+        if (width * height) > 16_000_000 or width > 5000 or height > 5000:
+            raise ValidationError("Image resolution is too large (maximum 16 megapixels, e.g. 4000x4000).")
         img.verify()
         fmt = (img.format or '').upper()
         if fmt not in ('JPEG', 'JPG', 'PNG', 'WEBP'):
             raise ValidationError("Invalid image format. Only JPG, PNG, and WebP images are allowed.")
     except ValidationError:
         raise
+    except (Image.DecompressionBombError, Image.DecompressionBombWarning):
+        raise ValidationError("Image resolution is too large (decompression bomb protection).")
     except Exception:
         raise ValidationError("The uploaded file is not a valid image or is corrupted.")
     finally:
@@ -258,8 +268,8 @@ def validate_image_file(photo, max_size_mb=5):
     try:
         img = Image.open(photo)
         width, height = img.size
-        if width > 12000 or height > 12000:
-            raise ValidationError("Image resolution is too large (maximum 12000x12000 pixels).")
+        if (width * height) > 16_000_000 or width > 5000 or height > 5000:
+            raise ValidationError("Image resolution is too large (maximum 16 megapixels, e.g. 4000x4000).")
         if width < 50 or height < 50:
             raise ValidationError("Image resolution is too small (minimum 50x50 pixels).")
 
