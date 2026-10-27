@@ -1,5 +1,5 @@
 asgiref==3.11.1
-certifi==2026.6.17
+certifi==2026.10.23
 charset-normalizer==3.4.7
 cloudinary==1.44.1
 crispy-bootstrap5==2026.3
@@ -11,7 +11,7 @@ django-redis==7.0.0
 gunicorn==26.0.0
 idna==3.18
 packaging==26.2
-pillow==12.3.0
+pillow==13.0.0
 psycopg2-binary==2.9.12
 python-dotenv==1.2.2
 qrcode==8.2
