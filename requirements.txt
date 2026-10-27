@@ -9,7 +9,7 @@ django-cloudinary-storage==0.3.0
 django-crispy-forms==2.6
 django-redis==7.0.0
 gunicorn==26.0.0
-idna==3.18
+idna==3.20
 packaging==26.2
 pillow==13.0.0
 psycopg2-binary==2.9.12
