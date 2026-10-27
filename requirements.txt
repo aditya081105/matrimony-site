@@ -17,7 +17,7 @@ python-dotenv==1.2.2
 qrcode==8.2
 redis==8.1.0
 requests==2.34.2
-resend==2.32.2
+resend==2.50.0
 six==1.17.0
 sqlparse==0.6.0
 typing_extensions==4.15.0
