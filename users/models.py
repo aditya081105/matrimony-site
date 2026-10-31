@@ -82,8 +82,38 @@ class CustomUser(AbstractUser):
     is_approved = models.BooleanField(default=False)
     needs_review = models.BooleanField(default=False)
     is_suspended = models.BooleanField(default=False)
+    suspended_until = models.DateTimeField(null=True, blank=True, help_text="Date/time until which the user is suspended. If null and is_suspended=True, suspension is indefinite.")
+    suspension_reason = models.CharField(max_length=255, blank=True, default="", help_text="Reason for suspension.")
     is_email_verified = models.BooleanField(default=False)
     is_phone_verified = models.BooleanField(default=False)
+
+    @classmethod
+    def lift_expired_suspensions(cls):
+        """
+        Automatically un-suspends users whose temporary suspension period has passed.
+        Safe to call frequently as it performs a single conditional update.
+        """
+        from django.utils import timezone
+        now = timezone.now()
+        expired_qs = cls.objects.filter(is_suspended=True, suspended_until__isnull=False, suspended_until__lte=now)
+        return expired_qs.update(is_suspended=False, is_approved=True, suspended_until=None, suspension_reason="")
+
+    def check_suspension_status(self):
+        """
+        Verifies if suspension is still active. If temporary suspension has passed,
+        clears suspension flags and returns False. Returns True if user is still suspended.
+        """
+        if not self.is_suspended:
+            return False
+        from django.utils import timezone
+        if self.suspended_until and self.suspended_until <= timezone.now():
+            self.is_suspended = False
+            self.is_approved = True
+            self.suspended_until = None
+            self.suspension_reason = ""
+            self.save(update_fields=['is_suspended', 'is_approved', 'suspended_until', 'suspension_reason'])
+            return False
+        return True
 
     @property
     def age(self):

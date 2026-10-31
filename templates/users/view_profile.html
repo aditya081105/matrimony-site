@@ -108,7 +108,19 @@
                 <span class="badge bg-warning text-dark ms-2">Pending Approval</span>
             {% endif %}
             {% if profile_user.is_suspended %}
-                <span class="badge bg-danger ms-2">Suspended</span>
+                <span class="badge bg-danger ms-2">
+                    {% if profile_user.suspended_until %}
+                        Suspended until {{ profile_user.suspended_until|date:"M d, Y" }}
+                    {% else %}
+                        Suspended Indefinitely
+                    {% endif %}
+                </span>
+                <form method="POST" action="{% url 'admin_unsuspend_user' profile_user.id %}" class="d-inline ms-2" onsubmit="return confirm('Unsuspend and restore this user?');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-success rounded-pill py-0 px-2" style="font-size: 0.75rem;">
+                        Unsuspend
+                    </button>
+                </form>
             {% endif %}
         </div>
     {% else %}

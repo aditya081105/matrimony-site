@@ -39,6 +39,8 @@ def visible_profiles(viewer) -> QuerySet:
     if is_viewer_admin:
         return base_qs
 
+    User.lift_expired_suspensions()
+
     return base_qs.filter(
         is_active=True,
         is_approved=True,
@@ -90,7 +92,8 @@ def can_view(viewer, target) -> bool:
 
     # Suspended profiles unavailable to non-staff
     if target.is_suspended:
-        return False
+        if target.check_suspension_status():
+            return False
 
     # Blocked profiles unavailable in either direction
     if (

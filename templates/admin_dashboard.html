@@ -20,10 +20,12 @@
     </div>
 
     <div class="col-md-4">
-        <div class="card shadow p-3 text-center">
-            <h5>Suspended Users</h5>
-            <h3>{{ suspended_users }}</h3>
-        </div>
+        <a href="?filter=suspended" class="text-decoration-none">
+            <div class="card shadow p-3 text-center border-0 rounded-4 h-100 {% if active_filter == 'suspended' %}bg-danger text-white{% endif %}">
+                <h5 class="{% if active_filter == 'suspended' %}text-white{% else %}text-danger{% endif %}">Suspended Users</h5>
+                <h3 class="fw-bold {% if active_filter == 'suspended' %}text-white{% else %}text-danger{% endif %}">{{ suspended_users }}</h3>
+            </div>
+        </a>
     </div>
 
 </div>
@@ -78,6 +80,9 @@
         <a href="?filter=unapproved" class="btn btn-sm rounded-pill px-3 fw-semibold {% if active_filter == 'unapproved' %}btn-warning text-dark{% else %}btn-outline-warning text-dark{% endif %}">
             Unapproved ({{ unapproved_count }})
         </a>
+        <a href="?filter=suspended" class="btn btn-sm rounded-pill px-3 fw-semibold {% if active_filter == 'suspended' %}btn-danger{% else %}btn-outline-danger{% endif %}">
+            Suspended ({{ suspended_users }})
+        </a>
     </div>
 
     {% if pending_users %}
@@ -121,42 +126,73 @@
                         </td>
                         <td>
                             <div class="d-flex flex-column gap-1">
-                                {% if u.is_approved %}
-                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill py-1">Profile: Approved</span>
+                                {% if u.is_suspended %}
+                                    <span class="badge bg-danger rounded-pill py-1">
+                                        {% if u.suspended_until %}
+                                            Suspended until {{ u.suspended_until|date:"M d, Y" }}
+                                        {% else %}
+                                            Suspended Indefinitely
+                                        {% endif %}
+                                    </span>
+                                    {% if u.suspended_until %}
+                                        <small class="text-danger fw-semibold" style="font-size: 0.75rem;">
+                                            {{ u.suspended_until|timeuntil }} remaining
+                                        </small>
+                                    {% endif %}
+                                    {% if u.suspension_reason %}
+                                        <small class="text-muted" style="font-size: 0.75rem;">
+                                            Reason: {{ u.suspension_reason }}
+                                        </small>
+                                    {% endif %}
                                 {% else %}
-                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill py-1">Profile: Pending</span>
-                                {% endif %}
-                                {% if u.needs_review %}
-                                    <span class="badge bg-warning text-dark border border-warning rounded-pill py-1 fw-bold">Edited (Needs Review)</span>
-                                {% endif %}
-                                {% if u.is_email_verified %}
-                                    <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill py-1">Email: Verified</span>
+                                    {% if u.is_approved %}
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill py-1">Profile: Approved</span>
+                                    {% else %}
+                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill py-1">Profile: Pending</span>
+                                    {% endif %}
+                                    {% if u.needs_review %}
+                                        <span class="badge bg-warning text-dark border border-warning rounded-pill py-1 fw-bold">Edited (Needs Review)</span>
+                                    {% endif %}
+                                    {% if u.is_email_verified %}
+                                        <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill py-1">Email: Verified</span>
+                                    {% endif %}
                                 {% endif %}
                             </div>
                         </td>
                         <td class="text-end">
                             <div class="d-inline-flex gap-2">
-                                {% if u.needs_review and u.is_approved %}
-                                    <form method="POST" action="{% url 'admin_clear_review' u.id %}">
+                                {% if u.is_suspended %}
+                                    <form method="POST" action="{% url 'admin_unsuspend_user' u.id %}" onsubmit="return confirm('Are you sure you want to unsuspend {{ u.full_name|default:u.username }}?');">
                                         {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm fw-semibold">
-                                            Approve Edit
+                                        <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 shadow-sm fw-semibold">
+                                            Unsuspend &amp; Restore
                                         </button>
                                     </form>
                                 {% else %}
-                                    <form method="POST" action="{% url 'admin_verify_user' u.id %}">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 shadow-sm fw-semibold">
-                                            Approve & Verify
-                                        </button>
-                                    </form>
-                                {% endif %}
-                                <form method="POST" action="{% url 'admin_reject_user' u.id %}" onsubmit="return confirm('Are you sure you want to suspend this user?');">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3">
+                                    {% if u.needs_review and u.is_approved %}
+                                        <form method="POST" action="{% url 'admin_clear_review' u.id %}">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm fw-semibold">
+                                                Approve Edit
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <form method="POST" action="{% url 'admin_verify_user' u.id %}">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 shadow-sm fw-semibold">
+                                                Approve & Verify
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#suspendModal"
+                                            data-user-name="{{ u.full_name|default:u.username }} (@{{ u.username }})"
+                                            data-suspend-url="{% url 'admin_reject_user' u.id %}">
                                         Suspend
                                     </button>
-                                </form>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>
@@ -244,14 +280,30 @@
                                     View
                                 </a>
                                 {% if not r.reported_user.is_suspended %}
-                                <form method="POST" action="{% url 'admin_reject_user' r.reported_user.id %}" onsubmit="return confirm('Are you sure you want to suspend @{{ r.reported_user.username }}?');">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3">
-                                        Suspend
-                                    </button>
-                                </form>
+                                <button type="button" 
+                                        class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#suspendModal"
+                                        data-user-name="@{{ r.reported_user.username }}"
+                                        data-suspend-url="{% url 'admin_reject_user' r.reported_user.id %}">
+                                    Suspend
+                                </button>
                                 {% else %}
-                                <span class="badge bg-secondary rounded-pill py-2 px-3">Suspended</span>
+                                <div class="d-inline-flex align-items-center gap-1">
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill py-1 px-2 small">
+                                        {% if r.reported_user.suspended_until %}
+                                            Until {{ r.reported_user.suspended_until|date:"M d" }}
+                                        {% else %}
+                                            Suspended
+                                        {% endif %}
+                                    </span>
+                                    <form method="POST" action="{% url 'admin_unsuspend_user' r.reported_user.id %}" onsubmit="return confirm('Unsuspend and restore @{{ r.reported_user.username }}?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-success rounded-pill py-0 px-2" style="font-size: 0.75rem;">
+                                            Unsuspend
+                                        </button>
+                                    </form>
+                                </div>
                                 {% endif %}
                                 <form method="POST" action="{% url 'admin_dismiss_report' r.id %}" onsubmit="return confirm('Dismiss this report?');">
                                     {% csrf_token %}
@@ -272,5 +324,112 @@
         </div>
     {% endif %}
 </div>
+
+<!-- SUSPEND USER MODAL -->
+<div class="modal fade" id="suspendModal" tabindex="-1" aria-labelledby="suspendModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-0 bg-danger text-white py-3 px-4">
+                <h5 class="modal-title fw-bold" id="suspendModalLabel">
+                    Suspend User Access
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" id="suspendForm" action="">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <p class="mb-3">
+                        You are suspending account: <strong id="suspendTargetUsername" class="text-danger"></strong>
+                    </p>
+                    <div class="alert alert-warning py-2 px-3 small rounded-3 mb-3">
+                        Suspended members are immediately blocked from site features, hidden from discovery & search, and unable to contact other profiles.
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="suspendDays" class="form-label fw-semibold small text-secondary">
+                            Suspension Duration (in Days)
+                        </label>
+                        <div class="input-group">
+                            <input type="number" 
+                                   class="form-control rounded-start-3" 
+                                   id="suspendDays" 
+                                   name="days" 
+                                   min="0" 
+                                   max="3650" 
+                                   placeholder="e.g. 7 (leave blank for indefinite)">
+                            <span class="input-group-text rounded-end-3 bg-light text-muted small">days</span>
+                        </div>
+                        <div class="form-text small mt-1">
+                            Leave blank or enter 0 to suspend <strong>indefinitely (permanent until manual unsuspend)</strong>.
+                        </div>
+
+                        <!-- Quick duration presets -->
+                        <div class="d-flex gap-2 mt-2 flex-wrap">
+                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-0 px-2" onclick="document.getElementById('suspendDays').value=3">
+                                3 Days
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-0 px-2" onclick="document.getElementById('suspendDays').value=7">
+                                7 Days
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-0 px-2" onclick="document.getElementById('suspendDays').value=15">
+                                15 Days
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-0 px-2" onclick="document.getElementById('suspendDays').value=30">
+                                30 Days
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill py-0 px-2" onclick="document.getElementById('suspendDays').value=''">
+                                Indefinite
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label for="suspendReason" class="form-label fw-semibold small text-secondary">
+                            Reason / Moderation Note (Optional)
+                        </label>
+                        <input type="text" 
+                               class="form-control rounded-3" 
+                               id="suspendReason" 
+                               name="reason" 
+                               maxlength="255" 
+                               placeholder="e.g. Inappropriate photo, offensive message, multiple user reports">
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light py-3 px-4">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-danger rounded-pill px-4 fw-semibold shadow-sm">
+                        Confirm Suspension
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const suspendModal = document.getElementById('suspendModal');
+    if (suspendModal) {
+        suspendModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            if (!button) return;
+            const userName = button.getAttribute('data-user-name') || '';
+            const suspendUrl = button.getAttribute('data-suspend-url') || '';
+            
+            const targetUsernameEl = document.getElementById('suspendTargetUsername');
+            const suspendForm = document.getElementById('suspendForm');
+            const suspendDays = document.getElementById('suspendDays');
+            const suspendReason = document.getElementById('suspendReason');
+            
+            if (targetUsernameEl) targetUsernameEl.textContent = userName;
+            if (suspendForm) suspendForm.setAttribute('action', suspendUrl);
+            if (suspendDays) suspendDays.value = '';
+            if (suspendReason) suspendReason.value = '';
+        });
+    }
+});
+</script>
 
 {% endblock %}

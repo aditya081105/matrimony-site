@@ -38,15 +38,45 @@ def mark_reviewed(modeladmin, request, queryset):
     queryset.update(needs_review=False)
 
 
+@admin.action(description="Unsuspend selected users (restore access)")
+def unsuspend_users(modeladmin, request, queryset):
+    queryset.update(is_suspended=False, is_approved=True, suspended_until=None, suspension_reason="")
+
+
+@admin.action(description="Suspend selected users for 7 days")
+def suspend_7_days(modeladmin, request, queryset):
+    queryset.update(is_suspended=True, is_approved=False, suspended_until=timezone.now() + timedelta(days=7))
+
+
+@admin.action(description="Suspend selected users for 30 days")
+def suspend_30_days(modeladmin, request, queryset):
+    queryset.update(is_suspended=True, is_approved=False, suspended_until=timezone.now() + timedelta(days=30))
+
+
+@admin.action(description="Suspend selected users indefinitely")
+def suspend_indefinite(modeladmin, request, queryset):
+    queryset.update(is_suspended=True, is_approved=False, suspended_until=None)
+
+
 class CustomUserAdmin(UserAdmin):
     model = CustomUser
-    list_display = ('username', 'full_name', 'phone_number', 'caste', 'sub_caste', 'is_approved', 'needs_review', 'is_phone_verified', 'is_email_verified', 'is_premium', 'is_staff')
-    list_filter = ('is_approved', 'needs_review', 'is_phone_verified', 'is_email_verified', 'is_staff')
+    list_display = ('username', 'full_name', 'phone_number', 'is_approved', 'is_suspended', 'suspended_until', 'needs_review', 'is_phone_verified', 'is_email_verified', 'is_staff')
+    list_filter = ('is_suspended', 'is_approved', 'needs_review', 'is_phone_verified', 'is_email_verified', 'is_staff')
     search_fields = ('username', 'full_name', 'email', 'phone_number', 'caste', 'sub_caste')
-    actions = [approve_users, verify_phone_users, verify_users, fully_verify_users, mark_reviewed]
+    actions = [
+        approve_users,
+        unsuspend_users,
+        suspend_7_days,
+        suspend_30_days,
+        suspend_indefinite,
+        verify_phone_users,
+        verify_users,
+        fully_verify_users,
+        mark_reviewed,
+    ]
     inlines = [SubscriptionInline]
     fieldsets = UserAdmin.fieldsets + (
-        ("Approval & Verification", {"fields": ("is_approved", "needs_review", "is_phone_verified", "is_email_verified")}),
+        ("Approval & Suspension", {"fields": ("is_approved", "is_suspended", "suspended_until", "suspension_reason", "needs_review", "is_phone_verified", "is_email_verified")}),
         ("Community & Profile Details", {"fields": ("caste", "sub_caste", "caste_community", "city", "education", "occupation", "height_cm", "date_of_birth")}),
     )
 

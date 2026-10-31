@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 import logging
 import random
 import time
@@ -398,6 +398,8 @@ def delete_account(request):
 @staff_member_required
 def admin_dashboard(request):
 
+    CustomUser.lift_expired_suspensions()
+
     total_users = CustomUser.objects.count()
     approved_users = CustomUser.objects.filter(is_approved=True).count()
     suspended_users = CustomUser.objects.filter(is_suspended=True).count()
@@ -429,7 +431,9 @@ def admin_dashboard(request):
         Q(is_approved=False) | Q(is_phone_verified=False) | Q(needs_review=True)
     ).count()
 
-    if active_filter == 'edited':
+    if active_filter == 'suspended':
+        pending_users = CustomUser.objects.filter(is_suspended=True).order_by('-date_joined')[:50]
+    elif active_filter == 'edited':
         pending_users = base_pending_qs.filter(needs_review=True).order_by('-date_joined')[:50]
     elif active_filter == 'unapproved':
         pending_users = base_pending_qs.filter(is_approved=False).order_by('-date_joined')[:50]
@@ -462,10 +466,16 @@ def admin_verify_user(request, user_id):
     if request.method == 'POST':
         user = get_object_or_404(CustomUser, id=user_id)
         user.is_approved = True
+        user.is_suspended = False
+        user.suspended_until = None
+        user.suspension_reason = ""
         user.is_phone_verified = True
         user.is_email_verified = True
         user.needs_review = False
-        user.save(update_fields=['is_approved', 'is_phone_verified', 'is_email_verified', 'needs_review'])
+        user.save(update_fields=[
+            'is_approved', 'is_suspended', 'suspended_until', 'suspension_reason',
+            'is_phone_verified', 'is_email_verified', 'needs_review'
+        ])
         messages.success(request, f"User {user.full_name or user.username} has been fully approved, verified, and cleared from review queue.")
     return redirect('admin_dashboard')
 
@@ -484,10 +494,36 @@ def admin_clear_review(request, user_id):
 def admin_reject_user(request, user_id):
     if request.method == 'POST':
         user = get_object_or_404(CustomUser, id=user_id)
+        days_raw = (request.POST.get('days') or '').strip()
+        reason = (request.POST.get('reason') or '').strip()
+
         user.is_approved = False
         user.is_suspended = True
-        user.save(update_fields=['is_approved', 'is_suspended'])
-        messages.warning(request, f"User {user.full_name or user.username} has been suspended/rejected.")
+        user.suspension_reason = reason[:255] if reason else ""
+
+        if days_raw.isdigit() and int(days_raw) > 0:
+            days = int(days_raw)
+            user.suspended_until = timezone.now() + timedelta(days=days)
+            duration_msg = f"for {days} day{'s' if days > 1 else ''} (until {user.suspended_until.strftime('%b %d, %Y')})"
+        else:
+            user.suspended_until = None
+            duration_msg = "indefinitely"
+
+        user.save(update_fields=['is_approved', 'is_suspended', 'suspended_until', 'suspension_reason'])
+        messages.warning(request, f"User {user.full_name or user.username} has been suspended {duration_msg}.")
+    return redirect('admin_dashboard')
+
+
+@staff_member_required
+def admin_unsuspend_user(request, user_id):
+    if request.method == 'POST':
+        user = get_object_or_404(CustomUser, id=user_id)
+        user.is_suspended = False
+        user.is_approved = True
+        user.suspended_until = None
+        user.suspension_reason = ""
+        user.save(update_fields=['is_suspended', 'is_approved', 'suspended_until', 'suspension_reason'])
+        messages.success(request, f"User {user.full_name or user.username} has been unsuspended and restored.")
     return redirect('admin_dashboard')
 
 

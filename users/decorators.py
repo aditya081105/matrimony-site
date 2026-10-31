@@ -25,15 +25,19 @@ def active_member_required(view_func):
             return view_func(request, *args, **kwargs)
 
         if request.user.is_suspended:
-            if request.headers.get('HX-Request'):
-                return HttpResponse(
-                    '<div class="alert alert-danger text-center p-3 rounded-4 shadow-sm">'
-                    'Your account has been suspended. Please contact support.'
-                    '</div>',
-                    status=403
-                )
-            messages.error(request, "Your account has been suspended.")
-            return redirect("home")
+            if request.user.check_suspension_status():
+                if request.user.suspended_until:
+                    until_str = request.user.suspended_until.strftime('%b %d, %Y')
+                    suspension_msg = f"Your account is suspended until {until_str}. Please contact support if you need assistance."
+                else:
+                    suspension_msg = "Your account has been suspended indefinitely. Please contact support."
+                if request.headers.get('HX-Request'):
+                    return HttpResponse(
+                        f'<div class="alert alert-danger text-center p-3 rounded-4 shadow-sm">{suspension_msg}</div>',
+                        status=403
+                    )
+                messages.error(request, suspension_msg)
+                return redirect("home")
 
         if not request.user.is_approved:
             if request.headers.get('HX-Request'):

@@ -2202,6 +2202,108 @@ class AdminReportDashboardAndContactAntiSpamTests(TestCase):
         self.assertIn("Prospective Bride Family", mail.outbox[1].body)
 
 
+class UserSuspensionDurationAndUnsuspendTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.staff_admin = User.objects.create_superuser(
+            username="suspend_staff",
+            password="AdminPass123!",
+            email="staff@example.com",
+            phone_number="9876543299"
+        )
+        self.target_user = User.objects.create_user(
+            username="target_member",
+            password="UserPass123!",
+            email="target@example.com",
+            phone_number="9876543298",
+            full_name="Target Member",
+            is_approved=True,
+            is_email_verified=True,
+            is_phone_verified=True
+        )
+
+    def test_admin_suspend_with_duration_and_reason(self):
+        self.client.login(username="suspend_staff", password="AdminPass123!")
+        res = self.client.post(reverse('admin_reject_user', args=[self.target_user.id]), {
+            'days': '7',
+            'reason': 'Multiple complaints of spam messages'
+        })
+        self.assertRedirects(res, reverse('admin_dashboard'))
+        self.target_user.refresh_from_db()
+        self.assertTrue(self.target_user.is_suspended)
+        self.assertFalse(self.target_user.is_approved)
+        self.assertIsNotNone(self.target_user.suspended_until)
+        self.assertEqual(self.target_user.suspension_reason, 'Multiple complaints of spam messages')
+
+    def test_admin_suspend_indefinitely(self):
+        self.client.login(username="suspend_staff", password="AdminPass123!")
+        res = self.client.post(reverse('admin_reject_user', args=[self.target_user.id]), {
+            'days': '',
+            'reason': 'Severe violation'
+        })
+        self.assertRedirects(res, reverse('admin_dashboard'))
+        self.target_user.refresh_from_db()
+        self.assertTrue(self.target_user.is_suspended)
+        self.assertIsNone(self.target_user.suspended_until)
+
+    def test_admin_unsuspend_user(self):
+        self.target_user.is_suspended = True
+        self.target_user.is_approved = False
+        from django.utils import timezone
+        from datetime import timedelta
+        self.target_user.suspended_until = timezone.now() + timedelta(days=10)
+        self.target_user.suspension_reason = "Temporary lockout"
+        self.target_user.save()
+
+        self.client.login(username="suspend_staff", password="AdminPass123!")
+        res = self.client.post(reverse('admin_unsuspend_user', args=[self.target_user.id]))
+        self.assertRedirects(res, reverse('admin_dashboard'))
+        self.target_user.refresh_from_db()
+        self.assertFalse(self.target_user.is_suspended)
+        self.assertTrue(self.target_user.is_approved)
+        self.assertIsNone(self.target_user.suspended_until)
+        self.assertEqual(self.target_user.suspension_reason, "")
+
+    def test_check_suspension_status_auto_lifts_expired_suspension(self):
+        from django.utils import timezone
+        from datetime import timedelta
+        self.target_user.is_suspended = True
+        self.target_user.is_approved = False
+        self.target_user.suspended_until = timezone.now() - timedelta(minutes=5)
+        self.target_user.suspension_reason = "Past lock"
+        self.target_user.save()
+
+        is_still_suspended = self.target_user.check_suspension_status()
+        self.assertFalse(is_still_suspended)
+        self.target_user.refresh_from_db()
+        self.assertFalse(self.target_user.is_suspended)
+        self.assertTrue(self.target_user.is_approved)
+        self.assertIsNone(self.target_user.suspended_until)
+
+    def test_lift_expired_suspensions_bulk(self):
+        from django.utils import timezone
+        from datetime import timedelta
+        self.target_user.is_suspended = True
+        self.target_user.suspended_until = timezone.now() - timedelta(days=1)
+        self.target_user.save()
+
+        restored_count = User.lift_expired_suspensions()
+        self.assertGreaterEqual(restored_count, 1)
+        self.target_user.refresh_from_db()
+        self.assertFalse(self.target_user.is_suspended)
+
+    def test_admin_dashboard_suspended_filter(self):
+        self.target_user.is_suspended = True
+        self.target_user.save()
+
+        self.client.login(username="suspend_staff", password="AdminPass123!")
+        res = self.client.get(reverse('admin_dashboard') + "?filter=suspended")
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "target_member")
+        self.assertContains(res, "Unsuspend &amp; Restore")
+
+
 
 
 
