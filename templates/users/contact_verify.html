@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container mt-5" style="max-width:520px;">
+
+    <div class="card shadow-sm border-0 rounded-4 p-4 text-center">
+        <div class="mb-3">
+            <span class="d-inline-flex p-3 rounded-circle bg-primary-subtle text-primary">
+                <i class="bi bi-envelope-check fs-2"></i>
+            </span>
+        </div>
+
+        <h4 class="fw-bold mb-2">Verify Your Email Address</h4>
+        <p class="text-muted small mb-4">
+            To prevent spam and verify deliverability, we sent a 6-digit confirmation code to:
+            <br>
+            <strong class="text-dark">{{ email }}</strong>
+        </p>
+
+        <form method="POST" class="text-start">
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold small text-uppercase text-secondary">Enter 6-Digit Code</label>
+                <input
+                    type="text"
+                    name="code"
+                    class="form-control form-control-lg text-center fw-bold"
+                    maxlength="6"
+                    pattern="[0-9]{6}"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                    placeholder="------"
+                    autofocus
+                    required
+                    style="letter-spacing: 0.5rem; font-size: 1.75rem;"
+                >
+                <div class="form-text small text-muted">
+                    This code will expire in 15 minutes.
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-dark w-100 py-2 rounded-pill fw-semibold shadow-sm mb-3">
+                Verify & Send Message
+            </button>
+        </form>
+
+        <div class="d-flex justify-content-between align-items-center pt-3 border-top small">
+            <form method="POST" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="resend">
+                <button type="submit" class="btn btn-link btn-sm text-decoration-none p-0 text-primary">
+                    <i class="bi bi-arrow-clockwise"></i> Resend Code
+                </button>
+            </form>
+
+            <a href="{% url 'contact_us' %}" class="text-decoration-none text-muted">
+                Wrong Email? Start Over
+            </a>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

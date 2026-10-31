@@ -100,9 +100,10 @@ def send_verification_email(request, user):
         return True
 
 
-def _dispatch_contact_email_job(name, sender_email, message_content):
-    subject = f"Contact Form Inquiry - {name}"
-    body = f"Name: {name}\nEmail: {sender_email}\n\nMessage:\n{message_content}"
+def _dispatch_contact_email_job(name, sender_email, message_content, is_member=False):
+    status_label = "[Registered Member]" if is_member else "[Verified Guest]"
+    subject = f"Contact Form Inquiry {status_label} - {name}"
+    body = f"Sender: {name}\nEmail: {sender_email}\nAccount Status: {status_label}\n\nMessage:\n{message_content}"
     admin_email = getattr(settings, 'CONTACT_ADMIN_EMAIL', None) or getattr(settings, 'DEFAULT_FROM_EMAIL', 'admin@poorvanchalmatrimony.social')
 
     for attempt in range(1, MAX_RETRIES + 1):
@@ -145,15 +146,88 @@ def _dispatch_contact_email_job(name, sender_email, message_content):
     return False
 
 
-def send_contact_email(name, sender_email, message_content):
+def send_contact_email(name, sender_email, message_content, is_member=False):
     """
     Dispatches contact form inquiries.
     Runs asynchronously via ThreadPoolExecutor in production, synchronously in tests.
     """
     if _is_testing():
-        return _dispatch_contact_email_job(name, sender_email, message_content)
+        return _dispatch_contact_email_job(name, sender_email, message_content, is_member=is_member)
     else:
-        _email_executor.submit(_dispatch_contact_email_job, name, sender_email, message_content)
+        _email_executor.submit(_dispatch_contact_email_job, name, sender_email, message_content, is_member=is_member)
+        return True
+
+
+def _dispatch_contact_verification_code_job(email, name, code):
+    subject = "Verification Code for Your Inquiry - Poorvanchal Matrimony"
+    message = f"""Hello {name},
+
+Thank you for reaching out to Poorvanchal Matrimony.
+
+Your 6-digit confirmation code is:
+
+{code}
+
+Please enter this code on the website to verify your email address and deliver your message to our support team. This code is valid for 15 minutes.
+
+If you did not request this inquiry, please disregard this email.
+
+Best regards,
+Poorvanchal Matrimony
+https://poorvanchalmatrimony.social
+"""
+    for attempt in range(1, MAX_RETRIES + 1):
+        if getattr(settings, 'EMAIL_HOST_USER', None) or _is_testing():
+            try:
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[email],
+                    fail_silently=False,
+                )
+                logger.info(f"Contact verification code sent via SMTP to {email}")
+                print(f"==> Contact verification code sent via SMTP to {email}")
+                return True
+            except Exception as e:
+                logger.warning(f"SMTP send_mail attempt {attempt}/{MAX_RETRIES} failed for contact code {email}: {e}")
+
+        if getattr(settings, 'RESEND_API_KEY', None):
+            try:
+                resend.api_key = settings.RESEND_API_KEY
+                from_email = getattr(settings, 'RESEND_FROM_EMAIL', 'onboarding@resend.dev')
+                resend.Emails.send({
+                    "from": from_email,
+                    "to": email,
+                    "subject": subject,
+                    "text": message,
+                })
+                logger.info(f"Contact verification code sent via Resend to {email}")
+                return True
+            except Exception as e:
+                logger.warning(f"Resend attempt {attempt}/{MAX_RETRIES} failed for contact code {email}: {e}")
+
+        if not _is_testing() and not (getattr(settings, 'EMAIL_HOST_USER', None) or getattr(settings, 'RESEND_API_KEY', None)):
+            break
+
+        if attempt < MAX_RETRIES and not _is_testing():
+            time.sleep(1.5 * attempt)
+
+    logger.error(f"Failed to deliver contact verification code to {email}")
+    if getattr(settings, 'DEBUG', False) or _is_testing():
+        print(f"==> [DEBUG/TEST] Contact verification code for {email}: {code}")
+    return False
+
+
+def send_contact_verification_code(email, name, code):
+    """
+    Dispatches 6-digit email confirmation codes to unverified guest contact submitters.
+    Runs asynchronously via ThreadPoolExecutor in production, synchronously in tests.
+    """
+    if _is_testing():
+        return _dispatch_contact_verification_code_job(email, name, code)
+    else:
+        _email_executor.submit(_dispatch_contact_verification_code_job, email, name, code)
         return True
 
 

@@ -555,8 +555,15 @@ def contact_view(request):
             messages.error(request, "Too many messages sent from your IP. Please try again later.")
             return render(request, "users/contact.html")
 
-        name = request.POST.get("name", "").strip()
-        email = request.POST.get("email", "").strip()
+        if request.user.is_authenticated:
+            name = request.user.full_name or request.user.username
+            email = request.user.email
+            is_member = True
+        else:
+            name = request.POST.get("name", "").strip()
+            email = request.POST.get("email", "").strip()
+            is_member = False
+
         message = request.POST.get("message", "").strip()
 
         context = {
@@ -564,6 +571,7 @@ def contact_view(request):
             "email": email,
             "message": message,
             "form_time": signer.sign(str(time.time())),
+            "is_member": is_member,
         }
 
         if not name or not email or not message:
@@ -614,17 +622,107 @@ def contact_view(request):
             except Exception:
                 cache.set(rate_key, current_count + 1, timeout=3600)
 
-        from core.services import send_contact_email
-        sent = send_contact_email(name, email, message)
+        # CASE 1: Registered logged-in member -> dispatch immediately!
+        if is_member:
+            from core.services import send_contact_email
+            sent = send_contact_email(name, email, message, is_member=True)
+            if sent:
+                return render(request, "users/contact.html", {"success": True, "is_member": True})
+            else:
+                messages.error(request, "Unable to send message right now. Please try again later.")
+                return redirect("contact_us")
 
-        if sent:
-            return render(request, "users/contact.html", {"success": True})
-        else:
-            messages.error(request, "Unable to send message right now. Please try again later.")
-            return redirect("contact_us")
+        # CASE 2: Guest / Non-registered -> Email OTP verification required!
+        import secrets
+        otp = f"{secrets.randbelow(1_000_000):06d}"
+        verify_token = secrets.token_urlsafe(24)
+        cache_key = f"contact_pending_{verify_token}"
+        cache.set(
+            cache_key,
+            {
+                "name": name,
+                "email": email,
+                "message": message,
+                "code": otp,
+                "attempts": 0,
+            },
+            timeout=900,  # 15 minutes
+        )
+        request.session["contact_verify_token"] = verify_token
+
+        from core.services import send_contact_verification_code
+        send_contact_verification_code(email, name, otp)
+        return redirect("contact_verify")
 
     form_time_token = signer.sign(str(time.time()))
-    return render(request, "users/contact.html", {"form_time": form_time_token})
+    initial_context = {
+        "form_time": form_time_token,
+        "is_member": request.user.is_authenticated,
+    }
+    if request.user.is_authenticated:
+        initial_context["name"] = request.user.full_name or request.user.username
+        initial_context["email"] = request.user.email
+
+    return render(request, "users/contact.html", initial_context)
+
+
+def contact_verify_view(request):
+    session_token = request.session.get("contact_verify_token")
+    if not session_token:
+        messages.warning(request, "No pending message verification found. Please submit your inquiry below.")
+        return redirect("contact_us")
+
+    cache_key = f"contact_pending_{session_token}"
+    pending_data = cache.get(cache_key)
+    if not pending_data:
+        messages.error(request, "Your verification code has expired (15 min limit). Please submit your message again.")
+        request.session.pop("contact_verify_token", None)
+        return redirect("contact_us")
+
+    email = pending_data.get("email")
+    name = pending_data.get("name")
+
+    # Resend code action
+    if request.method == "POST" and request.POST.get("action") == "resend":
+        import secrets
+        new_otp = f"{secrets.randbelow(1_000_000):06d}"
+        pending_data["code"] = new_otp
+        pending_data["attempts"] = 0
+        cache.set(cache_key, pending_data, timeout=900)
+        from core.services import send_contact_verification_code
+        send_contact_verification_code(email, name, new_otp)
+        messages.success(request, f"A fresh verification code has been sent to {email}.")
+        return render(request, "users/contact_verify.html", {"email": email, "name": name})
+
+    if request.method == "POST":
+        entered_code = request.POST.get("code", "").strip()
+        if not entered_code or len(entered_code) != 6 or not entered_code.isdigit():
+            messages.error(request, "Please enter a valid 6-digit verification code.")
+            return render(request, "users/contact_verify.html", {"email": email, "name": name})
+
+        import secrets
+        attempts = pending_data.get("attempts", 0) + 1
+        pending_data["attempts"] = attempts
+
+        if secrets.compare_digest(pending_data["code"], entered_code):
+            from core.services import send_contact_email
+            send_contact_email(name, email, pending_data["message"], is_member=False)
+            cache.delete(cache_key)
+            request.session.pop("contact_verify_token", None)
+            return render(request, "users/contact.html", {"success": True, "email_verified": True})
+        else:
+            if attempts >= 5:
+                cache.delete(cache_key)
+                request.session.pop("contact_verify_token", None)
+                messages.error(request, "Too many incorrect attempts. Please submit your inquiry again.")
+                return redirect("contact_us")
+            else:
+                cache.set(cache_key, pending_data, timeout=900)
+                remaining = 5 - attempts
+                messages.error(request, f"Incorrect verification code. {remaining} attempt{'s' if remaining != 1 else ''} remaining.")
+                return render(request, "users/contact_verify.html", {"email": email, "name": name})
+
+    return render(request, "users/contact_verify.html", {"email": email, "name": name})
 
 
 

@@ -4,14 +4,21 @@
 
 <div class="container mt-5" style="max-width:600px;">
 
-<h3 class="mb-4 text-center">Contact Us</h3>
+<h3 class="mb-4 text-center fw-bold">Contact Us</h3>
 
 {% if success %}
-<div class="alert alert-success text-center">
-Your message has been sent successfully.
+<div class="alert alert-success text-center rounded-4 shadow-sm py-3 mb-4">
+    <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
+        <i class="bi bi-check-circle-fill text-success fs-4"></i>
+        <span class="fw-semibold">Your message has been sent successfully.</span>
+    </div>
+    <div class="small text-muted">
+        Our support team has received your message and will review it shortly.
+    </div>
 </div>
 {% endif %}
 
+<div class="card shadow-sm border-0 rounded-4 p-4 bg-white">
 <form method="POST">
 {% csrf_token %}
 
@@ -29,25 +36,58 @@ Your message has been sent successfully.
 {% endif %}
 
 <div class="mb-3">
-<label class="form-label">Your Name</label>
-<input type="text" name="name" class="form-control" maxlength="100" value="{{ name|default:'' }}" required>
+    <label class="form-label fw-semibold small text-uppercase text-secondary">Your Name</label>
+    <input
+        type="text"
+        name="name"
+        class="form-control {% if is_member %}bg-light text-muted{% endif %}"
+        maxlength="100"
+        value="{{ name|default:'' }}"
+        {% if is_member %}readonly{% endif %}
+        required
+    >
 </div>
 
 <div class="mb-3">
-<label class="form-label">Your Email</label>
-<input type="email" name="email" class="form-control" maxlength="100" value="{{ email|default:'' }}" required>
+    <div class="d-flex justify-content-between align-items-center mb-1">
+        <label class="form-label fw-semibold small text-uppercase text-secondary mb-0">Your Email</label>
+        {% if is_member %}
+            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill py-1 px-2 small">
+                <i class="bi bi-shield-check"></i> Verified Member
+            </span>
+        {% endif %}
+    </div>
+    <input
+        type="email"
+        name="email"
+        class="form-control {% if is_member %}bg-light text-muted{% endif %}"
+        maxlength="100"
+        value="{{ email|default:'' }}"
+        {% if is_member %}readonly{% endif %}
+        required
+    >
+    {% if not is_member %}
+        <div class="form-text text-muted small mt-1">
+            <i class="bi bi-info-circle"></i> We will send a 6-digit confirmation code to this email to verify and deliver your inquiry.
+        </div>
+    {% endif %}
 </div>
 
-<div class="mb-3">
-<label class="form-label">Message</label>
-<textarea name="message" rows="4" class="form-control" maxlength="1000" required>{{ message|default:'' }}</textarea>
+<div class="mb-4">
+    <label class="form-label fw-semibold small text-uppercase text-secondary">Message</label>
+    <textarea name="message" rows="4" class="form-control" maxlength="1000" placeholder="How can our community support team help you?" required>{{ message|default:'' }}</textarea>
 </div>
 
-<button type="submit" class="btn btn-dark w-100">
-Send Message
+<button type="submit" class="btn btn-dark w-100 py-2 rounded-pill fw-semibold shadow-sm">
+    {% if is_member %}
+        Send Message
+    {% else %}
+        Continue & Verify Email
+    {% endif %}
 </button>
 
 </form>
+</div>
 
 </div>
 

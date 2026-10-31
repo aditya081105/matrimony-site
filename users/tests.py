@@ -254,13 +254,32 @@ class UserModelTest(TestCase):
         from django.urls import reverse
         from django.core.cache import cache
         cache.clear()
+
+        # 1. Registered member submission goes through immediately (200 OK)
+        user = User.objects.create_user(
+            username="contact_member",
+            email="member@example.com",
+            password="TestPass123!",
+            is_approved=True,
+            is_email_verified=True
+        )
+        self.client.login(username="contact_member", password="TestPass123!")
         response = self.client.post(reverse('contact_us'), {
-            'name': 'Test Submitter',
-            'email': 'submitter@example.com',
-            'message': 'Testing contact submission asynchronously',
+            'name': 'Member Submitter',
+            'email': 'member@example.com',
+            'message': 'Testing member contact submission',
         })
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Your message has been sent successfully.")
+        self.assertContains(response, "Your message has been sent successfully")
+        self.client.logout()
+
+        # 2. Guest submission redirects to OTP verification
+        guest_post = self.client.post(reverse('contact_us'), {
+            'name': 'Guest Submitter',
+            'email': 'guest@example.com',
+            'message': 'Testing guest inquiry with OTP',
+        })
+        self.assertRedirects(guest_post, reverse('contact_verify'))
 
     def test_contact_form_honeypot_discards_silently(self):
         from django.urls import reverse
@@ -286,6 +305,13 @@ class UserModelTest(TestCase):
         cache.clear()
         mail.outbox.clear()
 
+        member = User.objects.create_user(
+            username="rate_contact_member",
+            email="ratemember@example.com",
+            password="TestPass123!",
+            is_approved=True
+        )
+        self.client.login(username="rate_contact_member", password="TestPass123!")
         ip_env = {'REMOTE_ADDR': '198.51.100.42'}
 
         for i in range(3):
@@ -295,7 +321,7 @@ class UserModelTest(TestCase):
                 'message': f'Message {i}',
             }, **ip_env)
             self.assertEqual(response.status_code, 200)
-            self.assertContains(response, "Your message has been sent successfully.")
+            self.assertContains(response, "Your message has been sent successfully")
 
         self.assertEqual(len(mail.outbox), 3)
 
@@ -1522,7 +1548,7 @@ class Phase5LockoutAndRateLimitingTests(TestCase):
                 },
                 REMOTE_ADDR=f"2001:db8:beef:42::{i}"
             )
-            self.assertEqual(res.status_code, 200)
+            self.assertIn(res.status_code, [200, 302])
 
         # 4th submission from another IP in that same /64 must be rate-limited
         res_blocked = self.client.post(
@@ -2128,6 +2154,51 @@ class AdminReportDashboardAndContactAntiSpamTests(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertContains(res, "Your message has been sent successfully.")
         self.assertEqual(len(mail.outbox), 0)
+
+    def test_guest_contact_otp_verification_flow(self):
+        from django.core import mail
+        from django.core.cache import cache
+        mail.outbox.clear()
+
+        # Step 1: Guest submits contact form
+        res = self.client.post(reverse('contact_us'), {
+            'name': 'Prospective Bride Family',
+            'email': 'family@example.com',
+            'message': 'We have a question regarding matching preferences in Siwan.',
+        })
+        self.assertRedirects(res, reverse('contact_verify'))
+
+        # Verification email sent to guest, but NOT yet to admin
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['family@example.com'])
+        self.assertIn("Verification Code for Your Inquiry", mail.outbox[0].subject)
+
+        # Retrieve session token and pending data from cache
+        session_token = self.client.session.get('contact_verify_token')
+        self.assertIsNotNone(session_token)
+        cache_key = f"contact_pending_{session_token}"
+        pending_data = cache.get(cache_key)
+        self.assertIsNotNone(pending_data)
+        correct_otp = pending_data['code']
+
+        # Step 2: Guest enters wrong code
+        res_wrong = self.client.post(reverse('contact_verify'), {'code': '000000'})
+        self.assertEqual(res_wrong.status_code, 200)
+        self.assertContains(res_wrong, "Incorrect verification code")
+        # Admin still has not received any inquiry
+        self.assertEqual(len(mail.outbox), 1)
+
+        # Step 3: Guest enters correct code
+        res_correct = self.client.post(reverse('contact_verify'), {'code': correct_otp})
+        self.assertEqual(res_correct.status_code, 200)
+        self.assertContains(res_correct, "Your message has been sent successfully")
+
+        # Admin now receives the inquiry email!
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertEqual(mail.outbox[1].to, ['poorvanchanlmatrimony@gmail.com'])
+        self.assertIn("[Verified Guest]", mail.outbox[1].subject)
+        self.assertIn("Prospective Bride Family", mail.outbox[1].body)
+
 
 
 
