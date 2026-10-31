@@ -2373,6 +2373,35 @@ class UserSuspensionDurationAndUnsuspendTests(TestCase):
         self.assertContains(res_edit, "Multiple complaints regarding inappropriate photos")
 
 
+class SEORobotsSitemapTests(TestCase):
+    def test_robots_txt(self):
+        res = self.client.get('/robots.txt')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res['Content-Type'], 'text/plain; charset=utf-8')
+        self.assertContains(res, 'User-agent: *')
+        self.assertContains(res, 'Disallow: /admin-dashboard/')
+        self.assertContains(res, 'Disallow: /secure-admin-panel/')
+        self.assertContains(res, 'Sitemap: https://poorvanchalmatrimony.social/sitemap.xml')
+
+    def test_sitemap_xml(self):
+        res = self.client.get('/sitemap.xml')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res['Content-Type'], 'application/xml')
+        self.assertContains(res, '<loc>https://')
+        self.assertContains(res, '/about/</loc>')
+        self.assertContains(res, '/contact/</loc>')
+        self.assertContains(res, '/register/</loc>')
+        self.assertContains(res, '<priority>1.0</priority>')
+
+    def test_homepage_seo_meta_tags(self):
+        res = self.client.get(reverse('home'))
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, 'meta name="description"')
+        self.assertContains(res, 'meta name="keywords"')
+        self.assertContains(res, 'rel="canonical"')
+        self.assertContains(res, 'application/ld+json')
+
+
 
 
 
