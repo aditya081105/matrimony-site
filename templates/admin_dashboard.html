@@ -171,22 +171,105 @@
     {% endif %}
 </div>
 
-<div class="card shadow-sm border-0 rounded-4 p-4">
-    <h5 class="fw-bold mb-3">Top Reported Users</h5>
+<div class="card shadow-sm border-0 rounded-4 p-4 mb-4 bg-white">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div>
+            <h5 class="fw-bold mb-1">User Reports & Complaints</h5>
+            <p class="text-muted small mb-0">Investigate user reports, review the submitted complaints and reasons, and take moderation action.</p>
+        </div>
+        <span class="badge bg-danger px-3 py-2 rounded-pill">
+            {{ total_reports }} Total Reports
+        </span>
+    </div>
 
     {% if top_reported %}
-        <ul class="list-group">
-            {% for user in top_reported %}
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                    {{ user.reported_user__username }}
-                    <span class="badge bg-danger">
-                        {{ user.report_count }} reports
+        <div class="mb-4">
+            <h6 class="fw-semibold text-secondary small text-uppercase mb-2">Most Reported Profiles</h6>
+            <div class="d-flex flex-wrap gap-2">
+                {% for user in top_reported %}
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-2">
+                        @{{ user.reported_user__username }} &bull; {{ user.report_count }} reports
                     </span>
-                </li>
-            {% endfor %}
-        </ul>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    {% if recent_reports %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th scope="col" style="min-width: 170px;">Reported Profile</th>
+                        <th scope="col" style="min-width: 150px;">Reported By</th>
+                        <th scope="col" style="min-width: 250px;">Reason / Complaint</th>
+                        <th scope="col" style="min-width: 140px;">Date & Time</th>
+                        <th scope="col" class="text-end" style="min-width: 180px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in recent_reports %}
+                    <tr>
+                        <td>
+                            <div>
+                                <a href="{% url 'view_profile' r.reported_user.id %}" class="fw-bold text-dark text-decoration-none" target="_blank">
+                                    {{ r.reported_user.full_name|default:r.reported_user.username }}
+                                </a>
+                                <br>
+                                <small class="text-muted">@{{ r.reported_user.username }}</small>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="fw-medium text-secondary">
+                                {{ r.reporter.full_name|default:r.reporter.username }}
+                            </span>
+                            <br>
+                            <small class="text-muted">@{{ r.reporter.username }}</small>
+                        </td>
+                        <td>
+                            {% if r.reason %}
+                                <div class="p-2 rounded bg-light border border-light-subtle small text-break">
+                                    {{ r.reason }}
+                                </div>
+                            {% else %}
+                                <span class="text-muted small fst-italic">No written reason specified</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small class="text-muted">{{ r.created_at|date:"d M Y, h:i A" }}</small>
+                        </td>
+                        <td class="text-end">
+                            <div class="d-inline-flex gap-2">
+                                <a href="{% url 'view_profile' r.reported_user.id %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3" target="_blank">
+                                    View
+                                </a>
+                                {% if not r.reported_user.is_suspended %}
+                                <form method="POST" action="{% url 'admin_reject_user' r.reported_user.id %}" onsubmit="return confirm('Are you sure you want to suspend @{{ r.reported_user.username }}?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3">
+                                        Suspend
+                                    </button>
+                                </form>
+                                {% else %}
+                                <span class="badge bg-secondary rounded-pill py-2 px-3">Suspended</span>
+                                {% endif %}
+                                <form method="POST" action="{% url 'admin_dismiss_report' r.id %}" onsubmit="return confirm('Dismiss this report?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-light border rounded-pill px-3">
+                                        Dismiss
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     {% else %}
-        <p class="text-muted mb-0">No reports yet.</p>
+        <div class="text-center py-4 text-muted">
+            No complaints or reports filed yet. The community is clean!
+        </div>
     {% endif %}
 </div>
 

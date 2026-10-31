@@ -15,11 +15,18 @@ Your message has been sent successfully.
 <form method="POST">
 {% csrf_token %}
 
-<!-- Anti-spam Honeypot Field (invisible to genuine users) -->
+<!-- Anti-spam Honeypot Fields (invisible to genuine users, traps automated crawlers) -->
 <div style="display:none;" aria-hidden="true">
     <label for="website_hp">Leave this field blank</label>
     <input type="text" id="website_hp" name="website_hp" tabindex="-1" autocomplete="off">
 </div>
+<div style="position:absolute; left:-9999px; top:-9999px; opacity:0; width:0; height:0; z-index:-1;" aria-hidden="true">
+    <label for="contact_phone_hp">Phone Number</label>
+    <input type="text" id="contact_phone_hp" name="contact_phone_hp" tabindex="-1" autocomplete="off">
+</div>
+{% if form_time %}
+<input type="hidden" name="form_time" value="{{ form_time }}">
+{% endif %}
 
 <div class="mb-3">
 <label class="form-label">Your Name</label>

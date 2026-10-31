@@ -2013,5 +2013,123 @@ class NeedsReviewAdminApprovalTests(TestCase):
         self.assertEqual(res2.status_code, 302)
 
 
+class AdminReportDashboardAndContactAntiSpamTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.admin = User.objects.create_superuser(
+            username="report_admin",
+            password="AdminPass123!",
+            email="admin_reports@example.com",
+            phone_number="9876543210"
+        )
+        self.reporter = User.objects.create_user(
+            username="vigilant_user",
+            full_name="Vigilant User",
+            password="UserPass123!",
+            email="vigilant@example.com",
+            phone_number="9876543211",
+            is_approved=True
+        )
+        self.reported = User.objects.create_user(
+            username="offensive_user",
+            full_name="Offensive User",
+            password="UserPass123!",
+            email="offensive@example.com",
+            phone_number="9876543212",
+            is_approved=True
+        )
+        from communications.models import Report
+        self.report = Report.objects.create(
+            reporter=self.reporter,
+            reported_user=self.reported,
+            reason="User uploaded inappropriate profile images and abusive text."
+        )
+
+    def test_admin_dashboard_displays_report_details_and_reason(self):
+        self.client.login(username="report_admin", password="AdminPass123!")
+        res = self.client.get(reverse('admin_dashboard'))
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "offensive_user")
+        self.assertContains(res, "vigilant_user")
+        self.assertContains(res, "User uploaded inappropriate profile images and abusive text.")
+        self.assertContains(res, "User Reports & Complaints")
+
+    def test_admin_dismiss_report_removes_report(self):
+        from communications.models import Report
+        self.client.login(username="report_admin", password="AdminPass123!")
+        res = self.client.post(reverse('admin_dismiss_report', args=[self.report.id]))
+        self.assertRedirects(res, reverse('admin_dashboard'))
+        self.assertFalse(Report.objects.filter(id=self.report.id).exists())
+
+    def test_contact_form_spam_keyword_discarded_silently(self):
+        from django.core import mail
+        mail.outbox.clear()
+        res = self.client.post(reverse('contact_us'), {
+            'name': 'Kirk Balson',
+            'email': 'domains@search-poorvanchalmatrimony.social',
+            'message': 'Register poorvanchalmatrimony.social here: indexregister.live',
+        })
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "Your message has been sent successfully.")
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_contact_form_telegram_spam_discarded_silently(self):
+        from django.core import mail
+        mail.outbox.clear()
+        res = self.client.post(reverse('contact_us'), {
+            'name': 'Davidtrawl',
+            'email': 'no.reply.heinz@gmail.com',
+            'message': 'Outreach through website contact forms. Telegram - https://t.me/FeedbackFormEU',
+        })
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "Your message has been sent successfully.")
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_contact_form_probe_pattern_discarded_silently(self):
+        from django.core import mail
+        mail.outbox.clear()
+        res = self.client.post(reverse('contact_us'), {
+            'name': 'NARETGR1158760NERTHRRTH',
+            'email': 'cesaru1998@notboxletters.com',
+            'message': 'METRYTRE1158760MAWRERGTRH',
+        })
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "Your message has been sent successfully.")
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_contact_form_phone_honeypot_discarded_silently(self):
+        from django.core import mail
+        mail.outbox.clear()
+        res = self.client.post(reverse('contact_us'), {
+            'name': 'Honest Inquirer',
+            'email': 'honest@example.com',
+            'message': 'Hello, I have a legitimate question.',
+            'contact_phone_hp': '9876543210',
+        })
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "Your message has been sent successfully.")
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_contact_form_rapid_time_gate_discarded_silently(self):
+        import time
+        from django.core import mail
+        from django.core.signing import TimestampSigner
+        mail.outbox.clear()
+        signer = TimestampSigner()
+        # Simulated instant submission 0.1s after page load
+        token = signer.sign(str(time.time() - 0.1))
+        res = self.client.post(reverse('contact_us'), {
+            'name': 'Fast Bot',
+            'email': 'bot@example.com',
+            'message': 'Fast automated submission.',
+            'form_time': token,
+        })
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "Your message has been sent successfully.")
+        self.assertEqual(len(mail.outbox), 0)
+
+
+
 
 

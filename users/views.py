@@ -414,6 +414,12 @@ def admin_dashboard(request):
         .order_by('-report_count')[:5]
     )
 
+    recent_reports = (
+        Report.objects
+        .select_related('reporter', 'reported_user')
+        .order_by('-created_at')[:50]
+    )
+
     active_filter = request.GET.get('filter', 'all')
     base_pending_qs = CustomUser.objects.filter(is_suspended=False)
 
@@ -440,6 +446,7 @@ def admin_dashboard(request):
         'pending_requests': pending_requests,
         'total_reports': total_reports,
         'top_reported': top_reported,
+        'recent_reports': recent_reports,
         'pending_users': pending_users,
         'active_filter': active_filter,
         'review_needed_count': review_needed_count,
@@ -483,12 +490,62 @@ def admin_reject_user(request, user_id):
         messages.warning(request, f"User {user.full_name or user.username} has been suspended/rejected.")
     return redirect('admin_dashboard')
 
+
+@staff_member_required
+def admin_dismiss_report(request, report_id):
+    if request.method == 'POST':
+        report = get_object_or_404(Report, id=report_id)
+        reported_name = report.reported_user.full_name or report.reported_user.username
+        report.delete()
+        messages.success(request, f"Report against {reported_name} has been dismissed.")
+    return redirect('admin_dashboard')
+
+
+CONTACT_SPAM_PHRASES = (
+    "indexregister",
+    "indexsubmit",
+    "search index",
+    "google's search index",
+    "google search index",
+    "seo services",
+    "grow your website traffic",
+    "target keywords",
+    "outreach through website contact",
+    "million messages cost",
+    "feedbackformeu",
+    "t.me/",
+    "wa.me/",
+    "telegram -",
+    "whatsapp -",
+    "notboxletters.com",
+    "belettersmail.com",
+    "search-poorvanchalmatrimony.social",
+)
+
+
 def contact_view(request):
+    signer = TimestampSigner()
+
     if request.method == "POST":
         honeypot = request.POST.get("website_hp", "").strip()
-        if honeypot:
+        honeypot_phone = request.POST.get("contact_phone_hp", "").strip()
+        if honeypot or honeypot_phone:
             # Silent discard for bot submissions
+            logger.info("Bot detected via honeypot trap: hp=%s, hp_phone=%s", honeypot, honeypot_phone)
             return render(request, "users/contact.html", {"success": True})
+
+        # Time-gate check (if rendered timestamp token is present)
+        form_time = request.POST.get("form_time", "").strip()
+        if form_time:
+            try:
+                rendered_at = float(signer.unsign(form_time, max_age=86400))
+                elapsed = time.time() - rendered_at
+                if elapsed < 2.0:
+                    logger.info("Bot detected (submitted in %.2fs < 2.0s)", elapsed)
+                    return render(request, "users/contact.html", {"success": True})
+            except (BadSignature, SignatureExpired, ValueError):
+                logger.info("Bot detected (invalid form_time signature: %s)", form_time)
+                return render(request, "users/contact.html", {"success": True})
 
         client_ip = get_client_ip(request) or "unknown"
         ip_key = get_ip_network_key(client_ip)
@@ -502,11 +559,34 @@ def contact_view(request):
         email = request.POST.get("email", "").strip()
         message = request.POST.get("message", "").strip()
 
-        context = {"name": name, "email": email, "message": message}
+        context = {
+            "name": name,
+            "email": email,
+            "message": message,
+            "form_time": signer.sign(str(time.time())),
+        }
 
         if not name or not email or not message:
             messages.error(request, "Please fill in all fields.")
             return render(request, "users/contact.html", context)
+
+        # Keyword and scam heuristics check
+        combined_text = f"{name} {email} {message}".lower()
+        if any(phrase in combined_text for phrase in CONTACT_SPAM_PHRASES):
+            logger.info("Contact form spam discarded due to blacklist match from %s (%s)", email, client_ip)
+            return render(request, "users/contact.html", {"success": True})
+
+        # High-entropy / random alphanumeric probe detection (e.g. NARETGR1158760NERTHRRTH)
+        import re
+        if re.search(r'^[A-Z]{3,}\d+[A-Z\d]*$', name) or re.search(r'^[A-Z]{3,}\d+[A-Z\d]*$', message):
+            logger.info("Contact form spam discarded due to probe pattern from %s (%s)", email, client_ip)
+            return render(request, "users/contact.html", {"success": True})
+
+        # Excessive link detection in anonymous message
+        url_count = message.lower().count("http://") + message.lower().count("https://")
+        if url_count >= 2:
+            logger.info("Contact form spam discarded due to excessive links (%d) from %s (%s)", url_count, email, client_ip)
+            return render(request, "users/contact.html", {"success": True})
 
         if len(name) > 100:
             messages.error(request, "Name must be 100 characters or fewer.")
@@ -543,7 +623,8 @@ def contact_view(request):
             messages.error(request, "Unable to send message right now. Please try again later.")
             return redirect("contact_us")
 
-    return render(request, "users/contact.html")
+    form_time_token = signer.sign(str(time.time()))
+    return render(request, "users/contact.html", {"form_time": form_time_token})
 
 
 
