@@ -2194,6 +2194,7 @@ class AdminReportDashboardAndContactAntiSpamTests(TestCase):
         self.assertContains(res_correct, "Your message has been sent successfully")
 
         # Admin now receives the inquiry email!
+        from django.conf import settings
         expected_admin = getattr(settings, 'CONTACT_ADMIN_EMAIL', None) or getattr(settings, 'DEFAULT_FROM_EMAIL', 'admin@poorvanchalmatrimony.social')
         self.assertEqual(len(mail.outbox), 2)
         self.assertEqual(mail.outbox[1].to, [expected_admin])
