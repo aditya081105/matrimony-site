@@ -23,10 +23,17 @@
             </p>
 
             {% if user.is_authenticated %}
-                <a href="{% url 'profile_list' %}"
-                   class="btn btn-light btn-lg rounded-pill px-4 px-md-5 me-2 shadow-sm">
-                    Explore Matches
-                </a>
+                {% if user.is_suspended %}
+                    <a href="{% url 'contact_us' %}"
+                       class="btn btn-warning btn-lg rounded-pill px-4 px-md-5 me-2 shadow-sm fw-semibold">
+                        Contact Support
+                    </a>
+                {% else %}
+                    <a href="{% url 'profile_list' %}"
+                       class="btn btn-light btn-lg rounded-pill px-4 px-md-5 me-2 shadow-sm">
+                        Explore Matches
+                    </a>
+                {% endif %}
             {% else %}
                 <a href="{% url 'register' %}"
                    class="btn btn-light btn-lg rounded-pill px-4 px-md-5 me-2 shadow-sm">
@@ -43,6 +50,30 @@
     </div>
 
 </section>
+
+{% if user.is_authenticated and user.is_suspended %}
+<section class="mb-4">
+    <div class="alert alert-danger shadow-sm rounded-4 py-4 px-4 border-0">
+        <h5 class="fw-bold mb-2 text-danger">Account Suspended</h5>
+        <p class="mb-2">
+            {% if user.suspended_until %}
+                Your account access has been temporarily suspended until <strong>{{ user.suspended_until|date:"M d, Y" }}</strong>.
+            {% else %}
+                Your account access has been suspended indefinitely.
+            {% endif %}
+            {% if user.suspension_reason %}
+                <br><strong>Reason / Moderation Note:</strong> {{ user.suspension_reason }}
+            {% endif %}
+        </p>
+        <p class="small text-muted mb-3">
+            While suspended, your profile is hidden from member searches and you cannot browse or interact with matches.
+        </p>
+        <a href="{% url 'contact_us' %}" class="btn btn-outline-danger btn-sm rounded-pill px-4 fw-semibold">
+            Contact Support & Appeal
+        </a>
+    </div>
+</section>
+{% endif %}
 
 {% if user.is_authenticated and is_incomplete and not user.is_staff and not user.is_superuser %}
 <section class="mb-5">

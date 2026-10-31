@@ -91,17 +91,37 @@ class CustomUser(AbstractUser):
     def lift_expired_suspensions(cls):
         """
         Automatically un-suspends users whose temporary suspension period has passed.
-        Safe to call frequently as it performs a single conditional update.
+        Safe to call frequently as it performs a single conditional query.
+        Also clears all complaints/reports against the restored users.
         """
         from django.utils import timezone
         now = timezone.now()
-        expired_qs = cls.objects.filter(is_suspended=True, suspended_until__isnull=False, suspended_until__lte=now)
-        return expired_qs.update(is_suspended=False, is_approved=True, suspended_until=None, suspension_reason="")
+        expired_user_ids = list(
+            cls.objects.filter(
+                is_suspended=True,
+                suspended_until__isnull=False,
+                suspended_until__lte=now
+            ).values_list('id', flat=True)
+        )
+        if not expired_user_ids:
+            return 0
+
+        try:
+            from communications.models import Report
+            Report.objects.filter(reported_user_id__in=expired_user_ids).delete()
+        except Exception:
+            pass
+        return cls.objects.filter(id__in=expired_user_ids).update(
+            is_suspended=False,
+            is_approved=True,
+            suspended_until=None,
+            suspension_reason=""
+        )
 
     def check_suspension_status(self):
         """
         Verifies if suspension is still active. If temporary suspension has passed,
-        clears suspension flags and returns False. Returns True if user is still suspended.
+        clears suspension flags and reports, and returns False. Returns True if user is still suspended.
         """
         if not self.is_suspended:
             return False
@@ -112,6 +132,11 @@ class CustomUser(AbstractUser):
             self.suspended_until = None
             self.suspension_reason = ""
             self.save(update_fields=['is_suspended', 'is_approved', 'suspended_until', 'suspension_reason'])
+            try:
+                from communications.models import Report
+                Report.objects.filter(reported_user=self).delete()
+            except Exception:
+                pass
             return False
         return True
 

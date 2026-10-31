@@ -28,9 +28,12 @@ def active_member_required(view_func):
             if request.user.check_suspension_status():
                 if request.user.suspended_until:
                     until_str = request.user.suspended_until.strftime('%b %d, %Y')
-                    suspension_msg = f"Your account is suspended until {until_str}. Please contact support if you need assistance."
+                    suspension_msg = f"Your account is suspended until {until_str}."
                 else:
-                    suspension_msg = "Your account has been suspended indefinitely. Please contact support."
+                    suspension_msg = "Your account has been suspended indefinitely."
+                if request.user.suspension_reason:
+                    suspension_msg += f" Reason: {request.user.suspension_reason}."
+                suspension_msg += " Please contact support if you need assistance."
                 if request.headers.get('HX-Request'):
                     return HttpResponse(
                         f'<div class="alert alert-danger text-center p-3 rounded-4 shadow-sm">{suspension_msg}</div>',

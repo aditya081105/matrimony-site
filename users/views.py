@@ -213,6 +213,8 @@ def home(request):
     is_incomplete = False
 
     if request.user.is_authenticated:
+        if getattr(request.user, 'is_suspended', False):
+            request.user.check_suspension_status()
         is_incomplete = not all([
             request.user.date_of_birth,
             request.user.height_cm,
@@ -227,8 +229,11 @@ def home(request):
 @login_required
 def edit_profile(request):
     if getattr(request.user, 'is_suspended', False):
-        messages.error(request, "Your account has been suspended.")
-        return redirect('home')
+        if request.user.check_suspension_status():
+            until_str = f"until {request.user.suspended_until.strftime('%b %d, %Y')}" if request.user.suspended_until else "indefinitely"
+            reason_str = f" Reason: {request.user.suspension_reason}." if request.user.suspension_reason else ""
+            messages.error(request, f"Your account is suspended {until_str}.{reason_str} Please contact support.")
+            return redirect('home')
 
     if request.method == 'POST':
         if 'profile_photo' in request.FILES:
@@ -476,6 +481,7 @@ def admin_verify_user(request, user_id):
             'is_approved', 'is_suspended', 'suspended_until', 'suspension_reason',
             'is_phone_verified', 'is_email_verified', 'needs_review'
         ])
+        Report.objects.filter(reported_user=user).delete()
         messages.success(request, f"User {user.full_name or user.username} has been fully approved, verified, and cleared from review queue.")
     return redirect('admin_dashboard')
 
@@ -523,6 +529,7 @@ def admin_unsuspend_user(request, user_id):
         user.suspended_until = None
         user.suspension_reason = ""
         user.save(update_fields=['is_suspended', 'is_approved', 'suspended_until', 'suspension_reason'])
+        Report.objects.filter(reported_user=user).delete()
         messages.success(request, f"User {user.full_name or user.username} has been unsuspended and restored.")
     return redirect('admin_dashboard')
 

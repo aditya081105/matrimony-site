@@ -2248,6 +2248,14 @@ class UserSuspensionDurationAndUnsuspendTests(TestCase):
         self.assertIsNone(self.target_user.suspended_until)
 
     def test_admin_unsuspend_user(self):
+        from communications.models import Report
+        Report.objects.create(
+            reporter=self.staff_admin,
+            reported_user=self.target_user,
+            reason="Violation of guidelines"
+        )
+        self.assertEqual(Report.objects.filter(reported_user=self.target_user).count(), 1)
+
         self.target_user.is_suspended = True
         self.target_user.is_approved = False
         from django.utils import timezone
@@ -2264,8 +2272,18 @@ class UserSuspensionDurationAndUnsuspendTests(TestCase):
         self.assertTrue(self.target_user.is_approved)
         self.assertIsNone(self.target_user.suspended_until)
         self.assertEqual(self.target_user.suspension_reason, "")
+        # Verify reports against the user were cleaned up
+        self.assertEqual(Report.objects.filter(reported_user=self.target_user).count(), 0)
 
     def test_check_suspension_status_auto_lifts_expired_suspension(self):
+        from communications.models import Report
+        Report.objects.create(
+            reporter=self.staff_admin,
+            reported_user=self.target_user,
+            reason="Past issue"
+        )
+        self.assertEqual(Report.objects.filter(reported_user=self.target_user).count(), 1)
+
         from django.utils import timezone
         from datetime import timedelta
         self.target_user.is_suspended = True
@@ -2280,8 +2298,18 @@ class UserSuspensionDurationAndUnsuspendTests(TestCase):
         self.assertFalse(self.target_user.is_suspended)
         self.assertTrue(self.target_user.is_approved)
         self.assertIsNone(self.target_user.suspended_until)
+        # Verify reports against the user were cleaned up
+        self.assertEqual(Report.objects.filter(reported_user=self.target_user).count(), 0)
 
     def test_lift_expired_suspensions_bulk(self):
+        from communications.models import Report
+        Report.objects.create(
+            reporter=self.staff_admin,
+            reported_user=self.target_user,
+            reason="Bulk report"
+        )
+        self.assertEqual(Report.objects.filter(reported_user=self.target_user).count(), 1)
+
         from django.utils import timezone
         from datetime import timedelta
         self.target_user.is_suspended = True
@@ -2292,6 +2320,8 @@ class UserSuspensionDurationAndUnsuspendTests(TestCase):
         self.assertGreaterEqual(restored_count, 1)
         self.target_user.refresh_from_db()
         self.assertFalse(self.target_user.is_suspended)
+        # Verify reports were cleaned up
+        self.assertEqual(Report.objects.filter(reported_user=self.target_user).count(), 0)
 
     def test_admin_dashboard_suspended_filter(self):
         self.target_user.is_suspended = True
@@ -2302,6 +2332,45 @@ class UserSuspensionDurationAndUnsuspendTests(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertContains(res, "target_member")
         self.assertContains(res, "Unsuspend &amp; Restore")
+
+    def test_suspended_user_sees_reason_and_duration_on_login_and_views(self):
+        from django.utils import timezone
+        from datetime import timedelta
+        future_date = timezone.now() + timedelta(days=7)
+        self.target_user.is_suspended = True
+        self.target_user.is_approved = False
+        self.target_user.suspended_until = future_date
+        self.target_user.suspension_reason = "Multiple complaints regarding inappropriate photos"
+        self.target_user.save()
+
+        # 1. Attempt login via POST
+        res_login = self.client.post(reverse('login'), {
+            'username': 'target_member',
+            'password': 'UserPass123!'
+        })
+        self.assertEqual(res_login.status_code, 200)
+        self.assertContains(res_login, "Your account has been suspended until")
+        self.assertContains(res_login, "Multiple complaints regarding inappropriate photos")
+
+        # 2. Authenticated suspended member hits active_member_required view
+        self.client.force_login(self.target_user)
+        res_member = self.client.get(reverse('profile_list'), follow=True)
+        self.assertRedirects(res_member, reverse('home'))
+        self.assertContains(res_member, "Your account is suspended until")
+        self.assertContains(res_member, "Multiple complaints regarding inappropriate photos")
+
+        # 3. Authenticated suspended member visits home page
+        res_home = self.client.get(reverse('home'))
+        self.assertEqual(res_home.status_code, 200)
+        self.assertContains(res_home, "Account Suspended")
+        self.assertContains(res_home, "Multiple complaints regarding inappropriate photos")
+        self.assertContains(res_home, "Contact Support")
+
+        # 4. Authenticated suspended member attempts edit_profile
+        res_edit = self.client.get(reverse('edit_profile'), follow=True)
+        self.assertRedirects(res_edit, reverse('home'))
+        self.assertContains(res_edit, "Your account is suspended until")
+        self.assertContains(res_edit, "Multiple complaints regarding inappropriate photos")
 
 
 

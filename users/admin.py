@@ -40,6 +40,12 @@ def mark_reviewed(modeladmin, request, queryset):
 
 @admin.action(description="Unsuspend selected users (restore access)")
 def unsuspend_users(modeladmin, request, queryset):
+    user_ids = list(queryset.values_list('id', flat=True))
+    try:
+        from communications.models import Report
+        Report.objects.filter(reported_user_id__in=user_ids).delete()
+    except Exception:
+        pass
     queryset.update(is_suspended=False, is_approved=True, suspended_until=None, suspension_reason="")
 
 

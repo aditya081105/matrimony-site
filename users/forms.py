@@ -600,6 +600,14 @@ class RateLimitedAuthenticationForm(AuthenticationForm):
 
     def confirm_login_allowed(self, user):
         super().confirm_login_allowed(user)
+        if not (user.is_staff or user.is_superuser) and getattr(user, 'is_suspended', False) and user.check_suspension_status():
+            until_str = f"until {user.suspended_until.strftime('%b %d, %Y')}" if user.suspended_until else "indefinitely"
+            reason_str = f" Reason: {user.suspension_reason}." if user.suspension_reason else ""
+            raise forms.ValidationError(
+                f"Your account has been suspended {until_str}.{reason_str} Please contact support for assistance.",
+                code='suspended',
+            )
+
         username = user.get_username().strip().lower()
         client_ip = get_client_ip(self.request) if self.request else 'unknown'
         ip_key = get_ip_network_key(client_ip)
